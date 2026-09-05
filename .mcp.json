@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "linear-server": {
+      "type": "http",
+      "url": "https://mcp.linear.app/mcp"
+    },
+    "playwright-mcp": {
+      "_note": "stdio — spawns per session (~36 MB each). Generally prefer chrome MCP (claude-in-chrome) instead.",
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "playwright-mcp"]
+    },
+    "hedera-docs": {
+      "type": "http",
+      "url": "https://docs.hedera.com/mcp"
+    },
+    "privy-docs": {
+      "type": "http",
+      "url": "https://docs.privy.io/mcp"
+    }
+  }
+}

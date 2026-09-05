@@ -1,0 +1,8 @@
+{
+  "enabledMcpjsonServers": [
+    "linear-server",
+    "playwright-mcp",
+    "hedera-docs",
+    "privy-docs"
+  ]
+}
