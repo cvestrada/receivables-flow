@@ -1,171 +1,291 @@
-# receivable-flow
+# Receivables Flow — Unpaid Invoices, Turned Into Something You Can Sell
 
-## Event Basics
+## What
 
-- **Dates:** September 4 – 16, 2026, fully online/async
-- **Submission deadline:** Sunday, September 13, 2026, 12:00pm EDT
-- **Build time:** ~9 days from start to submission
-- **Judging:** sponsor tracks judged async on repo/README/demo video (no live pitch required); top ~20% of all submissions also advance to a 7-min live round for the general track. Criteria both ways: Technicality, Originality, Practicality, Usability, WOW factor.
+**One liner:** An unpaid invoice becomes a token someone can buy, hold, trade, and get paid out on.
 
-Full prize list: https://ethglobal.com/events/ethonline2026/prizes
+**What it does:** A business that is owed money sells that claim today instead of waiting 60 days for it. The claim itself is minted as an asset with a full lifecycle — it is issued, it can only be held by people allowed to hold it, and at maturity it either pays out or defaults, depending on whether the real customer actually paid.
 
-## Chain/Sponsor Stack — Decided
+**Best for:** a supplier whose cash is trapped in invoices its customers have not paid yet.
 
-**Hedera + Privy + ENS. Single settlement chain (Hedera), same discipline as the insurance project.**
+### The cast
 
-- **Hedera** — the receivable itself is minted, restricted, and redeemed here via Asset Tokenization Studio (ATS). This is the anchor track and the only chain touched for settlement.
-- **Privy** — the issuer side is a real B2B org, not a single EOA. Org wallets + policies + quorum approval model the actual internal control a finance team needs before it can turn a real invoice into a tradeable token.
-- **ENS** — functional, locked identity/eligibility layer (Permissioned Resolver + hierarchical namespace), the same mechanism `insurance-demo.md` already validated for PayableAgent's spending scope, reused here for issuer KYC/credit-tier and investor eligibility. Deliberately reused rather than reinvented — less net-new design risk across two submissions in one 9-day window.
+| | Who |
+|---|---|
+| **Business** | **Ironline Freight** — owed $50,000 by a customer, waiting 60 days to be paid |
+| **Investor** | **Woodgrove Capital** — has capital to deploy and wants a short, secured return |
+| **Platform** | **Receivables Flow** — decides what can be listed, who can buy it, and what happens when the invoice comes due |
 
-**Arc was considered and dropped**, for the identical reason it was dropped from the insurance project: it's a second chain, a second wallet SDK, and its tracks pay out of a pool split evenly among all qualifying teams rather than a fixed amount — unpredictable and likely diluted, not worth the added build surface. An investor funding a receivable in USDC is a real "treasury workflow" that would have fit Arc's literal bar, but Privy's B2B track already covers the org-wallet story on one chain without the extra integration cost.
+Ironline Freight's customer is the one who actually owes the money. They never touch the platform, but their payment — or non-payment — is the event everything hinges on.
 
-Other sponsors (World, 1inch, Uniswap, Ledger, Chainlink, Bazantic) are out of scope for *this* project specifically — not evaluated exhaustively here, just not the three chosen.
+## Why
 
-**The Graph — explicitly not pursued (updated from "stretch," see below):** requires self-hosting `graph-node` plus its own Postgres + IPFS + a custom subgraph manifest against Hedera's JSON-RPC relay — new infrastructure, not an SDK integration, on top of whatever else ships in 9 days. Worse, the published qualification text for both AI-tooling tracks requires you to *"consume live data from a Graph provider, for example Subgraph Studio... or The Graph Market"* and explicitly disqualifies *"mocked, local-only, or static datasets."* A privately self-hosted node that only you ever queried reads a lot closer to "local-only" than to "a Graph provider" as that sentence clearly means it (Graph's own live, third-party-operated services) — real risk of building it and still not qualifying. Not worth the build risk for either project in this window.
+Ironline Freight does the work, sends the invoice, and then waits 60 days to get paid. Payroll and suppliers do not wait. The financing meant to bridge that gap keeps failing businesses like theirs: the global trade finance gap is **$2.5 trillion**, and small businesses still get **41% of their financing requests rejected** ([ADB Global Trade Finance Gap Survey](https://www.adb.org/publications/adb-global-trade-finance-gap-survey)).
 
-## Target Sponsors & Prize Tracks
+Invoice factoring exists to solve exactly this, but it has two structural problems:
 
-| Sponsor | Track | Prize | Requirement |
-|---|---|---|---|
-| Hedera | Tokenization of Anything | $6,000 total (up to 3 teams × $2,000 fixed) | "Use the Asset Tokenization Studio (SDK, contracts, web application, or a combination) to issue or manage a tokenised asset," with lifecycle/corporate-action operations — not just a one-shot mint |
-| Privy | Best B2B Financial Product | $2,500 | Business-focused digital asset management using Privy wallets — "organization wallets, policies, team permissions, quorum approvals" |
-| ENS | Best Use of ENSv2 | $4,500 | Build on ENSv2 beta (Sepolia) using hierarchical registry, wildcard resolution, or permissioned features — functional, not cosmetic |
+| Problem | What it means in practice |
+|---|---|
+| **The money gets stuck** | Once the investor funds an invoice, that money is locked until the customer pays. No way out early, so the investor demands a bigger discount to compensate. |
+| **Nobody can check the seller** | Whether Ironline Freight actually pays on time lives inside one factoring company's spreadsheet. The next investor cannot see it, so Ironline Freight is priced like a stranger forever. |
 
-**Three sponsors, one submission — $13,000 addressable**, all compatible with a single Hedera settlement layer.
+Both problems come from the same root: the claim on an unpaid invoice is not a thing you can hold, inspect, or sell. This project makes it one.
 
-(Not pursued here for reference: Hedera's own "AI & Agentic Payments" track is the *other* submission's target, not this one's — same sponsor, different pool, no conflict. Privy's second track, "Best Financial Flow," is a plausible bonus if the investor-side UX ends up polished, but B2B Financial Product is the literal fit being built for.)
+---
 
-## Key Lesson: The ColdProof Precedent (carried over)
+## How
 
-[ColdProof](https://ethglobal.com/showcase/coldproof-qsb02) (ETHGlobal Lisbon 2026) used Hedera *and* ENS but only won The Graph's prize — its ENS usage read as a display name, not a functional record, and it missed the literal bar on the other sponsors it touched. Full writeup in `insurance-demo.md`. Same discipline applies here: every ENS record used below has to actually gate something (issuance eligibility, investor eligibility), and every Hedera ATS call has to be a real lifecycle operation (issuance, transfer restriction, corporate action/redemption, default), not a single mint dressed up as "tokenization."
+Three versions, each one adding a layer to the one before it.
 
-## Chosen Idea: Tokenized Invoice Receivables
+### V1 — Sell the invoice, get paid at maturity
 
-### The problem (verified against a current, cited source — not a guessed figure)
-
-The global trade finance gap sits at **$2.5 trillion** (2025, unchanged from 2023, ~10% of global trade), and SMEs are hit hardest — their financing requests still get rejected **41% of the time**, even after some recent improvement (down from 45% in 2023) ([ADB Global Trade Finance Gap Survey](https://www.adb.org/publications/adb-global-trade-finance-gap-survey); [Global Trade Review coverage](https://www.gtreview.com/news/global/trade-finance-gap-stabilises-at-us2-5tn/)). A rejected SME financing request isn't abstract — it's a missed contract, a stalled shipment, or a cashflow crisis that takes months to recover from. Traditional invoice factoring exists to close exactly this gap, but capital inside it is siloed per-factor: once an investor funds a receivable, that position is illiquid until maturity, and pricing/underwriting happens off-chain and opaquely.
-
-Tokenizing the receivable itself — not just logging the transaction, the actual claim on repayment — turns an opaque, untradeable IOU into a compliant, transferable, fractionalizable asset with a programmable lifecycle: issuance, restricted transfer to eligible holders, corporate actions at maturity (redemption or default), all enforced on-chain instead of by a factor's internal spreadsheet.
-
-### Why this is justified as a hackathon pitch (not oversold)
-
-- **Is** a real, cited, currently-open financing gap ($2.5T, SME-concentrated), not a manufactured need.
-- **Is not** claiming to replace bank underwriting or credit scoring in 9 days — the demo's credit/eligibility layer (ENS-recorded KYC + credit tier) is deliberately simple and rule-based, not an AI underwriting model. That's a conscious choice, explained below.
-- The genuine technical differentiator for the demo — real-time secondary-market liquidity for individual receivable tokens pre-maturity, not just pooled capital locked until maturity — is something most invoice-factoring products, on-chain or off, don't offer retail-side today.
-
-### Relationship to Orbbit's core business (read before building)
-
-`insurance-demo.md`'s rejected-ideas list explicitly ruled out an "Invoice underwriting agent" for being *"too close to Orbbit's actual business."* This idea is closer still — Orbbit's real product is literally USDC-based invoice factoring (businesses upload invoices for working capital, investors fund pools for yield). That's not a reason not to build it — deep domain expertise is a legitimate reason to pick this over an idea built from scratch — but it should be a deliberate choice, not a default. Two things keep this demo distinct rather than a copy: (1) it tokenizes and restricts-transfers the receivable itself as an ATS asset with on-chain lifecycle state, where Orbbit's actual product funds pooled positions, not tradeable per-invoice tokens; (2) the credit/eligibility gate here is intentionally a simple rule-based ENS record, not an AI underwriting agent — avoiding the exact pattern that was already ruled out. If the pitch/README ends up needing to explain "how is this different from Orbbit," these two points are the answer.
-
-### Actors
-
-| Actor | Side | Job |
-|---|---|---|
-| **Issuer** | Business (seller of the receivable) | Onboards with a Privy org wallet, gets an ENS identity carrying KYC/credit-tier records, submits invoices for tokenization, subject to org quorum approval before anything mints |
-| **Finance team (quorum signers)** | Business | The Privy org wallet's policy-enforced signers (e.g. 2-of-3) — no single compromised key can tokenize a fabricated receivable alone |
-| **Investor** | Capital side | Buys a tokenized receivable at a discount to face value via a Privy wallet, may hold to maturity or trade a fraction on the secondary market before then |
-| **Debtor** | Off-chain | The issuer's own customer who actually owes the invoice — never touches the chain directly; their real-world payment (or non-payment) is what the redemption/default corporate action responds to |
-| **Hedera ATS contracts** | Protocol | Mints the receivable token, enforces transfer restriction to eligible holders, executes the maturity corporate action (redeem or default) |
+The whole idea in one line. Ironline Freight is owed $50,000 in 60 days. Instead of waiting, they sell that claim for $47,500 today. When the customer pays the invoice, the investor collects the full $50,000. The $2,500 difference is the investor's return; the 60 days of cash is Ironline Freight's.
 
 ```mermaid
 flowchart TD
-    ONBOARD["Issuer onboards:<br/>Privy org wallet + ENS identity<br/>(issuer.receivables.eth, locked)"] --> SUBMIT["Issuer submits invoice<br/>(face value, debtor, maturity date)"]
-    SUBMIT --> QUORUM{"Org quorum approval<br/>(Privy policy, e.g. 2-of-3)?"}
-    QUORUM -->|"No"| REJECT["Submission blocked"]:::risk
-    QUORUM -->|"Yes"| ELIGIBLE{"ENS record shows<br/>verified KYC + credit tier?"}
-    ELIGIBLE -->|"No"| REJECT2["Tokenization blocked"]:::risk
-    ELIGIBLE -->|"Yes"| ISSUE["Hedera ATS issues receivable token<br/>(face value, discount, maturity, issuer identity)"]
-    ISSUE --> LIST["Listed to eligible investors only<br/>(ATS transfer restriction + ENS allowlist)"]
-    LIST --> FUND{"Investor funds at discount<br/>(USDC, primary sale)?"}
-    FUND -->|"No / unsold by deadline"| EXPIRE["Listing expires,<br/>invoice stays off-chain"]
-    FUND -->|"Yes"| TRADE["Secondary market:<br/>fractions tradeable pre-maturity"]
-    TRADE --> MATURE{"Maturity date reached:<br/>did the debtor repay?"}
-    MATURE -->|"Yes"| REDEEM["ATS corporate action:<br/>redeem token, pay holder(s) face value"]:::safe
-    MATURE -->|"No — default"| DEFAULT["ATS marks token defaulted;<br/>issuer's ENS repayment record updated<br/>(raises future discount rate)"]:::risk
-    REDEEM --> HISTORY["Issuer's ENS repayment<br/>streak updated (on-time)"]:::safe
+    subgraph TODAY["Today"]
+        OWED["Ironline Freight is owed $50,000\nby its customer in 60 days"]
+        MINT["The unpaid invoice becomes\na token that can be owned"]
+        BUY["The investor buys the token\nfor $47,500"]
+        CASH["Ironline Freight has cash now\ninstead of in 60 days"]
+    end
+
+    subgraph LATER["Day 60"]
+        PAYS["The customer pays\nthe invoice in full"]
+        PAYOUT["The investor is paid\nthe full $50,000"]
+    end
+
+    OWED --> MINT --> BUY --> CASH
+    BUY --> PAYS --> PAYOUT
+```
+
+This version is deliberately naive. Anyone can list an invoice, anyone can buy it, and it assumes the customer always pays.
+
+---
+
+### V2 — Decide who is allowed to sell, who is allowed to buy, and what happens when nobody pays
+
+V1 breaks the moment someone lists an invoice that does not exist, or the customer refuses to pay. V2 closes both holes.
+
+Three checks get added. Before Ironline Freight can list the invoice, their own finance team has to approve it — two of three people, not one — so a single employee cannot invent a fake invoice and cash it. Ironline Freight also has to be a verified business with a credit rating attached to their name. And on the other side, only investors who have cleared the same kind of check can buy.
+
+Then the honest ending gets added: sometimes the customer does not pay. The token is marked defaulted, and the investor takes the loss. That is what buying a receivable actually means.
+
+```mermaid
+flowchart TD
+    subgraph SELLER["Ironline Freight"]
+        SUBMIT["Submits the $50,000\ncustomer invoice"]
+        QUORUM{"Two of the three\nfinance team members\napprove it?"}
+        VERIFIED{"Is Ironline Freight a verified\nbusiness with a credit rating?"}
+        BLOCKED["Nothing is created"]:::risk
+    end
+
+    subgraph MARKET["Receivables Flow"]
+        MINT["The invoice becomes a token\nworth $50,000 at maturity"]
+        GATE{"Is this buyer\ncleared to hold it?"}
+        TURNED["Buyer is turned away"]:::risk
+        BUY["The investor buys it\nfor $47,500"]
+    end
+
+    subgraph ENDING["Day 60"]
+        PAID{"Did the customer\npay the invoice?"}
+        REDEEM["The investor is paid $50,000"]:::safe
+        DEFAULT["Token is marked defaulted\nThe investor takes the loss"]:::risk
+    end
+
+    SUBMIT --> QUORUM
+    QUORUM -->|"no"| BLOCKED
+    QUORUM -->|"yes"| VERIFIED
+    VERIFIED -->|"no"| BLOCKED
+    VERIFIED -->|"yes"| MINT
+    MINT --> GATE
+    GATE -->|"no"| TURNED
+    GATE -->|"yes"| BUY
+    BUY --> PAID
+    PAID -->|"yes"| REDEEM
+    PAID -->|"no"| DEFAULT
 
     classDef risk fill:#b23b3b,color:#fff,stroke:#7a2626
     classDef safe fill:#2f7d4f,color:#fff,stroke:#1c5c34
 ```
 
-### How it works
+---
 
-1. Business (Issuer) onboards a **Privy** organization wallet with a real approval policy (e.g. 2-of-3 finance-team quorum), and registers under a hierarchical **ENS** namespace (e.g. `issuer.receivables.eth`), locked via a Permissioned Resolver, carrying KYC status and a credit tier — an enforceable record, not a display name.
-2. Issuer submits an invoice (face value, debtor reference, maturity date) for tokenization. Nothing mints until the org's quorum signers approve — a compromised or careless single signer can't fabricate a receivable alone.
-3. On quorum approval, **Hedera Asset Tokenization Studio** issues a token representing the receivable — face value, discount-adjusted sale price, maturity date, and issuer identity resolved from the ENS record — and restricts its transfer to investor wallets that pass the same eligibility check.
-4. Eligible investors fund the primary sale in USDC at a discount to face value (the "advance"); before maturity, fractions can trade on a secondary market instead of sitting locked, the demo's main liquidity differentiator.
-5. At maturity, the debtor's real-world repayment (simulated in the demo via a mock bank/webhook oracle — there's no real counterparty to actually pay an invoice in a hackathon) triggers an ATS corporate action: **redemption**, paying face value to whoever holds the token at maturity, and the issuer's ENS record updates with an on-time repayment mark.
-6. If the debtor doesn't pay, ATS instead marks the token **defaulted** — investor(s) absorb the loss, and the issuer's ENS record reflects it, raising the discount rate the market will demand on that issuer's next receivable. This is the credit-history flywheel: reliable issuers get cheaper capital over time, purely from on-chain history other investors can check before buying.
+### V3 — Let the investor get out early, and let Ironline Freight earn cheaper money
 
-### Why it legitimately earns each sponsor's money (not just uses the tech)
+V2 is safe but still has the two problems from the top of this page: the investor's money is stuck for 60 days, and Ironline Freight's track record goes nowhere.
 
-1. **Hedera** — the demo runs ATS's actual lifecycle machinery (issuance → transfer restriction → maturity corporate action → redeem or default), not a single ERC-20-style mint relabeled as "tokenization." Meets the literal "issue or manage a tokenised asset" bar with genuine lifecycle operations, which is exactly what separates this track from a generic token launch.
-2. **Privy** — the issuer isn't a single wallet; it's an org with a real quorum-approval policy gating the one action (minting a receivable claim against a real customer) that actually matters to get right. Meets the literal "organization wallets, policies, team permissions, quorum approvals" bar directly.
-3. **ENS** — the Permissioned Resolver record is what both issuance and investor eligibility actually check against, and it updates with real repayment history after the fact. Functional and load-bearing, not cosmetic — the exact distinction ColdProof missed.
+V3 fixes both. An investor needing cash on day 20 sells part of the position to a second investor instead of waiting — the claim is liquid, not frozen. And every ending, good or bad, is written back to Ironline Freight's permanent record. A business that pays on time three times running is visibly less risky than an unknown one, so the next buyer accepts a smaller discount. Reliable businesses get cheaper money over time, and they earn it from their own history rather than from a relationship with one lender.
 
-### Architecture + worked example
+That loop is the point of the whole project. Everything before it is setup.
 
 ```mermaid
 flowchart TD
-    subgraph ISSUER["Issuer (Business)"]
-        ONBOARD2["Privy org wallet + quorum policy"]
-        ENSID["ENS: issuer.receivables.eth<br/>KYC + credit tier, locked"]
-        UPLOAD["Uploads $50k invoice,<br/>60-day maturity"]
-        APPROVE["Finance team: 2-of-3<br/>quorum approves tokenization"]
+    subgraph REPUTATION["Ironline Freight's permanent record"]
+        RECORD["Verified business\nCredit rating\nRepayment history"]
+        PRICE["A better record means\nthe next invoice sells\nat a smaller discount"]
     end
 
-    subgraph HEDERA["Hedera (Asset Tokenization Studio)"]
-        MINT["Mints receivable token:<br/>face $50k, 60-day maturity,<br/>issuer identity = ENS record"]
-        RESTRICT["Transfer-restricted to<br/>ENS-eligible investor wallets"]
-        ESCROW[("USDC settlement pool")]
-        ACTION{"Corporate action<br/>at maturity"}
+    subgraph ISSUE["Selling the invoice"]
+        APPROVED["Finance team approves\nthe $50,000 invoice"]
+        MINT["The invoice becomes\na token"]
+        FIRSTBUY["The investor buys it\nfor $47,500"]
     end
 
-    subgraph INVESTORS["Investors (Privy wallets)"]
-        BUY["Buy at $47.5k<br/>(5% discount to face)"]
-        SECONDARY["Trade fractions<br/>pre-maturity"]
-        RECEIVE["Receive $50k<br/>at redemption"]
+    subgraph LIQUIDITY["Before it matures"]
+        EARLY["The investor needs cash on day 20\nand sells half the position"]
+        SECOND["A second investor\nbuys that half"]
     end
 
-    DEBTOR["Debtor pays the invoice<br/>off-chain (real world)"]
-    ORACLE["Repayment confirmation<br/>(mock bank/webhook oracle)"]
+    subgraph ENDING["Day 60"]
+        PAID{"Did the customer\npay the invoice?"}
+        REDEEM["Both investors\nsplit the $50,000"]:::safe
+        DEFAULT["Both investors\ntake the loss"]:::risk
+    end
 
-    ONBOARD2 --> ENSID
-    ENSID --> UPLOAD --> APPROVE --> MINT
-    MINT --> RESTRICT --> BUY
-    BUY --> ESCROW
-    BUY --> SECONDARY --> RECEIVE
-    DEBTOR --> ORACLE --> ACTION
-    ESCROW --> ACTION
-    ACTION -->|"repaid"| RECEIVE
-    ACTION -->|"defaulted"| ENSID
+    RECORD --> APPROVED --> MINT --> FIRSTBUY
+    FIRSTBUY --> EARLY --> SECOND
+    FIRSTBUY --> PAID
+    SECOND --> PAID
+    PAID -->|"yes"| REDEEM
+    PAID -->|"no"| DEFAULT
+    REDEEM -->|"on-time mark"| RECORD
+    DEFAULT -->|"missed payment mark"| RECORD
+    RECORD --> PRICE
+
+    classDef risk fill:#b23b3b,color:#fff,stroke:#7a2626
+    classDef safe fill:#2f7d4f,color:#fff,stroke:#1c5c34
 ```
 
-Issuer is a mid-size supplier waiting 60 days on a $50,000 invoice from a large retail customer. Their finance team (2-of-3 Privy quorum) approves tokenizing it; Hedera ATS mints a receivable token carrying that $50k face value, 60-day maturity, and the issuer's ENS-verified identity, restricted so only ENS-eligible investor wallets can hold it. An investor buys it at a 5% discount ($47,500) — the issuer gets working capital today instead of in 60 days. Unlike a pooled factoring position, that investor can sell a fraction of the token on the secondary market at day 20 if they want liquidity back early, instead of being locked until maturity. At day 60, the real customer pays the invoice; a mock repayment oracle confirms it, and ATS's redemption corporate action pays face value to whoever holds the token at that moment, while the issuer's ENS record gets a fresh on-time mark that makes their *next* receivable cheaper to fund. If the customer had defaulted instead, ATS would have marked the token defaulted and the ENS record would reflect that instead — the discount the market demands on this issuer's next invoice goes up, not down.
+---
 
-### Ideas considered and passed over (for reference, do not reuse)
+## Proof — the user journey app
 
-- **Generic RWA index token** (basket of arbitrary real-world assets) — too abstract for a 4-minute demo video; no single "here's the moment it worked" narrative.
-- **Real estate / property tokenization** — proven ATS use case but requires fabricated legal/title data with no real source to point judges at; invoice receivables have a real, cited market gap behind them instead.
-- **AI-driven underwriting/pricing agent** — deliberately not pursued; this is the exact pattern already rejected in `insurance-demo.md` for being too close to Orbbit's real business. Rule-based ENS credit tiers instead.
+`tools/proof/` is a journey map of both sides: every step, touchpoint, thought, pain point
+and opportunity for Ironline Freight and the investor. Modelled on Orbbit's own `tools/proof`, with
+the same board and sidebar, and the same seed-to-SQLite-to-JSON authoring pipeline.
 
-## Application Answer Draft
+```bash
+cd tools/proof && npm install && npm run dev    # http://localhost:6322
+```
 
-**"What will you be developing at this event?"**
+Journeys are written as TypeScript in `src/engine/seed/`, one file per actor. Running a seed
+wipes that actor's rows, rewrites them, and exports `public/journey.json` — so the board is
+always generated, never edited by hand.
 
-> We're tokenizing invoice receivables — the actual $2.5 trillion trade-finance gap that SMEs face today, where 41% of financing requests still get rejected. A business tokenizes an unpaid invoice as a real, lifecycle-managed asset on Hedera via Asset Tokenization Studio: issued, restricted to eligible holders, and redeemed or defaulted at maturity based on whether the underlying customer actually paid — not a static mint dressed up as "tokenization."
->
-> The issuer side runs on a real organization, not a single wallet: a Privy-managed org wallet with quorum approval means no single compromised key can fabricate a receivable and mint it. Both the issuer's credit standing and each investor's eligibility to hold these assets are enforced through a locked ENS record — a functional, on-chain-checked gate, not a display name — and that record updates itself with real repayment history after every redemption or default, so reliable issuers get cheaper capital over time purely from their own on-chain track record.
->
-> Unlike pooled factoring capital that's locked until maturity, investors can trade fractions of a receivable on a secondary market before it matures — real liquidity for what's normally one of the most illiquid asset classes in finance.
+| Side | The one journey |
+|---|---|
+| **Ironline Freight** | Issue And Settle A Receivable — Set Up → Issue → Settle |
+| **Woodgrove Capital** | Fund And Exit A Receivable — Get Cleared → Fund → Exit |
 
-**"How you got here / what about Web3 is interesting to you"** — shared with the insurance submission; open, needs personal input.
+19 steps, each badged with the one sponsor whose technology does the work — cut to only what
+clears a stated prize bar. Step text names no technology at all; it says what the user does.
+The mapping to each track's requirements, and the two open design questions, are in
+[`tools/proof/README.md`](tools/proof/README.md). Every step is `proposed`; no code exists yet.
 
-## Open Items
+---
 
-- [ ] Decide whether this ships as a genuinely separate second submission alongside `insurance-demo.md` in the same 9-day window, or only if the first project finishes early — team capacity for two full builds is the real constraint, not sponsor conflict (the two Hedera tracks don't compete for the same pool)
-- [ ] Pick the repayment-confirmation mechanism for the demo (mock webhook vs. a simple manual "mark as repaid" trigger) since there's no real debtor to actually pay an invoice in a hackathon setting
-- [ ] Confirm exact ATS deployment path (SDK, hosted web app, or self-hosted contracts) against the 9-day budget
-- [ ] Verify ENSv2 beta (Sepolia) works as a cross-chain identity reference for a Hedera-settled asset end to end — same pattern `insurance-demo.md` relies on, not yet build-tested by either project
-- [ ] Decide default/recovery detail: full loss on default, or a partial-recovery corporate action — affects how much real "lifecycle variety" Hedera judges actually see
-- [ ] Build plan / task breakdown (not yet started)
+## The same flow, grouped two ways
+
+The three versions above tell the story in time order. These two views cut it differently — once by who is doing the work, and once by which technology is doing it.
+
+### Grouped by entity — how it works on both ends
+
+Ironline Freight never sees the investor side. The investor never sees the finance team's approval. The platform is what makes each end simple for the other.
+
+```mermaid
+flowchart TD
+    subgraph BUSINESS["Ironline Freight — the business end"]
+        B1["Finance team of three\napproves the invoice"]
+        B2["Lists the $50,000\nits customer owes"]
+        B3["Receives $47,500 today"]
+        B4["Earns an on-time mark\nwhen the customer pays"]
+    end
+
+    subgraph PLATFORM["Receivables Flow — the platform in the middle"]
+        P1["Confirms Ironline Freight is verified\nand the team approved"]
+        P2["Turns the invoice into a token"]
+        P3["Confirms every buyer is cleared"]
+        P4["Watches for the customer's payment"]
+        P5["Pays out holders,\nor marks the token defaulted"]
+        P6["Writes the outcome to\nIronline Freight's record"]
+    end
+
+    subgraph INVESTOR["Woodgrove Capital — the investor end"]
+        I1["Passes the eligibility check"]
+        I2["Buys the token for $47,500"]
+        I3["Sells half on day 20\nto free up cash early"]
+        I4["Collects its share\nof the $50,000"]
+    end
+
+    B1 --> B2 --> P1 --> P2 --> P3
+    P3 --> I1 --> I2
+    I2 --> B3
+    I2 --> I3
+    I2 --> P4 --> P5 --> I4
+    P5 --> P6 --> B4
+```
+
+### Grouped by sponsor — which technology does which job
+
+Three sponsors, one settlement chain, no overlap in responsibility.
+
+```mermaid
+flowchart TD
+    subgraph PRIVY["Privy — who is allowed to act"]
+        PR1["Ironline Freight's company wallet\nrequires two of three signers"]
+        PR2["The investor's wallet\nno browser extension needed"]
+    end
+
+    subgraph ENS["ENS — who is allowed to hold"]
+        EN1["Ironline Freight is a verified business\nwith a credit tier"]
+        EN2["The investor is cleared\nto hold receivables"]
+        EN3["Repayment history, rewritten\nafter every payout or default"]
+    end
+
+    subgraph HEDERA["Hedera — the asset and the money"]
+        HE1["Issues the $50,000\nreceivable token"]
+        HE2["Refuses any transfer to\na wallet that is not cleared"]
+        HE3["At maturity, pays out\nor marks the token defaulted"]
+    end
+
+    PR1 --> EN1 --> HE1 --> HE2
+    PR2 --> EN2 --> HE2
+    HE2 --> HE3 --> EN3
+    EN3 -->|"sets the discount on\nIronline Freight's next invoice"| EN1
+```
+
+| Sponsor | Its one job here | Where you see it in the story |
+|---|---|---|
+| **Privy** | Makes Ironline Freight a company, not a single key — and gives the investor a wallet without the setup friction | The two-of-three approval before anything is listed |
+| **ENS** | Holds who is verified, who may hold a receivable, and how the business has paid in the past | Both eligibility gates, and the record that reprices the next invoice |
+| **Hedera** | Issues the asset, enforces who can hold it, and runs the maturity outcome | The token itself, and the payout or default on day 60 |
+
+---
+
+## Worked Example
+
+Ironline Freight is waiting 60 days on a $50,000 invoice from one of its customers.
+
+Their finance team approves tokenizing it — two of three signers, so no single employee can do it alone. The invoice becomes a token carrying its $50,000 face value, its 60-day maturity, and Ironline Freight's verified identity. Only cleared investors can hold it.
+
+An institutional investor buys it at a 5% discount for $47,500. Ironline Freight has working capital today instead of in two months.
+
+On day 20 that investor wants liquidity back, so it sells half the position to a second investor rather than sitting locked until maturity.
+
+On day 60 the customer pays the invoice. The $50,000 is split between the two investors, and Ironline Freight's record gets a fresh on-time mark — which is what makes their *next* invoice cheaper to sell.
+
+Had the customer not paid, the token would be marked defaulted, both investors would absorb the loss, and Ironline Freight's record would show the miss. The next buyer would demand a steeper discount.
+
+---
+
+## Tech Stack
+
+| Layer | Technology | What it does here |
+|---|---|---|
+| **The asset** | Hedera Asset Tokenization Studio | Issues the receivable token, restricts who can hold it, and runs the maturity action — pay out or default |
+| **Settlement** | Hedera | The single chain everything settles on |
+| **The business's organization** | Privy organization wallets | Gives Ironline Freight a real company wallet with an approval policy, so listing an invoice takes a finance-team quorum rather than one key |
+| **The investor's wallet** | Privy | The investor funds and holds positions without managing an external wallet |
+| **Identity and eligibility** | ENSv2 permissioned records | Holds Ironline Freight's verified status, credit tier, and repayment history, and gates which investors may hold a receivable — checked by the contracts, not displayed as a label |
+| **Repayment signal** | Mock bank webhook | Stands in for the customer's payment, which is the event the maturity action responds to |
