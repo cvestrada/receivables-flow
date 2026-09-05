@@ -5,6 +5,10 @@ node_modules/
 dist/
 build/
 .vite/
+.next/
+artifacts/
+cache/
+typechain-types/
 
 # secrets — never commit keys or funded account credentials
 .env
