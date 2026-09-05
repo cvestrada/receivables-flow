@@ -101,7 +101,7 @@ receivables-flow/
 │       ├── tsconfig.json
 │       └── src/types.ts              # invoice · receivable · eligibility pass · holding
 ├── contracts/
-│   ├── ats/
+│   ├── hedera-ats/
 │   │   ├── package.json
 │   │   ├── hardhat.config.ts         # one settlement network only
 │   │   ├── .env.example
@@ -145,7 +145,7 @@ npm -w @rf/shared exec -- tsc --noEmit
 **[x] Both portals exist and can read the shared vocabulary**
 
 Implement: Create `apps/business` and `apps/investor` as Next.js apps `@rf/business` and
-`@rf/investor`, each with empty `src/lib/privy`, `src/lib/ats` and `src/lib/ens`
+`@rf/investor`, each with empty `src/lib/privy`, `src/lib/hedera-ats` and `src/lib/ens`
 directories, an `.env.example` naming the variables that app needs, and configuration that
 lets `@rf/shared` imports compile.
 
@@ -159,13 +159,13 @@ npm -w @rf/business run build && npm -w @rf/investor run build
 
 **[ ] The asset package, with a funded account**
 
-Implement: Create `contracts/ats` as package `@rf/contracts-ats` with a Hardhat
+Implement: Create `contracts/hedera-ats` as package `@rf/contracts-hedera-ats` with a Hardhat
 configuration targeting Hedera testnet only, its own empty `deployed.json`, an
 `.env.example`, and a `check:balance` script; fund the operator account.
 
 Verify:
 ```
-npm -w @rf/contracts-ats run check:balance
+npm -w @rf/contracts-hedera-ats run check:balance
 ```
 → exits 0, prints a balance greater than 0
 
@@ -191,7 +191,7 @@ The two funded-account items cannot be closed from here. Each needs credentials 
 only a human can obtain:
 
 - **Hedera testnet** — create an account at the Hedera portal, then put its ECDSA private
-  key in `contracts/ats/.env` as `HEDERA_OPERATOR_KEY`.
+  key in `contracts/hedera-ats/.env` as `HEDERA_OPERATOR_KEY`.
 - **Sepolia** — claim faucet ETH for an account, then put its key in `contracts/ens/.env`
   as `SEPOLIA_PRIVATE_KEY`.
 

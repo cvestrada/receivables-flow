@@ -1,5 +1,5 @@
 {
-  "name": "@rf/contracts-ats",
+  "name": "@rf/contracts-hedera-ats",
   "version": "0.0.1",
   "private": true,
   "scripts": {
