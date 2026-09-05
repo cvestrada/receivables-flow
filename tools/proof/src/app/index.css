@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* The vendored Sidebar components live outside this folder, so the scan root is
+ * declared explicitly — otherwise Tailwind never sees their classes. */
+@source "../ui";
+
+/* Design tokens the vendored Sidebar reads (--sidebar, --sidebar-accent, etc.). */
+@import "../ui/theme/globals.css";

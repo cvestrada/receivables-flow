@@ -1,0 +1,319 @@
+/* Orbbit design tokens — CSS variables for all frontend apps */
+
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+@layer base {
+  :root {
+    /* Base colors - Clean slate palette for neutrals */
+    --background: hsl(0, 0%, 100%);
+    --foreground: hsl(
+      215,
+      20%,
+      17%
+    ); /* slate-900 - deeper, more professional */
+    --card: hsl(0, 0%, 100%);
+    --card-foreground: hsl(215, 20%, 17%);
+    --popover: hsl(0, 0%, 100%);
+    --popover-foreground: hsl(215, 20%, 17%);
+    --checkout-grey: hsl(220, 14%, 93%); /* light-mode only token; dark override below */
+
+    /* Orbbit Teal - Primary brand color palette (use sparingly) */
+    --primary-50: hsl(180, 85%, 96%);
+    --primary-100: hsl(180, 85%, 91%);
+    --primary-200: hsl(180, 85%, 77%);
+    --primary-300: hsl(180, 85%, 62%);
+    --primary-400: hsl(180, 85%, 47%);
+    --primary-500: hsl(180, 85%, 39%);
+    --primary: hsl(180, 85%, 32%); /* Main brand color - CTAs only */
+    --primary-600: hsl(180, 85%, 28%);
+    --primary-700: hsl(180, 85%, 23%);
+    --primary-800: hsl(180, 85%, 19%);
+    --primary-900: hsl(180, 85%, 15%);
+    --primary-foreground: hsl(0, 0%, 100%);
+
+    /* Secondary colors - Blue for supporting elements */
+    --secondary: hsl(214, 32%, 91%); /* slate-200 tint */
+    --secondary-foreground: hsl(215, 20%, 17%);
+
+    /* Semantic colors - Subtle and professional */
+    --success: hsl(142, 71%, 45%); /* Success Green - slightly muted */
+    --success-foreground: hsl(0, 0%, 100%);
+    --warning: hsl(38, 92%, 50%); /* Warning Amber - professional gold */
+    --warning-foreground: hsl(0, 0%, 100%);
+    --destructive: hsl(0, 72%, 51%); /* Critical Red - balanced */
+    --destructive-foreground: hsl(0, 0%, 100%);
+
+    /* UI state colors - matches gray scale for consistency */
+    --muted: hsl(220, 14%, 99%); /* gray-50/50 solid equivalent */
+    --muted-foreground: hsl(215, 16%, 47%); /* slate-600 */
+    --accent: hsl(220, 14%, 96%); /* gray-100 */
+    --accent-foreground: hsl(215, 20%, 17%); /* slate-900 */
+
+    /* Borders and inputs - Slate for cleaner look */
+    --border: hsl(214, 32%, 91%); /* slate-200 */
+    --input: hsl(214, 32%, 91%); /* slate-200 */
+    --ring: hsl(180, 85%, 32%); /* primary */
+
+    /* Layout */
+    --radius: 0.5rem; /* 8px - clean and modern */
+
+    /* Charts using refined semantic colors */
+    --chart-1: hsl(180, 85%, 32%); /* primary teal */
+    --chart-2: hsl(217, 91%, 60%); /* blue for secondary metrics */
+    --chart-3: hsl(142, 71%, 45%); /* success green for positive trends */
+    --chart-4: hsl(215, 16%, 47%); /* slate-600 for baselines */
+    --chart-5: hsl(38, 92%, 50%); /* warning for alerts */
+  }
+
+  .dark {
+    /* Base colors - Dark slate palette */
+    --background: hsl(222, 47%, 11%); /* slate-950 */
+    --foreground: hsl(210, 40%, 98%); /* slate-50 */
+    --card: hsl(217, 33%, 17%); /* slate-900 */
+    --card-foreground: hsl(210, 40%, 98%);
+    --popover: hsl(217, 33%, 17%);
+    --popover-foreground: hsl(210, 40%, 98%);
+
+    /* Orbbit Teal - Primary brand color palette (dark mode) */
+    --primary-50: hsl(180, 85%, 15%);
+    --primary-100: hsl(180, 85%, 19%);
+    --primary-200: hsl(180, 85%, 23%);
+    --primary-300: hsl(180, 85%, 28%);
+    --primary-400: hsl(180, 85%, 32%);
+    --primary-500: hsl(180, 85%, 39%);
+    --primary: hsl(180, 85%, 47%); /* Brighter in dark mode */
+    --primary-600: hsl(180, 85%, 62%);
+    --primary-700: hsl(180, 85%, 77%);
+    --primary-800: hsl(180, 85%, 91%);
+    --primary-900: hsl(180, 85%, 96%);
+    --primary-foreground: hsl(222, 47%, 11%);
+
+    /* Secondary colors (dark mode) */
+    --secondary: hsl(215, 25%, 27%); /* slate-800 */
+    --secondary-foreground: hsl(210, 40%, 98%);
+
+    /* Semantic colors (dark mode) */
+    --success: hsl(142, 71%, 45%);
+    --success-foreground: hsl(222, 47%, 11%);
+    --warning: hsl(38, 92%, 50%);
+    --warning-foreground: hsl(222, 47%, 11%);
+    --destructive: hsl(0, 72%, 51%);
+    --destructive-foreground: hsl(210, 40%, 98%);
+
+    /* UI state colors (dark mode) */
+    --muted: hsl(220, 14%, 14%); /* gray-900 equivalent */
+    --muted-foreground: hsl(215, 20%, 65%); /* slate-400 */
+    --accent: hsl(220, 14%, 18%); /* gray-800 equivalent */
+    --accent-foreground: hsl(210, 40%, 98%);
+
+    /* Borders and inputs (dark mode) */
+    --border: hsl(215, 25%, 27%); /* slate-800 */
+    --input: hsl(215, 25%, 27%); /* slate-800 */
+    --ring: hsl(180, 85%, 47%);
+
+    /* Charts (dark mode) */
+    --chart-1: hsl(180, 85%, 47%);
+    --chart-2: hsl(217, 91%, 60%);
+    --chart-3: hsl(142, 71%, 45%);
+    --chart-4: hsl(215, 20%, 65%);
+    --chart-5: hsl(38, 92%, 50%);
+    --checkout-grey: hsl(220, 14%, 20%); /* dark mode — muted surface */
+  }
+}
+
+:root {
+  --sidebar: hsl(0, 0%, 98%);
+  --sidebar-foreground: hsl(215, 19%, 35%);
+  --sidebar-primary: hsl(240 5.9% 10%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(220, 14%, 96%); /* gray-100 */
+  --sidebar-accent-foreground: hsl(240 5.9% 10%);
+  --sidebar-border: hsl(220 13% 91%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
+
+.dark {
+  --sidebar: hsl(240 5.9% 10%);
+  --sidebar-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-primary: hsl(224.3 76.3% 48%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(220, 14%, 18%); /* gray-800 */
+  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-border: hsl(240 3.7% 15.9%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
+
+@theme inline {
+  /* Design tokens → Tailwind utility classes */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-checkout-grey: var(--checkout-grey);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Sidebar */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-spin-around: spin-around 0.8s linear infinite;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+
+  @keyframes spin-around {
+    0% {
+      transform: rotate(-90deg);
+    }
+    100% {
+      transform: rotate(270deg);
+    }
+  }
+
+  /*
+   * Elevation and easing — overrides the built-in Tailwind --shadow-*/--ease-* theme
+   * values, so every existing shadow-sm/md/lg and ease-out/in-out class picks these up
+   * with no per-component change. Values measured directly off beautifului.dev/harness
+   * (elegant-ui/references/color.md and motion.md) — soft multi-layer shadows instead of
+   * a single flat layer, and the one easing curve the reference uses for every spatial
+   * transition (sidebar collapse, row hover). Deliberately leaves the border out of the
+   * shadow (the reference folds it in as a hairline ring) since that would mean revisiting
+   * every component border usage, a separate piece of work on its own.
+   */
+  --shadow-xs: 0 0 4px 0 rgb(0 0 0 / 0.04);
+  --shadow-sm:
+    0 18px 47px 0 rgb(0 0 0 / 0.031),
+    0 7.5px 19px 0 rgb(0 0 0 / 0.02),
+    0 4px 10.5px 0 rgb(0 0 0 / 0.02),
+    0 2.3px 5.8px 0 rgb(0 0 0 / 0.012),
+    0 1.2px 3.1px 0 rgb(0 0 0 / 0.012),
+    0 0.5px 1.3px 0 rgb(0 0 0 / 0.012);
+  --shadow-md:
+    0 17.54px 23.39px 0 rgb(0 0 0 / 0.04),
+    0 9.4px 12.5px 0 rgb(0 0 0 / 0.031),
+    0 5.25px 7px 0 rgb(0 0 0 / 0.02),
+    0 2.79px 3.72px -2px rgb(0 0 0 / 0.012),
+    0 1.16px 1.5px 0 rgb(0 0 0 / 0.012);
+  --shadow-lg:
+    0 25px 50px 0 rgb(0 0 0 / 0.051),
+    0 12px 24px 0 rgb(0 0 0 / 0.04),
+    0 6px 12px 0 rgb(0 0 0 / 0.031),
+    0 3px 6px 0 rgb(0 0 0 / 0.02),
+    0 1.5px 3px 0 rgb(0 0 0 / 0.02);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+@layer base {
+  html {
+    scrollbar-gutter: stable;
+  }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html body[data-scroll-locked] {
+    margin-right: 0 !important;
+    margin-top: 0 !important;
+  }
+
+  /* Custom Scrollbar Styling - Thin & Subtle */
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(0, 0%, 83%) hsl(0, 0%, 90%);
+  }
+
+  .dark * {
+    scrollbar-color: hsl(0, 0%, 26%) hsl(0, 0%, 17%);
+  }
+
+  /* Webkit browsers (Chrome, Safari, Edge) */
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: hsl(0, 0%, 90%); /* neutral-200 */
+    border-radius: 4px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: hsl(0, 0%, 83%); /* neutral-300 */
+    border-radius: 4px;
+    transition: background 0.2s ease;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: hsl(0, 0%, 71%); /* neutral-400 */
+  }
+
+  /* Dark mode scrollbar */
+  .dark *::-webkit-scrollbar-track {
+    background: hsl(0, 0%, 17%); /* neutral-800 */
+  }
+
+  .dark *::-webkit-scrollbar-thumb {
+    background: hsl(0, 0%, 26%); /* neutral-700 */
+  }
+
+  .dark *::-webkit-scrollbar-thumb:hover {
+    background: hsl(0, 0%, 38%); /* neutral-600 */
+  }
+}
