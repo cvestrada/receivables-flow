@@ -1,0 +1,20 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+build/
+.vite/
+
+# secrets — never commit keys or funded account credentials
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# machine-local Claude Code settings
+.claude/settings.local.json
+
+# generated
+*.db
