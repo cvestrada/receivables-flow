@@ -5,7 +5,12 @@
   "scripts": {
     "check:balance": "hardhat run scripts/check-balance.ts --network sepolia",
     "compile": "hardhat compile",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:unit && npm run test:int",
+    "test:unit": "hardhat test test/unit/*.test.ts --network hardhat",
+    "test:int": "ENS_FORK=1 hardhat test test/integration/*.test.ts --network hardhat",
+    "onboard": "hardhat run scripts/onboard.ts --network sepolia",
+    "onboard:fork": "ENS_FORK=1 hardhat run scripts/onboard.ts --network hardhat"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
