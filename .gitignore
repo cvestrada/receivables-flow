@@ -23,5 +23,3 @@ typechain-types/
 # generated
 *.db
 
-# planning notes, kept out of the repo
-specs/
