@@ -5,9 +5,11 @@
   "scripts": {
     "check:balance": "hardhat run scripts/check-balance.ts --network hederaTestnet",
     "compile": "hardhat compile",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "hardhat test"
   },
   "devDependencies": {
+    "@hashgraph/asset-tokenization-contracts": "^8.0.0",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "dotenv": "^16.4.5",
     "hardhat": "^2.22.0",
