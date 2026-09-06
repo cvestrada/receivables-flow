@@ -1,26 +1,172 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-plex);
+  --font-mono: var(--font-plex-mono);
+  --font-heading: var(--font-archivo);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
 }
 
+/*
+ * Sodium amber on blue-slate, taken from the dock-lighting palette the reference
+ * prototype uses. Every shadcn semantic token is repointed at one of these, so the
+ * installed components inherit the portal's identity instead of shadcn's neutral
+ * default — there is no second palette anywhere in the app.
+ */
+:root {
+  --ground:#eceff4; --surface:#ffffff; --surface-2:#f5f7fa; --sunk:#e4e8ee;
+  --line:#d6dce5; --line-soft:#e7ebf1;
+  --ink:#151a21; --ink-2:#48525f; --muted-ink:#7b8593;
+  --brand:#9a5a08; --brand-soft:#f7e6cd; --brand-line:#e0bd86;
+  --pos:#1d7550; --pos-soft:#dcefe4; --neg:#ab382a; --neg-soft:#f7dfdb;
+  --shadow-desk:0 1px 2px rgba(20,26,34,.06), 0 8px 24px -12px rgba(20,26,34,.16);
+
+  --radius:0.1875rem;
+  --background:var(--ground); --foreground:var(--ink);
+  --card:var(--surface); --card-foreground:var(--ink);
+  --popover:var(--surface); --popover-foreground:var(--ink);
+  --primary:var(--brand); --primary-foreground:var(--surface);
+  --secondary:var(--surface-2); --secondary-foreground:var(--ink-2);
+  --muted:var(--surface-2); --muted-foreground:var(--muted-ink);
+  --accent:var(--brand-soft); --accent-foreground:var(--brand);
+  --destructive:var(--neg);
+  --border:var(--line); --input:var(--line); --ring:var(--brand);
+  --sidebar:var(--surface); --sidebar-foreground:var(--ink-2);
+  --sidebar-primary:var(--brand); --sidebar-primary-foreground:var(--surface);
+  --sidebar-accent:var(--brand-soft); --sidebar-accent-foreground:var(--brand);
+  --sidebar-border:var(--line); --sidebar-ring:var(--brand);
+}
+
+/*
+ * Dark is defined twice on purpose. shadcn drives its own components off a `.dark`
+ * class, but nothing in this app ever sets that class, so without the media query
+ * a viewer on a dark OS would get the light palette. The `:not(.light)` guard keeps
+ * an explicit light choice winning over the operating system.
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not(.light) {
+    --ground:#0f131a; --surface:#171c24; --surface-2:#1c222b; --sunk:#12171e;
+    --line:#2b333f; --line-soft:#232a34;
+    --ink:#e9edf3; --ink-2:#aeb9c6; --muted-ink:#78838f;
+    --brand:#f0a63c; --brand-soft:#3a2b14; --brand-line:#6b501f;
+    --pos:#54bd89; --pos-soft:#143226; --neg:#e4695a; --neg-soft:#341a1a;
+    --shadow-desk:0 1px 2px rgba(0,0,0,.5), 0 10px 30px -14px rgba(0,0,0,.7);
+    --primary-foreground:#12171e;
+    --sidebar-primary-foreground:#12171e;
+  }
+}
+.dark {
+  --ground:#0f131a; --surface:#171c24; --surface-2:#1c222b; --sunk:#12171e;
+  --line:#2b333f; --line-soft:#232a34;
+  --ink:#e9edf3; --ink-2:#aeb9c6; --muted-ink:#78838f;
+  --brand:#f0a63c; --brand-soft:#3a2b14; --brand-line:#6b501f;
+  --pos:#54bd89; --pos-soft:#143226; --neg:#e4695a; --neg-soft:#341a1a;
+  --shadow-desk:0 1px 2px rgba(0,0,0,.5), 0 10px 30px -14px rgba(0,0,0,.7);
+  --primary-foreground:#12171e;
+  --sidebar-primary-foreground:#12171e;
+}
+
+@layer base {
+  * { border-color: var(--border); }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-plex), 'Segoe UI', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ── portal furniture the installed components do not cover ─────────── */
+
+.desk { background:var(--surface); border:1px solid var(--line); box-shadow:var(--shadow-desk) }
+
+.eyebrow { font-family:var(--font-plex-mono),monospace; font-size:9.5px; letter-spacing:.11em;
+  text-transform:uppercase; color:var(--muted-ink) }
+
+.figure { font-family:var(--font-archivo),sans-serif; font-weight:600; letter-spacing:-.022em;
+  font-variant-numeric:tabular-nums }
+
+.tone-ok{color:var(--pos)} .tone-bad{color:var(--neg)} .tone-pos{color:var(--pos)}
+.tone-neg{color:var(--neg)} .tone-dim{color:var(--muted-ink)}
+.tone-m{font-family:var(--font-plex-mono),monospace;font-size:12.5px}
+
+/* status chip — four tones, more than Badge's variants carry */
+.st{font-family:var(--font-plex-mono),monospace;font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;padding:3px 7px;border-radius:2px;border:1px solid;white-space:nowrap}
+.st-ok{background:var(--pos-soft);color:var(--pos);border-color:var(--pos)}
+.st-bad{background:var(--neg-soft);color:var(--neg);border-color:var(--neg)}
+.st-hot{background:var(--brand-soft);color:var(--brand);border-color:var(--brand-line)}
+.st-idle{background:var(--sunk);color:var(--muted-ink);border-color:var(--line)}
+
+/* activity feed */
+.feed-row{display:grid;grid-template-columns:78px 9px 1fr;gap:11px;align-items:start;
+  padding:11px 16px;border-bottom:1px solid var(--line-soft);font-size:13.5px}
+.feed-row:last-child{border-bottom:0}
+.feed-when{font-family:var(--font-plex-mono),monospace;font-size:11px;color:var(--muted-ink);
+  font-variant-numeric:tabular-nums;padding-top:3px}
+.feed-dot{width:7px;height:7px;border-radius:50%;background:var(--line);margin-top:7px}
+.feed-row.ok .feed-dot{background:var(--pos)}
+.feed-row.bad .feed-dot{background:var(--neg)}
+.feed-row.hot .feed-dot{background:var(--brand)}
+.feed-text{color:var(--ink-2);line-height:1.45}
+.feed-text b{color:var(--ink);font-weight:500}
+.panel-note b{color:var(--ink-2);font-weight:500}
+
+/* demo timeline */
+.rail{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;padding-top:5px}
+.rail::before{content:"";position:absolute;left:0;right:0;top:11px;height:1px;background:var(--line)}
+.rail::after{content:"";position:absolute;left:0;top:11px;height:1px;background:var(--brand);
+  width:var(--fill,0%);transition:width .45s cubic-bezier(.2,.7,.3,1)}
+.stop{position:relative;background:none;border:0;padding:24px 4px 0;cursor:pointer;text-align:center;
+  font-family:var(--font-plex-mono),monospace;color:var(--muted-ink);font-size:10.5px}
+.stop::before{content:"";position:absolute;top:5px;left:50%;transform:translateX(-50%);
+  width:12px;height:12px;border-radius:50%;background:var(--surface);border:1px solid var(--line);
+  transition:background .25s,border-color .25s,transform .25s}
+.stop:hover{color:var(--ink-2)} .stop:hover::before{border-color:var(--brand-line)}
+.stop:focus-visible{outline:2px solid var(--brand);outline-offset:3px;border-radius:2px}
+.stop[data-past="1"]::before{background:var(--brand);border-color:var(--brand)}
+.stop[aria-current="true"]{color:var(--ink);font-weight:500}
+.stop[aria-current="true"]::before{background:var(--brand);border-color:var(--brand);
+  transform:translateX(-50%) scale(1.35)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.swap > *{animation:fadeUp .3s ease-out both}
+.swap > *:nth-child(2){animation-delay:.04s}
+.swap > *:nth-child(3){animation-delay:.08s}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
 }
