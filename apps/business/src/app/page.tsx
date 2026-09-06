@@ -1,12 +1,12 @@
-import { Portal } from '@/components/portal';
+import { PrivyPortal } from '@/components/privy';
 import { DEFAULTED, NAV, STAGES } from '@/data/business.data';
 
 export default function Page() {
   return (
-    <Portal
+    <PrivyPortal
       brand="Ironline Freight"
       ens="ironline.receivables.eth"
-      signer="R. Okonjo · Director"
+      signer="K. Adeyemi · Finance Director"
       nav={NAV}
       stages={STAGES}
       defaulted={DEFAULTED}

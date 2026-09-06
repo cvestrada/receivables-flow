@@ -1,9 +1,9 @@
-import { Portal } from '@/components/portal';
+import { PrivyPortal } from '@/components/privy';
 import { DEFAULTED, NAV, STAGES } from '@/data/investor.data';
 
 export default function Page() {
   return (
-    <Portal
+    <PrivyPortal
       brand="Woodgrove Capital"
       ens="woodgrove.receivables.eth"
       signer="A. Whitfield · Portfolio Manager"
