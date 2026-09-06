@@ -1,0 +1,538 @@
+<title>Ironline Freight Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --ground:#eceff4; --surface:#ffffff; --surface-2:#f5f7fa; --sunk:#e4e8ee;
+  --line:#d6dce5; --line-soft:#e7ebf1;
+  --ink:#151a21; --ink-2:#48525f; --muted:#7b8593;
+  --accent:#9a5a08; --accent-ink:#9a5a08; --accent-soft:#f7e6cd; --accent-line:#e0bd86;
+  --pos:#1d7550; --pos-soft:#dcefe4; --neg:#ab382a; --neg-soft:#f7dfdb;
+  --shadow:0 1px 2px rgba(20,26,34,.06), 0 8px 24px -12px rgba(20,26,34,.16);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0f131a; --surface:#171c24; --surface-2:#1c222b; --sunk:#12171e;
+    --line:#2b333f; --line-soft:#232a34;
+    --ink:#e9edf3; --ink-2:#aeb9c6; --muted:#78838f;
+    --accent:#f0a63c; --accent-ink:#f5b862; --accent-soft:#3a2b14; --accent-line:#6b501f;
+    --pos:#54bd89; --pos-soft:#143226; --neg:#e4695a; --neg-soft:#341a1a;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 10px 30px -14px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0f131a; --surface:#171c24; --surface-2:#1c222b; --sunk:#12171e;
+  --line:#2b333f; --line-soft:#232a34;
+  --ink:#e9edf3; --ink-2:#aeb9c6; --muted:#78838f;
+  --accent:#f0a63c; --accent-ink:#f5b862; --accent-soft:#3a2b14; --accent-line:#6b501f;
+  --pos:#54bd89; --pos-soft:#143226; --neg:#e4695a; --neg-soft:#341a1a;
+  --shadow:0 1px 2px rgba(0,0,0,.5), 0 10px 30px -14px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);
+  font-family:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.5;
+  -webkit-font-smoothing:antialiased}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+
+.app{display:grid;grid-template-columns:236px 1fr;min-height:100vh;align-items:stretch}
+
+/* ── sidebar ─────────────────────────────────────────── */
+.rail{background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;
+  padding:18px 0 14px}
+.mark{padding:0 18px 16px;border-bottom:1px solid var(--line-soft)}
+.mark .plat{font-family:'Archivo',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--muted)}
+.mark .plat b{color:var(--accent-ink);font-weight:700}
+.mark h1{margin:9px 0 0;font-family:'Archivo',sans-serif;font-size:17px;font-weight:600;letter-spacing:-.012em}
+.mark .ens{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);margin-top:3px;
+  overflow-wrap:anywhere}
+nav{display:flex;flex-direction:column;padding:12px 10px;gap:1px;flex:1}
+nav button{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;
+  font-family:inherit;font-size:13.5px;text-align:left;padding:8px 10px;border:0;border-radius:2px;
+  background:none;color:var(--ink-2);cursor:pointer;transition:background .16s,color .16s}
+nav button:hover{background:var(--surface-2);color:var(--ink)}
+nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+nav button[aria-current="true"]{background:var(--accent-soft);color:var(--accent-ink);font-weight:500;
+  box-shadow:inset 2px 0 0 var(--accent)}
+nav .cnt{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);
+  font-variant-numeric:tabular-nums}
+nav button[aria-current="true"] .cnt{color:var(--accent-ink)}
+.rail .foot{padding:12px 18px 0;border-top:1px solid var(--line-soft);font-size:11px;color:var(--muted);
+  line-height:1.5}
+.rail .foot .sig{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-2)}
+
+/* ── main ────────────────────────────────────────────── */
+main{display:flex;flex-direction:column;min-width:0}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;
+  padding:17px 26px;border-bottom:1px solid var(--line);background:var(--surface)}
+.bar h2{margin:0;font-family:'Archivo',sans-serif;font-size:20px;font-weight:600;letter-spacing:-.015em}
+.bar .sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+.stamp{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);text-align:right;
+  font-variant-numeric:tabular-nums;line-height:1.5}
+.stamp b{color:var(--ink-2);font-weight:500}
+
+.view{padding:22px 26px 30px;display:flex;flex-direction:column;gap:16px;flex:1;min-width:0}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.view.swap > *{animation:fadeUp .3s ease-out both}
+.view.swap > *:nth-child(2){animation-delay:.04s}
+.view.swap > *:nth-child(3){animation-delay:.08s}
+
+/* tiles */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+  background:var(--surface);border:1px solid var(--line);border-radius:3px;box-shadow:var(--shadow);
+  overflow:hidden}
+.tile{padding:16px 18px 17px;border-right:1px solid var(--line-soft)}
+.tile:last-child{border-right:0}
+.tile .k{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--muted);display:block;margin-bottom:7px}
+.tile .v{font-family:'Archivo',sans-serif;font-size:26px;font-weight:600;letter-spacing:-.022em;
+  font-variant-numeric:tabular-nums;line-height:1.05;display:block}
+.tile .v.pos{color:var(--pos)} .tile .v.neg{color:var(--neg)} .tile .v.dim{color:var(--muted)}
+.tile .n{font-size:11.5px;color:var(--muted);margin-top:5px;display:block;line-height:1.35}
+
+/* panels */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:3px;box-shadow:var(--shadow);
+  overflow:hidden}
+.panel.flag{border-color:var(--accent-line)}
+.panel > h3{margin:0;padding:11px 16px;font-family:'IBM Plex Mono',monospace;font-size:10px;
+  letter-spacing:.11em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line-soft);
+  display:flex;justify-content:space-between;gap:12px}
+.panel.flag > h3{color:var(--accent-ink)}
+.panel .note{padding:11px 16px;font-size:12.5px;color:var(--muted);line-height:1.5;
+  border-top:1px solid var(--line-soft);background:var(--surface-2)}
+.panel .note b{color:var(--ink-2);font-weight:500}
+
+/* table */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);text-align:left;font-weight:400;padding:9px 16px;border-bottom:1px solid var(--line-soft);
+  white-space:nowrap}
+td{padding:11px 16px;border-bottom:1px solid var(--line-soft);color:var(--ink-2);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.id{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink)}
+td.strong{color:var(--ink);font-weight:500}
+td.right{text-align:right}
+td.ok{color:var(--pos)} td.bad{color:var(--neg)} td.dim{color:var(--muted)}
+
+/* key-value */
+.kv{display:flex;flex-direction:column}
+.kv .r{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 16px;
+  border-bottom:1px solid var(--line-soft);font-size:13.5px}
+.kv .r:last-child{border-bottom:0}
+.kv .k{color:var(--muted)}
+.kv .v{color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
+.kv .v.ok{color:var(--pos)} .kv .v.bad{color:var(--neg)} .kv .v.dim{color:var(--muted)}
+.kv .v.m{font-family:'IBM Plex Mono',monospace;font-size:12.5px}
+
+/* activity feed */
+.feed{display:flex;flex-direction:column}
+.feed .e{display:grid;grid-template-columns:78px 9px 1fr;gap:11px;align-items:start;padding:11px 16px;
+  border-bottom:1px solid var(--line-soft);font-size:13.5px}
+.feed .e:last-child{border-bottom:0}
+.feed .t{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);
+  font-variant-numeric:tabular-nums;padding-top:3px}
+.feed .dot{width:7px;height:7px;border-radius:50%;background:var(--line);margin-top:7px}
+.feed .e.ok .dot{background:var(--pos)} .feed .e.bad .dot{background:var(--neg)}
+.feed .e.hot .dot{background:var(--accent)}
+.feed .x{color:var(--ink-2);line-height:1.45}
+.feed .x b{color:var(--ink);font-weight:500}
+
+/* status chip */
+.st{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  padding:3px 7px;border-radius:2px;border:1px solid;white-space:nowrap}
+.st.ok{background:var(--pos-soft);color:var(--pos);border-color:var(--pos)}
+.st.bad{background:var(--neg-soft);color:var(--neg);border-color:var(--neg)}
+.st.hot{background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent-line)}
+.st.idle{background:var(--sunk);color:var(--muted);border-color:var(--line)}
+
+.empty{padding:34px 16px;text-align:center;color:var(--muted);font-size:13.5px;line-height:1.6}
+.empty b{display:block;color:var(--ink-2);font-weight:500;margin-bottom:3px;font-size:14.5px}
+
+/* ── demo strip ──────────────────────────────────────── */
+.demo{grid-column:1 / -1;background:var(--surface);border-top:1px solid var(--line);
+  padding:14px 26px 16px;position:sticky;bottom:0;z-index:5}
+.demo .cap{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:11px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.rail2{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;padding-top:5px}
+.rail2::before{content:"";position:absolute;left:0;right:0;top:11px;height:1px;background:var(--line)}
+.rail2::after{content:"";position:absolute;left:0;top:11px;height:1px;background:var(--accent);
+  width:var(--fill,0%);transition:width .45s cubic-bezier(.2,.7,.3,1)}
+.stop{position:relative;background:none;border:0;padding:24px 4px 0;cursor:pointer;text-align:center;
+  font-family:'IBM Plex Mono',monospace;color:var(--muted);font-size:10.5px}
+.stop::before{content:"";position:absolute;top:5px;left:50%;transform:translateX(-50%);
+  width:12px;height:12px;border-radius:50%;background:var(--surface);border:1px solid var(--line);
+  transition:background .25s,border-color .25s,transform .25s}
+.stop:hover{color:var(--ink-2)} .stop:hover::before{border-color:var(--accent-line)}
+.stop:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
+.stop[data-past="1"]::before{background:var(--accent);border-color:var(--accent)}
+.stop[aria-current="true"]{color:var(--ink);font-weight:500}
+.stop[aria-current="true"]::before{background:var(--accent);border-color:var(--accent);
+  transform:translateX(-50%) scale(1.35)}
+.stop .day{display:block;font-size:9px;letter-spacing:.11em;text-transform:uppercase;margin-bottom:2px}
+.acts{display:flex;gap:8px}
+button.act{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+  padding:6px 11px;border-radius:2px;border:1px solid var(--line);background:var(--surface-2);
+  color:var(--ink-2);cursor:pointer;transition:border-color .18s,color .18s,background .18s}
+button.act:hover{border-color:var(--accent-line);color:var(--ink)}
+button.act:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.act[aria-pressed="true"]{background:var(--neg-soft);border-color:var(--neg);color:var(--neg)}
+
+@media (max-width:820px){
+  .app{grid-template-columns:1fr}
+  .rail{border-right:0;border-bottom:1px solid var(--line)}
+  nav{flex-direction:row;overflow-x:auto;padding:10px}
+  nav button{white-space:nowrap}
+  .rail .foot{display:none}
+  .view,.bar,.demo{padding-left:16px;padding-right:16px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
+}
+</style>
+
+<div class="app">
+  <aside class="rail">
+    <div class="mark">
+      <div class="plat">Receivables <b>Flow</b></div>
+      <h1>Ironline Freight</h1>
+      <div class="ens">ironline.receivables.eth</div>
+    </div>
+    <nav id="nav" aria-label="Sections"></nav>
+    <div class="foot">
+      Signed in as<br><span class="sig">R. Okonjo · Director</span>
+    </div>
+  </aside>
+
+  <main>
+    <div class="bar">
+      <div>
+        <h2 id="title"></h2>
+        <div class="sub" id="sub"></div>
+      </div>
+      <div class="stamp" id="stamp"></div>
+    </div>
+    <div class="view" id="view"></div>
+  </main>
+
+  <footer class="demo">
+    <div class="cap">
+      <span>Demo timeline &mdash; not part of the portal</span>
+      <span class="acts">
+        <button class="act" id="replay" type="button">Replay from day 0</button>
+        <button class="act" id="dflt" type="button" aria-pressed="false">Broker defaults</button>
+      </span>
+    </div>
+    <div class="rail2" id="rail2"></div>
+  </footer>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var NAV=[
+    {id:'overview',    label:'Overview',    sub:'Where the company’s cash stands today'},
+    {id:'invoices',    label:'Invoices',    sub:'Bills sent to customers and not yet paid'},
+    {id:'receivables', label:'Receivables', sub:'Invoices sold to investors'},
+    {id:'approvals',   label:'Approvals',   sub:'Who may sell an invoice, and who has signed'}
+  ];
+
+  var POLICY={t:'kv',h:'Signing policy — Ironline Freight company wallet',rows:[
+    ['Office manager','up to $10,000',''],
+    ['Two of three directors','above $10,000',''],
+    ['Directors on file','R. Okonjo · M. Halvorsen · T. Nakamura','m']],
+    note:'INV-2026-0417 is <b>$50,000</b>, so it takes two directors. One employee acting alone cannot sell an invoice that does not exist.'};
+
+  var SIGNED={t:'table',h:'INV-2026-0417 — approval record',
+    head:['Director','Decision','Time','From'],
+    rows:[
+      [{v:'R. Okonjo',cls:'strong'},{chip:'Approved',tone:'ok'},'09:14','Mobile'],
+      [{v:'M. Halvorsen',cls:'strong'},{chip:'Approved',tone:'ok'},'17:02','Mobile'],
+      [{v:'T. Nakamura',cls:'dim'},{chip:'Not needed',tone:'idle'},{v:'—',cls:'dim'},{v:'—',cls:'dim'}]],
+    note:'Quorum met at <b>17:02</b>, eight hours after the first signature. The sale then proceeded on its own — nobody pressed a final button.'};
+
+  var STAGES=[
+  { day:'Day 0', label:'Invoice raised', counts:{invoices:1,receivables:0,approvals:1}, sections:{
+    overview:[
+      {t:'tiles',items:[
+        ['Cash available','$0','dim','nothing received yet'],
+        ['Owed by customers','$50,000','','1 invoice outstanding'],
+        ['Next payroll run','11 days','','$38,400 due']]},
+      {t:'feed',h:'Activity',items:[
+        ['09:02','Invoice <b>INV-2026-0417</b> raised against Northwind Brokerage — $50,000 on 60-day terms','']]},
+      {t:'kv',h:'The problem, in one line',rows:[
+        ['Money owed to us','$50,000',''],
+        ['Arrives in','60 days',''],
+        ['Payroll due in','11 days','bad']],
+        note:'The work is done and the bill is sent. Payroll does not wait 60 days.'}],
+    invoices:[
+      {t:'table',h:'Outstanding invoices',head:['Invoice','Customer','Amount','Due','Terms','Status'],
+        rows:[[{v:'INV-2026-0417',cls:'id'},'Northwind Brokerage',{v:'$50,000',cls:'strong'},'2026-11-04','60 days',{chip:'Unpaid',tone:'idle'}]],
+        note:'Nothing here can be sold until the finance team approves it.'}],
+    receivables:[{t:'empty',h:'Receivables',title:'Nothing sold yet',
+      text:'An approved invoice becomes a receivable an investor can buy.'}],
+    approvals:[
+      {t:'table',h:'Waiting on you',tag:'1 pending',tagTone:'hot',
+        head:['Invoice','Amount','Requires','Status'],
+        rows:[[{v:'INV-2026-0417',cls:'id'},{v:'$50,000',cls:'strong'},'2 of 3 directors',{chip:'Awaiting signatures',tone:'hot'}]]},
+      POLICY]}},
+
+  { day:'Day 0', label:'Approved', counts:{invoices:1,receivables:0,approvals:0}, sections:{
+    overview:[
+      {t:'tiles',items:[
+        ['Cash available','$0','dim','nothing received yet'],
+        ['Owed by customers','$50,000','','1 invoice outstanding'],
+        ['Next payroll run','11 days','','$38,400 due']]},
+      {t:'feed',h:'Activity',items:[
+        ['17:02','Quorum met — <b>2 of 3 directors</b> approved the sale of INV-2026-0417','ok'],
+        ['09:14','R. Okonjo approved from mobile','ok'],
+        ['09:02','Invoice <b>INV-2026-0417</b> raised against Northwind Brokerage — $50,000','']]}],
+    invoices:[
+      {t:'table',h:'Outstanding invoices',head:['Invoice','Customer','Amount','Due','Terms','Status'],
+        rows:[[{v:'INV-2026-0417',cls:'id'},'Northwind Brokerage',{v:'$50,000',cls:'strong'},'2026-11-04','60 days',{chip:'Approved for sale',tone:'hot'}]]}],
+    receivables:[{t:'empty',h:'Receivables',title:'Nothing sold yet',
+      text:'INV-2026-0417 is approved and will be issued as a receivable next.'}],
+    approvals:[SIGNED,POLICY]}},
+
+  { day:'Day 1', label:'Issued', counts:{invoices:1,receivables:1,approvals:0}, sections:{
+    overview:[
+      {t:'tiles',items:[
+        ['Cash available','$0','dim','awaiting a buyer'],
+        ['Owed by customers','$50,000','','claim now sellable'],
+        ['Listed for sale','$47,500','','a 5.0% discount']]},
+      {t:'feed',h:'Activity',items:[
+        ['08:40','Transfer restrictions active — only wallets holding a valid eligibility pass may own it',''],
+        ['08:40','<b>RCV-0001</b> issued — $50,000 face value, matures 2026-11-04','hot'],
+        ['17:02','Quorum met — 2 of 3 directors approved','ok']]}],
+    invoices:[
+      {t:'table',h:'Outstanding invoices',head:['Invoice','Customer','Amount','Due','Terms','Status'],
+        rows:[[{v:'INV-2026-0417',cls:'id'},'Northwind Brokerage',{v:'$50,000',cls:'strong'},'2026-11-04','60 days',{chip:'Tokenised',tone:'hot'}]]}],
+    receivables:[
+      {t:'table',h:'Receivables',head:['Receivable','From invoice','Face','Asking','Matures','Status'],
+        rows:[[{v:'RCV-0001',cls:'id'},{v:'INV-2026-0417',cls:'id'},{v:'$50,000',cls:'strong'},'$47,500','2026-11-04',{chip:'Issued',tone:'hot'}]],
+        note:'The claim now exists separately from Ironline Freight. Whoever holds it on 4 November is owed the <b>$50,000</b>.'}],
+    approvals:[SIGNED,POLICY]}},
+
+  { day:'Day 2', label:'Funded', counts:{invoices:0,receivables:1,approvals:0}, sections:{
+    overview:[
+      {t:'tiles',items:[
+        ['Cash available','$47,500','pos','received 2026-09-07'],
+        ['Owed by customers','$0','dim','the claim was sold'],
+        ['Cost of funding','$2,500','','5.0% of face']]},
+      {t:'feed',h:'Activity',items:[
+        ['11:26','<b>Woodgrove Capital</b> funded RCV-0001 — <b>$47,500</b> received','ok'],
+        ['11:26','An unidentified wallet attempted the same purchase and was refused','bad'],
+        ['08:40','RCV-0001 issued — $50,000 face value','hot']]},
+      {t:'kv',h:'What the cash covers',rows:[
+        ['Payroll, 18 September','$38,400','ok'],
+        ['Fuel and tolls','$6,900','ok'],
+        ['Left over','$2,200','']],
+        note:'Two months of waiting removed for <b>$2,500</b>.'}],
+    invoices:[
+      {t:'table',h:'Outstanding invoices',head:['Invoice','Customer','Amount','Due','Terms','Status'],
+        rows:[[{v:'INV-2026-0417',cls:'id'},'Northwind Brokerage',{v:'$50,000',cls:'strong'},'2026-11-04','60 days',{chip:'Sold',tone:'ok'}]],
+        note:'Northwind still owes the $50,000 on 4 November — it is simply owed to the holder now, not to us.'}],
+    receivables:[
+      {t:'table',h:'Receivables',head:['Receivable','Face','Sold for','Holder','Matures','Status'],
+        rows:[[{v:'RCV-0001',cls:'id'},{v:'$50,000',cls:'strong'},'$47,500','Woodgrove Capital','2026-11-04',{chip:'Funded',tone:'ok'}]]}],
+    approvals:[SIGNED,POLICY]}},
+
+  { day:'Day 20', label:'Half resold', counts:{invoices:0,receivables:1,approvals:0}, sections:{
+    overview:[
+      {t:'tiles',items:[
+        ['Cash available','$47,500','pos','received 2026-09-07'],
+        ['Owed by customers','$0','dim','the claim was sold'],
+        ['Cost of funding','$2,500','','5.0% of face']]},
+      {t:'feed',h:'Activity',items:[
+        ['Day 20','Holder of record changed — RCV-0001 now has <b>2 holders</b>',''],
+        ['11:26','Woodgrove Capital funded RCV-0001 — $47,500 received','ok']]}],
+    invoices:[
+      {t:'table',h:'Outstanding invoices',head:['Invoice','Customer','Amount','Due','Terms','Status'],
+        rows:[[{v:'INV-2026-0417',cls:'id'},'Northwind Brokerage',{v:'$50,000',cls:'strong'},'2026-11-04','60 days',{chip:'Sold',tone:'ok'}]]}],
+    receivables:[
+      {t:'table',h:'Receivables',head:['Receivable','Face','Sold for','Holders','Matures','Status'],
+        rows:[[{v:'RCV-0001',cls:'id'},{v:'$50,000',cls:'strong'},'$47,500','2','2026-11-04',{chip:'Funded',tone:'ok'}]]},
+      {t:'kv',h:'Holders of record',rows:[
+        ['Woodgrove Capital','5000 bps · 50.00%','m'],
+        ['Harbour Lane Partners','5000 bps · 50.00%','m']],
+        note:'Ironline is unaffected by the resale. The <b>same $50,000</b> is owed on day 60 to whoever holds it that day.'}],
+    approvals:[SIGNED,POLICY]}},
+
+  { day:'Day 60', label:'Settled', counts:{invoices:0,receivables:0,approvals:0}, sections:{
+    overview:[
+      {t:'tiles',items:[
+        ['Cash available','$47,500','pos','received 2026-09-07'],
+        ['Settled at maturity','$50,000','pos','paid 2026-11-04'],
+        ['Repayment record','7 of 7','pos','settled on time']]},
+      {t:'feed',h:'Activity',items:[
+        ['Day 60','Public record updated — credit tier <b>B → B+</b>','ok'],
+        ['Day 60','Holders paid automatically — nobody claimed anything','ok'],
+        ['Day 60','Northwind Brokerage paid <b>$50,000</b>','ok']]},
+      {t:'kv',h:'Public record — ironline.receivables.eth',rows:[
+        ['Invoices settled on time','7 of 7','ok'],
+        ['Credit tier','B → B+','ok'],
+        ['Average discount paid','5.0% → 4.4%','ok']],
+        note:'The next invoice sells at a tighter discount because of this line — and Ironline earned it from <b>its own history</b>, not from a relationship with one lender.'}],
+    invoices:[
+      {t:'table',h:'Outstanding invoices',head:['Invoice','Customer','Amount','Due','Terms','Status'],
+        rows:[[{v:'INV-2026-0417',cls:'id'},'Northwind Brokerage',{v:'$50,000',cls:'strong'},'2026-11-04','60 days',{chip:'Settled',tone:'ok'}]]}],
+    receivables:[
+      {t:'table',h:'Receivables',head:['Receivable','Face','Sold for','Holders','Settled','Status'],
+        rows:[[{v:'RCV-0001',cls:'id'},{v:'$50,000',cls:'strong'},'$47,500','2','2026-11-04',{chip:'Redeemed',tone:'ok'}]]}],
+    approvals:[SIGNED,POLICY]}}
+  ];
+
+  var DEFAULTED={ day:'Day 60', label:'Defaulted', counts:{invoices:1,receivables:0,approvals:0}, sections:{
+    overview:[
+      {t:'tiles',items:[
+        ['Cash available','$47,500','pos','kept — the sale was final'],
+        ['Settled at maturity','$0','neg','no payment received'],
+        ['Repayment record','7 of 8','neg','one missed']]},
+      {t:'feed',h:'Activity',items:[
+        ['Day 60','Public record updated — credit tier <b>B → C</b>','bad'],
+        ['Day 60','RCV-0001 marked <b>defaulted</b> — the holders absorb the loss','bad'],
+        ['Day 60','Northwind Brokerage did not pay','bad']]},
+      {t:'kv',h:'Public record — ironline.receivables.eth',flag:true,rows:[
+        ['Invoices settled on time','7 of 8','bad'],
+        ['Credit tier','B → C','bad'],
+        ['Expected discount, next sale','5.0% → 8.5%','bad']],
+        note:'Ironline keeps the $47,500 — the sale was final and the loss is the holders’. What Ironline loses is <b>the price of its next one</b>.'}],
+    invoices:[
+      {t:'table',h:'Outstanding invoices',head:['Invoice','Customer','Amount','Due','Terms','Status'],
+        rows:[[{v:'INV-2026-0417',cls:'id'},'Northwind Brokerage',{v:'$50,000',cls:'strong'},'2026-11-04','60 days',{chip:'Unpaid',tone:'bad'}]],
+        note:'Recovery from Northwind is now a collections matter, and it does not change what the holders lost.'}],
+    receivables:[
+      {t:'table',h:'Receivables',head:['Receivable','Face','Sold for','Holders','Outcome','Status'],
+        rows:[[{v:'RCV-0001',cls:'id'},{v:'$50,000',cls:'strong'},'$47,500','2',{v:'$0 paid',cls:'bad'},{chip:'Defaulted',tone:'bad'}]]}],
+    approvals:[SIGNED,POLICY]}};
+
+
+  var nav=document.getElementById('nav'), view=document.getElementById('view'),
+      rail2=document.getElementById('rail2'), replay=document.getElementById('replay'),
+      dflt=document.getElementById('dflt');
+  var cur=3, sec=NAV[0].id, defaulted=false, first=true, timer=null;
+
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+  function stage(){ return (defaulted && cur===STAGES.length-1) ? DEFAULTED : STAGES[cur]; }
+
+  NAV.forEach(function(n){
+    var b=document.createElement('button'); b.type='button';
+    b.innerHTML='<span>'+esc(n.label)+'</span><span class="cnt" data-cnt="'+n.id+'"></span>';
+    b.addEventListener('click',function(){ sec=n.id; draw(); });
+    nav.appendChild(b);
+  });
+
+  STAGES.forEach(function(s,i){
+    var b=document.createElement('button'); b.className='stop'; b.type='button';
+    b.innerHTML='<span class="day">'+esc(s.day)+'</span>'+esc(s.label);
+    b.addEventListener('click',function(){ halt(); go(i); });
+    rail2.appendChild(b);
+  });
+  var stops=Array.prototype.slice.call(rail2.children);
+
+  function cell(c){
+    if(c && typeof c==='object' && c.chip) return '<td><span class="st '+(c.tone||'idle')+'">'+esc(c.chip)+'</span></td>';
+    if(c && typeof c==='object') return '<td class="'+(c.cls||'')+'">'+esc(c.v)+'</td>';
+    return '<td>'+esc(c)+'</td>';
+  }
+
+  function block(b){
+    if(b.t==='tiles') return '<div class="tiles">'+b.items.map(function(t){
+      return '<div class="tile"><span class="k">'+esc(t[0])+'</span>'+
+             '<span class="v '+(t[2]||'')+'" data-tile="'+esc(t[0])+'">'+esc(t[1])+'</span>'+
+             (t[3]?'<span class="n">'+esc(t[3])+'</span>':'')+'</div>';
+    }).join('')+'</div>';
+
+    var head='<h3><span>'+esc(b.h||'')+'</span>'+(b.tag?'<span class="st '+(b.tagTone||'idle')+'">'+esc(b.tag)+'</span>':'')+'</h3>';
+    var body='';
+    if(b.t==='table') body='<div class="tw"><table><thead><tr>'+
+        b.head.map(function(h){return '<th>'+esc(h)+'</th>';}).join('')+'</tr></thead><tbody>'+
+        b.rows.map(function(r){return '<tr>'+r.map(cell).join('')+'</tr>';}).join('')+'</tbody></table></div>';
+    else if(b.t==='kv') body='<div class="kv">'+b.rows.map(function(r){
+        return '<div class="r"><span class="k">'+esc(r[0])+'</span><span class="v '+(r[2]||'')+'">'+esc(r[1])+'</span></div>';
+      }).join('')+'</div>';
+    else if(b.t==='feed') body='<div class="feed">'+b.items.map(function(e){
+        return '<div class="e '+(e[2]||'')+'"><span class="t">'+esc(e[0])+'</span><span class="dot"></span>'+
+               '<span class="x">'+e[1]+'</span></div>';
+      }).join('')+'</div>';
+    else if(b.t==='empty') body='<div class="empty"><b>'+esc(b.title)+'</b>'+esc(b.text)+'</div>';
+    return '<section class="panel'+(b.flag?' flag':'')+'">'+head+body+
+           (b.note?'<div class="note">'+b.note+'</div>':'')+'</section>';
+  }
+
+  function count(el,from,to){
+    var mf=/^(−?)\$?([\d,]+)$/.exec(from||''), mt=/^(−?)\$?([\d,]+)$/.exec(to||'');
+    if(!mf||!mt) return;
+    var a=parseInt(mf[2].replace(/,/g,''),10)*(mf[1]?-1:1);
+    var b=parseInt(mt[2].replace(/,/g,''),10)*(mt[1]?-1:1);
+    if(a===b || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var d=to.indexOf('$')>-1, t0=performance.now();
+    (function tick(now){
+      var p=Math.min(1,(now-t0)/620), e=1-Math.pow(1-p,3), v=Math.round(a+(b-a)*e);
+      el.textContent=(v<0?'−':'')+(d?'$':'')+Math.abs(v).toLocaleString('en-US');
+      if(p<1) requestAnimationFrame(tick); else el.textContent=to;
+    })(t0);
+  }
+
+  function draw(){
+    var s=stage(), n=NAV.filter(function(x){return x.id===sec;})[0];
+    var prev={};
+    view.querySelectorAll('[data-tile]').forEach(function(el){ prev[el.getAttribute('data-tile')]=el.textContent; });
+
+    document.getElementById('title').textContent=n.label;
+    document.getElementById('sub').textContent=n.sub;
+    document.getElementById('stamp').innerHTML='<b>'+esc(s.day)+'</b> &middot; '+esc(s.label)+
+      '<br>RCV-0001 &middot; face <b>$50,000</b>';
+
+    view.innerHTML=(s.sections[sec]||[]).map(block).join('');
+    view.classList.remove('swap'); void view.offsetWidth; if(!first) view.classList.add('swap');
+
+    view.querySelectorAll('[data-tile]').forEach(function(el){
+      count(el,prev[el.getAttribute('data-tile')],el.textContent);
+    });
+
+    Array.prototype.forEach.call(nav.children,function(b,i){
+      b.setAttribute('aria-current',NAV[i].id===sec?'true':'false');
+      var c=b.querySelector('.cnt'), v=(s.counts||{})[NAV[i].id];
+      c.textContent=(v===undefined||v===null)?'':v;
+    });
+    first=false;
+  }
+
+  function go(i){
+    cur=Math.max(0,Math.min(STAGES.length-1,i));
+    if(cur!==STAGES.length-1 && defaulted){ defaulted=false; dflt.setAttribute('aria-pressed','false'); }
+    stops.forEach(function(b,j){
+      b.setAttribute('aria-current',j===cur?'true':'false');
+      b.setAttribute('data-past',j<cur?'1':'0');
+    });
+    rail2.style.setProperty('--fill',(cur/(STAGES.length-1)*100)+'%');
+    draw();
+  }
+
+  function halt(){ if(timer){ clearInterval(timer); timer=null; replay.textContent='Replay from day 0'; } }
+
+  replay.addEventListener('click',function(){
+    if(timer){ halt(); return; }
+    defaulted=false; dflt.setAttribute('aria-pressed','false');
+    go(0); replay.textContent='Stop';
+    timer=setInterval(function(){ if(cur>=STAGES.length-1) halt(); else go(cur+1); },2600);
+  });
+  dflt.addEventListener('click',function(){
+    halt(); defaulted=!defaulted;
+    dflt.setAttribute('aria-pressed',defaulted?'true':'false');
+    go(STAGES.length-1);
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.target.tagName==='BUTTON' && (e.key==='ArrowLeft'||e.key==='ArrowRight')) e.preventDefault();
+    if(e.key==='ArrowRight'){ halt(); go(cur+1); }
+    else if(e.key==='ArrowLeft'){ halt(); go(cur-1); }
+  });
+
+  go(cur);
+})();
+</script>
