@@ -92,16 +92,19 @@ flowchart TD
 
 ```
 contracts/ens/
-├── src/ens.ts               # hackathon addresses; open the registry, give a page, write its record, appoint a reviewer
-├── scripts/onboard.ts       # runnable entry point — stands up the registry and Ironline's profile
-└── deployed.json            # generated — the registry, the names issued, the reviewer
+├── src/ens.ts                          # hackathon addresses; open the registry, give a page, write its record, appoint a reviewer
+├── scripts/onboard.ts                  # runnable entry point — stands up the registry and Ironline's profile
+├── test/unit/encoding.test.ts          # pure encoding and record-set logic, no chain
+├── test/integration/registry.test.ts   # the four operations against a Sepolia fork, including every refusal
+├── hardhat.config.ts                   # add the forked network the integration tests run on
+└── deployed.json                       # generated — the registry, the names issued, the reviewer
 ```
 
 ---
 
 ## Action Items
 
-**[ ] Open the registry and expose the four things it can do**
+**[x] Open the registry and expose the four things it can do**
 
 Implement: Create `contracts/ens/src/ens.ts` holding the hackathon ENSv2 addresses and the
 registry operations this project needs.
