@@ -1,0 +1,52 @@
+npx hardhat run scripts/demo-receivable-token.ts   —   contracts/hedera-ats
+
+SETUP  Stand up ATS on the local network
+────────────────────────────────────────────────────────────────
+
+✅ Checkpoint marked as completed
+════════════════════════════════════════════════════════════
+  ATS factory           0xCA8c8688914e0F7096c920146cd0Ad85cD7Ae8b9
+  contracts deployed    108 facets — none of them ours
+
+────────────────────────────────────────────────────────────────
+1  Receivables Flow issues Acme invoice #1042
+────────────────────────────────────────────────────────────────
+  token address         0xD33d097DD5eE1cB4927632DD211c7981eda96319
+  name                  Receivables Flow · Acme Invoice #1042
+  symbol                RF1042
+  face value            $50,000
+  matures               Wed Nov 04 2026
+  issued to treasury    50000 units
+
+────────────────────────────────────────────────────────────────
+2  A wallet nobody approved tries to receive it
+────────────────────────────────────────────────────────────────
+  stranger              0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
+  on approved list?     false
+  transfer result       REFUSED by the contract
+  revert reason         AccountIsBlocked(0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC)
+  stranger balance      0 units — nothing moved
+
+────────────────────────────────────────────────────────────────
+3  Receivables Flow approves a real investor
+────────────────────────────────────────────────────────────────
+  investor              0x70997970C51812dc3A010C7d01b50e0d17dc79C8
+  on approved list?     true
+  transfer result       SETTLED
+  investor balance      10000 units = $10,000 of the invoice
+
+────────────────────────────────────────────────────────────────
+4  Receivables Flow withdraws that approval
+────────────────────────────────────────────────────────────────
+  on approved list?     false
+  transfer result       REFUSED by the contract
+  revert reason         AccountIsBlocked(0x70997970C51812dc3A010C7d01b50e0d17dc79C8)
+  investor balance      10000 units — unchanged
+
+────────────────────────────────────────────────────────────────
+5  Someone who is not Receivables Flow tries to approve themselves
+────────────────────────────────────────────────────────────────
+  approval result       REFUSED by the contract
+  revert reason         AccountHasNoRole(0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC, 0x6ed9a91e996c6475ecdc28ecbdbe9bd1122fc62b30cdbe6da8271884b51ec74d)
+  on approved list?     false
+

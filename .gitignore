@@ -23,3 +23,5 @@ typechain-types/
 # generated
 *.db
 
+# ATS deployment checkpoints and records
+deployments/

@@ -15,6 +15,7 @@ const config: HardhatUserConfig = {
     settings: { optimizer: { enabled: true, runs: 200 } },
   },
   networks: {
+    hardhat: { allowUnlimitedContractSize: true, blockGasLimit: 200_000_000 },
     hederaTestnet: {
       url: process.env.HEDERA_TESTNET_RPC_URL ?? 'https://testnet.hashio.io/api',
       chainId: 296,
