@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarInset,
+  Sidebar, SidebarContent, SidebarInset,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider,
 } from '@/components/ui/sidebar';
+
 import { BlockView } from '@/components/blocks';
 import type { NavItem, Stage } from '@/data/portal.types';
 
@@ -14,6 +15,8 @@ export interface PortalProps {
   brand: string;
   ens: string;
   signer: string;
+  /** Replaces the static signer line once a real account is signed in. */
+  account?: React.ReactNode;
   nav: NavItem[];
   stages: Stage[];
   defaulted: Stage;
@@ -21,7 +24,7 @@ export interface PortalProps {
   openAt?: number;
 }
 
-export function Portal({ brand, ens, signer, nav, stages, defaulted, openAt = 3 }: PortalProps) {
+export function Portal({ brand, ens, signer, account, nav, stages, defaulted, openAt = 3 }: PortalProps) {
   const [moment, setMoment] = useState(openAt);
   const [section, setSection] = useState(nav[0].id);
   const [broke, setBroke] = useState(false);
@@ -79,20 +82,33 @@ export function Portal({ brand, ens, signer, nav, stages, defaulted, openAt = 3 
   const swapKey = `${moment}-${broke ? 'd' : 'n'}-${section}`;
 
   return (
-    <SidebarProvider className="h-svh">
-      <Sidebar collapsible="none" className="h-svh border-r">
-        <SidebarHeader className="gap-0 border-b px-[18px] pb-4">
+    <div className="flex h-svh min-h-0 flex-col">
+      <header className="flex shrink-0 items-center justify-between gap-6 border-b bg-[var(--surface)] px-[26px] py-[13px]">
+        <div className="min-w-0">
           <div className="font-heading text-[10.5px] font-bold tracking-[.16em] uppercase text-[var(--muted-ink)]">
             Receivables <span className="text-[var(--brand)]">Flow</span>
           </div>
-          <h1 className="font-heading mt-[9px] text-[17px] font-semibold tracking-[-.012em] text-[var(--ink)]">
-            {brand}
-          </h1>
-          <div className="mt-[3px] font-mono text-[10.5px] break-words text-[var(--muted-ink)]">
-            {ens}
+          <div className="mt-[5px] flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h1 className="font-heading text-[17px] font-semibold tracking-[-.012em] text-[var(--ink)]">
+              {brand}
+            </h1>
+            <span className="font-mono text-[10.5px] break-all text-[var(--muted-ink)]">{ens}</span>
           </div>
-        </SidebarHeader>
+        </div>
 
+        <div className="shrink-0 text-right text-[11px] leading-normal text-[var(--muted-ink)]">
+          {account ?? (
+            <>
+              Signed in as
+              <br />
+              <span className="font-mono text-[10.5px] text-[var(--ink-2)]">{signer}</span>
+            </>
+          )}
+        </div>
+      </header>
+
+      <SidebarProvider className="min-h-0 flex-1">
+      <Sidebar collapsible="none" className="h-full border-r">
         <SidebarContent className="px-[10px] py-3">
           <SidebarMenu>
             {nav.map((item) => (
@@ -112,14 +128,9 @@ export function Portal({ brand, ens, signer, nav, stages, defaulted, openAt = 3 
           </SidebarMenu>
         </SidebarContent>
 
-        <SidebarFooter className="border-t px-[18px] pt-3 text-[11px] leading-normal text-[var(--muted-ink)]">
-          Signed in as
-          <br />
-          <span className="font-mono text-[10.5px] text-[var(--ink-2)]">{signer}</span>
-        </SidebarFooter>
       </Sidebar>
 
-      <SidebarInset className="flex h-svh min-w-0 flex-col overflow-hidden bg-[var(--ground)]">
+      <SidebarInset className="flex h-full min-w-0 flex-col overflow-hidden bg-[var(--ground)]">
         <header className="flex shrink-0 flex-wrap items-center justify-between gap-[18px] border-b bg-[var(--surface)] px-[26px] py-[17px]">
           <div>
             <h2 className="font-heading text-[20px] font-semibold tracking-[-.015em] text-[var(--ink)]">
@@ -188,7 +199,8 @@ export function Portal({ brand, ens, signer, nav, stages, defaulted, openAt = 3 
           </div>
         </footer>
       </SidebarInset>
-    </SidebarProvider>
+      </SidebarProvider>
+    </div>
   );
 }
 

@@ -1,0 +1,20 @@
+{
+  "name": "@rf/privy",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "provision": "tsx src/provision.ts"
+  },
+  "dependencies": {
+    "@privy-io/node": "^0.34.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^5.0.0"
+  }
+}
