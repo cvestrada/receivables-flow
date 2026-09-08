@@ -3,7 +3,7 @@
 ## Overview
 
 **What:**
-Woodgrove Capital is given a public name of its own — `woodgrove.receivablesflow.eth` — that
+Woodgrove Capital is given a public name of its own — `woodgrove.investor.receivablesflow.eth` — that
 says one thing: this fund is cleared to own invoices, until this date. Anyone can look the
 name up and get the answer without asking Receivables Flow.
 
