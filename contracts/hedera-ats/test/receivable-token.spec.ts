@@ -61,7 +61,14 @@ describe('ReceivableToken', () => {
   describe('issueReceivableToken', () => {
     it('records the invoice face value and maturity on the token itself', async function () {
       this.timeout(120_000);
-      const issuedAt = (await ethers.provider.getBlock('latest'))!.timestamp;
+
+      /*
+       * Wall clock, not block time. The issuer stamps the starting date from the machine
+       * clock, while Hardhat gives every mined block a timestamp at least a second after the
+       * last — so on a chain that has already run a few hundred transactions the two clocks
+       * are minutes apart, and comparing against the block would fail for no real reason.
+       */
+      const issuedAt = Math.floor(Date.now() / 1000);
 
       const token = await issueReceivableToken(issuer, ats, ACME_INVOICE, [issuerAddress]);
       const terms = await readTerms(issuer, token);
