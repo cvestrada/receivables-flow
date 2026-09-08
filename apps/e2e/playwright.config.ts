@@ -30,12 +30,19 @@ export default defineConfig({
    * every click lands on markup that is not listening, which reads as a broken
    * feature rather than a broken harness. A production build is also what anyone
    * is actually going to look at.
+   *
+   * The app id is cleared rather than inherited, so the portals open straight onto
+   * the dashboard instead of a sign-in. Left to whatever `.env.local` happens to
+   * hold, this suite would pass on a fresh clone and fail for everyone who had
+   * configured credentials — the result would describe the machine, not the code.
+   * Signing in as a real director is checked by hand; see docs/accounts.md.
    */
   webServer: [
     {
       command: 'npm run build -w @rf/business && npm run start -w @rf/business -- --port 3200',
       url: 'http://127.0.0.1:3200',
       cwd: '../..',
+      env: { NEXT_PUBLIC_PRIVY_APP_ID: '' },
       reuseExistingServer: !process.env.CI,
       timeout: 300_000,
     },
@@ -43,6 +50,7 @@ export default defineConfig({
       command: 'npm run build -w @rf/investor && npm run start -w @rf/investor -- --port 3201',
       url: 'http://127.0.0.1:3201',
       cwd: '../..',
+      env: { NEXT_PUBLIC_PRIVY_APP_ID: '' },
       reuseExistingServer: !process.env.CI,
       timeout: 300_000,
     },

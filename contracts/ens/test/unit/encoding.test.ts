@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { ethers } from 'ethers';
 
-import { PROFILE_RECORDS, buildSetterBlob, encodeName } from '../../src/ens';
+import { PROFILE_RECORDS, buildSetterBlob, decidePass, encodeName } from '../../src/ens';
 
 describe('encoding', () => {
   describe('encodeName', () => {
@@ -58,6 +58,35 @@ describe('encoding', () => {
         'rf.invoices.defaulted',
         'credit.rating',
       ]);
+    });
+  });
+
+  describe('decidePass', () => {
+    const WALLET = '0x1111111111111111111111111111111111111111';
+    const DAY = 86_400n;
+    const EXPIRES = 1_800_000_000n;
+
+    it('clears a fund while its expiry is still ahead', () => {
+      expect(decidePass(WALLET, EXPIRES, EXPIRES - DAY).cleared).to.equal(true);
+    });
+
+    it('stops clearing the fund once the expiry has passed', () => {
+      // Nobody acts for this to happen. That is the whole point of putting a date on the
+      // pass rather than a flag someone has to remember to turn off.
+      expect(decidePass(WALLET, EXPIRES, EXPIRES + DAY).cleared).to.equal(false);
+    });
+
+    it('does not clear the fund at the exact second it expires', () => {
+      expect(decidePass(WALLET, EXPIRES, EXPIRES).cleared).to.equal(false);
+    });
+
+    it('does not clear a fund that was never issued a pass', () => {
+      expect(decidePass('', 0n, EXPIRES - DAY).cleared).to.equal(false);
+    });
+
+    it('reports the expiry the answer was decided on', () => {
+      // A caller that has to show its working needs the date, not just the verdict.
+      expect(decidePass(WALLET, EXPIRES, EXPIRES - DAY).expiresAt).to.equal(EXPIRES);
     });
   });
 });

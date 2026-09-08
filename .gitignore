@@ -32,6 +32,7 @@ references/
 # Approvals waiting for a second director — signatures over one sale, not secrets
 .approvals.json
 
-# Playwright output
+# Playwright
 test-results/
 playwright-report/
+blob-report/

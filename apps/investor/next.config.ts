@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
    * output, so Next has to be told to compile it. Without this the app builds
    * cleanly until the first import and then fails on unparsed syntax.
    */
-  transpilePackages: ['@rf/shared', '@rf/privy'],
+  transpilePackages: ['@rf/shared', '@rf/privy', '@rf/contracts-ens'],
 };
 
 export default nextConfig;
