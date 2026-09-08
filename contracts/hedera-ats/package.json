@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "check:balance": "hardhat run scripts/check-balance.ts --network hederaTestnet",
+    "deploy:dvp": "hardhat run scripts/deploy-dvp.ts --network hederaTestnet",
     "compile": "hardhat compile",
     "typecheck": "tsc --noEmit",
     "test": "hardhat test"
