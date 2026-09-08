@@ -1,4 +1,3 @@
-import { Approvals } from '@/components/approvals';
 import { PrivyPortal } from '@/components/privy';
 import { DEFAULTED, NAV, STAGES } from '@/data/business.data';
 
@@ -11,7 +10,6 @@ export default function Page() {
       nav={NAV}
       stages={STAGES}
       defaulted={DEFAULTED}
-      live={{ approvals: <Approvals /> }}
     />
   );
 }

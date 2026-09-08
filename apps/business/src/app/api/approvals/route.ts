@@ -54,16 +54,43 @@ function view(record: CountedApprovals) {
   };
 }
 
+/*
+ * What the portal shows before the accounts exist.
+ *
+ * The section still renders — the invoice, the counter, the two buttons — with the
+ * one thing that is missing named. A section that vanished until provisioning had
+ * run would leave the person looking at it unable to tell a missing account from a
+ * missing feature.
+ */
+function unopened(reason: string) {
+  return {
+    invoice: INVOICE,
+    amount: AMOUNT,
+    approvals: [],
+    required: 2,
+    ready: false,
+    unopened: reason,
+  };
+}
+
 export async function GET() {
-  return NextResponse.json(view(held()));
+  try {
+    return NextResponse.json(view(held()));
+  } catch (error) {
+    return NextResponse.json(unopened(error instanceof Error ? error.message : String(error)));
+  }
 }
 
 export async function POST(request: Request) {
   const body = (await request.json()) as { action: 'approve' | 'send'; approval?: Approval };
 
-  if (body.action === 'approve') {
-    if (!body.approval) return NextResponse.json({ error: 'no approval' }, { status: 400 });
-    return NextResponse.json(view(keep(recordApproval(held(), body.approval))));
+  try {
+    if (body.action === 'approve') {
+      if (!body.approval) return NextResponse.json({ error: 'no approval' }, { status: 400 });
+      return NextResponse.json(view(keep(recordApproval(held(), body.approval))));
+    }
+  } catch (error) {
+    return NextResponse.json(unopened(error instanceof Error ? error.message : String(error)));
   }
 
   /*
@@ -72,14 +99,16 @@ export async function POST(request: Request) {
    * handler declining to ask, and a handler that refused first would be exactly
    * the control-in-our-code the account exists to replace.
    */
-  const record = held();
   try {
+    const record = held();
     const sent = await sendSale(record.sale, record.approvals);
     return NextResponse.json({ ...view(record), hash: sent.hash });
   } catch (error) {
-    return NextResponse.json(
-      { ...view(record), refusal: error instanceof Error ? error.message : String(error) },
-      { status: 200 },
-    );
+    const reason = error instanceof Error ? error.message : String(error);
+    try {
+      return NextResponse.json({ ...view(held()), refusal: reason });
+    } catch {
+      return NextResponse.json(unopened(reason));
+    }
   }
 }

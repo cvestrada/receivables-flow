@@ -143,6 +143,10 @@ apps/investor/src/
 ├── app/api/allocate/route.ts    # new — asks the fund's account to sign an allocation, returns the refusal
 ├── components/allocate.tsx      # new — the live allocation control: within mandate, and over it
 └── components/portal.tsx        # modified — the same optional slot
+
+apps/e2e/
+├── playwright.config.ts         # new — builds and serves both portals, then drives them in a browser
+└── tests/refusals.spec.ts       # new — both refusals asserted on screen, where the issue asks for them
 ```
 
 ---
@@ -300,6 +304,13 @@ director produces is over exactly what that panel shows.
 **Two accounts, not four.** Ironline has one company account owned by the three directors together;
 Woodgrove has one fund account of its own. A director has no account — only a key that approves what
 the company account does.
+
+**Added after approval, at the human's direction: a browser suite.** The spec verified the portals
+with `next build`, which proves they compile and nothing more. `apps/e2e` builds and serves both and
+drives them with Playwright, so the claim that a refusal reaches the screen is checked on a screen.
+Two things surfaced while wiring it, both fixed here: the Approvals panel called a Privy hook outside
+its provider and would have thrown on the credential-free path, and both live sections rendered
+nothing at all before provisioning rather than saying what was missing.
 
 **The allocation is a payment, not yet a token.** Until the receivable token exists, allocating means
 paying the seller, and "the rated list" holds the seller's address standing in for the invoice.

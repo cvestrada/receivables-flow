@@ -34,6 +34,12 @@ is that Privy refuses rather than our code.
 | 10 | [integration] | [unhappy-path] | An allocation into an unlisted invoice will not sign | Investor diagram — "no" on the rating |
 | 11 | [integration] | [happy-path] | A $47,500 allocation into a listed invoice is signed and sent | Investor diagram — both "yes" branches |
 | 12 | [integration] | [boundary] | Opening the accounts a second time creates nothing | Business rule — idempotent provisioning |
+| 13 | [e2e] | [happy-path] | The Approvals section shows the invoice, the amount and 0 of 2 | Business diagram — the portal counts |
+| 14 | [e2e] | [unhappy-path] | Sending with too few approvals comes back refused, never sold | Business diagram — "Sell early" branch |
+| 15 | [e2e] | [boundary] | No office manager on screen; the three directors are named | Action item — the tier was dropped |
+| 16 | [e2e] | [unhappy-path] | An allocation over the cap will not sign, on screen | Investor diagram — "no" on the amount |
+| 17 | [e2e] | [unhappy-path] | An allocation into an unrated invoice will not sign, on screen | Investor diagram — "no" on the rating |
+| 18 | [e2e] | [happy-path] | An allocation within the mandate is signed and sent, on screen | Investor diagram — both "yes" branches |
 
 ---
 
@@ -113,12 +119,42 @@ and reports nothing created.
 
 ---
 
+## **What reaches the screen** — `apps/e2e/tests/refusals.spec.ts`
+
+Both portals are built and served, and a browser drives them. Nothing between the button and the
+account is replaced: the click, the route handler, the account and the rule are the running system.
+
+**[e2e] [happy-path] the Approvals section shows the invoice, the amount and 0 of 2**
+The panel names INV-2026-0417 and $47,500 and reports nobody has approved. The counter reads zero
+because nobody has, rather than because a literal says so.
+
+**[e2e] [unhappy-path] sending with too few approvals comes back refused, never sold**
+Pressing Send returns an answer from the company account and the panel never says Sold. With the
+accounts open that answer is Privy declining to sign; before they are open it is the account not
+existing. Both are the account answering, and the assertion follows which is true.
+
+**[e2e] [boundary] no office manager on screen; the three directors are named**
+The signing policy panel names Anna Reed, Tom Hill and Grace Ward and no office manager.
+
+**[e2e] [unhappy-path] an allocation over the cap will not sign, on screen**
+Pressing the $150,000 button puts the fund account's refusal in front of the person who pressed it,
+and never Signed and sent.
+
+**[e2e] [unhappy-path] an allocation into an unrated invoice will not sign, on screen**
+The same, for an invoice on no rated list.
+
+**[e2e] [happy-path] an allocation within the mandate is signed and sent, on screen**
+$47,500 into a rated invoice reaches Signed and sent with a transaction. Stands down until the
+accounts are open — there is nothing to sign with.
+
+---
+
 ## Not covered here
 
-**The two buttons on screen.** That both refusals reach the browser is checked by hand against the
-running portals, per the spec's `next build` verify clauses. An automated browser test of a flow
-whose whole point is a live provider refusing would test the mock, not the refusal.
+**A director approving, in the browser.** Producing a real director's signature needs a signed-in
+director, so the e2e suite exercises the panel and the send path but not the signature itself. That
+half is checked by hand with two directors in two browsers.
 
-**Blocked.** `refusals.test.ts` and the provisioning check cannot run until `libs/privy/.env` carries
-a Privy app id, app secret, an authorization key, and the three directors' Privy user IDs. The unit
-groups above run today with no credentials.
+**Blocked.** `refusals.test.ts`, the provisioning check, and the one e2e case that expects a
+signature cannot run until `libs/privy/.env` carries a Privy app id, app secret, an authorization key,
+and the three directors' Privy user IDs. Everything else above runs today with no credentials.

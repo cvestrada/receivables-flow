@@ -9,6 +9,11 @@ interface Answer {
   refusal?: string;
 }
 
+/** Privy's refusals name a rule; everything else is the setup not being finished. */
+function isRefusal(reason: string): boolean {
+  return /Privy refused/.test(reason);
+}
+
 const WITHIN_MANDATE_USD = 47_500;
 const OVER_MANDATE_USD = 150_000;
 
@@ -47,7 +52,7 @@ export function Allocate() {
   }
 
   return (
-    <section className="overflow-hidden rounded-xl border bg-[var(--surface)]">
+    <section aria-label="Allocate into RCV-0001" className="overflow-hidden rounded-xl border bg-[var(--surface)]">
       <header className="border-b px-5 py-4">
         <h2 className="text-[16px] font-semibold text-[var(--ink)]">Allocate into RCV-0001</h2>
         <p className="mt-0.5 text-[14px] text-[var(--muted)]">
@@ -71,9 +76,16 @@ export function Allocate() {
         </Button>
       </div>
 
-      {answer?.refusal && (
+      {answer?.refusal && isRefusal(answer.refusal) && (
         <div className="border-t bg-[var(--surface-alt)] px-5 py-3.5 text-[14px] leading-relaxed text-[var(--neg)]">
           <b>Will not sign.</b> {answer.refusal}
+        </div>
+      )}
+      {answer?.refusal && !isRefusal(answer.refusal) && (
+        <div className="border-t bg-[var(--surface-alt)] px-5 py-3.5 text-[14px] leading-relaxed text-[var(--muted)]">
+          <b>The fund&rsquo;s account is not open yet.</b> {answer.refusal} — run{' '}
+          <code>npm run provision -w @rf/privy</code> once the Privy credentials are in{' '}
+          <code>libs/privy/.env</code>.
         </div>
       )}
       {answer?.hash && (

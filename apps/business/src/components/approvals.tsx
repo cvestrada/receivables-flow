@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuthorizationSignature, usePrivy } from '@privy-io/react-auth';
 import { Button } from '@/components/ui/button';
+import type { Approval } from '@rf/privy/accounts';
 
 interface View {
   invoice: string;
@@ -13,11 +13,8 @@ interface View {
   ready: boolean;
   hash?: string;
   refusal?: string;
-}
-
-/** The name before the @, which is how the approval record refers to a director. */
-function who(email: string | undefined): string {
-  return email?.split('@')[0] ?? 'director';
+  /** Set when no account has been opened yet, carrying what is missing. */
+  unopened?: string;
 }
 
 /**
@@ -27,10 +24,20 @@ function who(email: string | undefined): string {
  * browser. Nothing here decides whether the sale may proceed — it collects
  * signatures and shows how many have arrived. Whether two is enough is a question
  * only the company account can answer, and it answers it when Send is pressed.
+ *
+ * Signing arrives as a prop rather than a hook, because this panel also renders
+ * with no Privy app configured — the state the walkthrough runs in, and the state
+ * a browser test can reach. Reading the record and sending it are the same in both;
+ * only producing a signature needs a signed-in director.
  */
-export function Approvals() {
-  const { user, authenticated } = usePrivy();
-  const { generateAuthorizationSignature } = useAuthorizationSignature();
+export function Approvals({
+  approve,
+  signedInAs,
+}: {
+  /** Produces the signed-in director's approval of the sale, when one is signed in. */
+  approve?: (sale: unknown) => Promise<Approval>;
+  signedInAs?: string;
+}) {
   const [view, setView] = useState<View | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -53,21 +60,18 @@ export function Approvals() {
 
   if (!view) return null;
 
-  const email = user?.email?.address;
-  const mine = view.approvals.some((approval) => approval.userId === user?.id);
+  const opened = !view.unopened;
 
-  async function approve() {
-    if (!view || !user) return;
+  const mine = Boolean(signedInAs) && view.approvals.some((a) => a.name === signedInAs);
+
+  async function record() {
+    if (!view || !approve) return;
     setBusy(true);
     try {
-      const { signature } = await generateAuthorizationSignature(view.sale as never);
       const response = await fetch('/api/approvals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'approve',
-          approval: { userId: user.id, name: who(email), signature },
-        }),
+        body: JSON.stringify({ action: 'approve', approval: await approve(view.sale) }),
       });
       setView(await response.json());
     } finally {
@@ -90,7 +94,7 @@ export function Approvals() {
   }
 
   return (
-    <section className="overflow-hidden rounded-xl border bg-[var(--surface)]">
+    <section aria-label="Sell this invoice" className="overflow-hidden rounded-xl border bg-[var(--surface)]">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
         <div>
           <h2 className="text-[16px] font-semibold text-[var(--ink)]">Sell this invoice</h2>
@@ -116,17 +120,35 @@ export function Approvals() {
       </ul>
 
       <div className="flex flex-wrap gap-2.5 border-t px-5 py-4">
-        <Button onClick={approve} disabled={!authenticated || mine || busy}>
-          {mine ? `Approved as ${who(email)}` : `Approve as ${who(email)}`}
+        <Button onClick={record} disabled={!approve || !opened || mine || busy}>
+          {!approve
+            ? 'Sign in to approve'
+            : mine
+              ? `Approved as ${signedInAs}`
+              : `Approve as ${signedInAs}`}
         </Button>
         {/*
           * Offered at any count on purpose. Pressing it with one approval is how the
           * refusal is produced on demand, and the account is the thing that refuses.
           */}
+        {/*
+          * Never disabled, including before the accounts are open. Pressing it is how
+          * you find out what the company account says, and refusing to ask on its
+          * behalf would put the decision back in our code — which is the thing this
+          * whole section exists to take out of it.
+          */}
         <Button variant="outline" onClick={send} disabled={busy}>
           Send to the company account
         </Button>
       </div>
+
+      {view.unopened && (
+        <div className="border-t bg-[var(--surface-alt)] px-5 py-3.5 text-[14px] leading-relaxed text-[var(--muted)]">
+          <b>The company account is not open yet.</b> Approving needs it to exist —
+          run <code>npm run provision -w @rf/privy</code> once the Privy credentials are in{' '}
+          <code>libs/privy/.env</code>.
+        </div>
+      )}
 
       {view.refusal && (
         <div className="border-t bg-[var(--surface-alt)] px-5 py-3.5 text-[14px] leading-relaxed text-[var(--neg)]">
