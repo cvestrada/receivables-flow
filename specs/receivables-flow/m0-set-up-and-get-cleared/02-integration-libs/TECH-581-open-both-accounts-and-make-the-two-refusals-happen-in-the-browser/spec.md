@@ -147,6 +147,9 @@ apps/investor/src/
 apps/e2e/
 ├── playwright.config.ts         # new — builds and serves both portals, then drives them in a browser
 └── tests/refusals.spec.ts       # new — both refusals asserted on screen, where the issue asks for them
+
+docs/accounts.md                 # new — who signs in on each side, the two controls, and how to produce both refusals
+README.md                        # modified — one paragraph pointing at it from The cast
 ```
 
 ---
@@ -305,6 +308,11 @@ director produces is over exactly what that panel shows.
 **Two accounts, not four.** Ironline has one company account owned by the three directors together;
 Woodgrove has one fund account of its own. A director has no account — only a key that approves what
 the company account does.
+
+**Added after approval, at the human's direction: the cast is documented.** `docs/accounts.md` states
+how many people sign in on each side, why the two accounts carry different Privy controls, and the
+exact click order that produces each refusal — so the demo can be run by someone who has not read
+this spec.
 
 **Added after approval, at the human's direction: the three directors are written down.**
 `accounts.json` now records each director's name, email and Privy id, so who may approve outlives the
