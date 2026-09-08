@@ -33,17 +33,16 @@ export const NAV: NavItem[] = [
 ];
 
 const POLICY: Block = {t:'kv',h:'Signing policy — Ironline Freight company wallet',rows:[
-  ['Office manager','up to $10,000',''],
-  ['Two of three directors','above $10,000',''],
-  ['Directors on file','R. Okonjo · M. Halvorsen · T. Nakamura','m']],
-  note:'INV-2026-0417 is <b>$50,000</b>, so it takes two directors. One employee acting alone cannot sell an invoice that does not exist.'};
+  ['Approval required','two of three directors',''],
+  ['Directors on file','Anna Reed · Tom Hill · Grace Ward','m']],
+  note:'Every sale takes two directors, whatever it is worth. One employee acting alone cannot sell an invoice that does not exist.'};
 
 const SIGNED: Block = {t:'table',h:'INV-2026-0417 — approval record',
   head:['Director','Decision','Time','From'],
   rows:[
-    [{v:'R. Okonjo',cls:'strong'},{chip:'Approved',tone:'ok'},'09:14','Mobile'],
-    [{v:'M. Halvorsen',cls:'strong'},{chip:'Approved',tone:'ok'},'17:02','Mobile'],
-    [{v:'T. Nakamura',cls:'dim'},{chip:'Not needed',tone:'idle'},{v:'—',cls:'dim'},{v:'—',cls:'dim'}]],
+    [{v:'Anna Reed',cls:'strong'},{chip:'Approved',tone:'ok'},'09:14','Mobile'],
+    [{v:'Tom Hill',cls:'strong'},{chip:'Approved',tone:'ok'},'17:02','Mobile'],
+    [{v:'Grace Ward',cls:'dim'},{chip:'Not needed',tone:'idle'},{v:'—',cls:'dim'},{v:'—',cls:'dim'}]],
   note:'Quorum met at <b>17:02</b>, eight hours after the first signature. The sale then proceeded on its own — nobody pressed a final button.'};
 
 export const STAGES: Stage[] = [
@@ -80,7 +79,7 @@ export const STAGES: Stage[] = [
       ['Next payroll run','11 days','','$38,400 due']]},
     {t:'feed',h:'Activity',items:[
       ['17:02','Quorum met — <b>2 of 3 directors</b> approved the sale of INV-2026-0417','ok'],
-      ['09:14','R. Okonjo approved from mobile','ok'],
+      ['09:14','Anna Reed approved from mobile','ok'],
       ['09:02','Invoice <b>INV-2026-0417</b> raised against Northwind Brokerage — $50,000','']]}],
   invoices:[
     {t:'table',h:'Outstanding invoices',head:['Invoice','Customer','Amount','Due','Terms','Status'],

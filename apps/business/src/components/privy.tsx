@@ -1,9 +1,11 @@
 'use client';
 
-import { PrivyProvider, usePrivy } from '@privy-io/react-auth';
+import { PrivyProvider, useAuthorizationSignature, usePrivy } from '@privy-io/react-auth';
 import { Button } from '@/components/ui/button';
 import { Portal, type PortalProps } from '@/components/portal';
 import { AccountMenu } from '@/components/account-menu';
+import { Approvals } from '@/components/approvals';
+import { nameFromEmail } from '@rf/privy/policies';
 
 const APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? '';
 
@@ -21,7 +23,12 @@ const APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? '';
  * hardcoded walkthrough still runs without credentials.
  */
 export function PrivyPortal(props: PortalProps) {
-  if (!APP_ID) return <Portal {...props} />;
+  /*
+   * With no app id there is no director to sign as, so the Approvals section still
+   * shows where the sale stands and can still send it — it just cannot add an
+   * approval. That is the honest state, and it is the one the walkthrough runs in.
+   */
+  if (!APP_ID) return <Portal {...props} live={{ approvals: <Approvals /> }} />;
 
   return (
     <PrivyProvider
@@ -64,5 +71,29 @@ function Gate(props: PortalProps) {
     );
   }
 
-  return <Portal {...props} account={<AccountMenu />} />;
+  return <Portal {...props} account={<AccountMenu />} live={{ approvals: <SigningApprovals /> }} />;
+}
+
+/**
+ * The Approvals section with a signed-in director behind it.
+ *
+ * The signature is taken here, in the director's own browser, over the exact sale
+ * the panel above is showing. Nothing about the sale is re-described on the way —
+ * a second description would be a second sale as far as the company account is
+ * concerned, and the two approvals would never meet.
+ */
+function SigningApprovals() {
+  const { user } = usePrivy();
+  const { generateAuthorizationSignature } = useAuthorizationSignature();
+  const name = user?.email?.address ? nameFromEmail(user.email.address) : 'director';
+
+  return (
+    <Approvals
+      signedInAs={name}
+      approve={async (sale) => {
+        const { signature } = await generateAuthorizationSignature(sale as never);
+        return { userId: user?.id ?? '', name, signature };
+      }}
+    />
+  );
 }

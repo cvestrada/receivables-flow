@@ -18,6 +18,13 @@ export interface PortalProps {
   signer: string;
   /** Replaces the static signer line once a real account is signed in. */
   account?: React.ReactNode;
+  /*
+   * Live content for a section, keyed by nav id and rendered above that section's
+   * panels. The walkthrough's panels are literals in a data module and cannot hold
+   * a component, so anything that talks to a real account arrives through here —
+   * and a section given nothing renders exactly as it does today.
+   */
+  live?: Record<string, React.ReactNode>;
   nav: NavItem[];
   stages: Stage[];
   defaulted: Stage;
@@ -25,7 +32,7 @@ export interface PortalProps {
   openAt?: number;
 }
 
-export function Portal({ brand, ens, signer, account, nav, stages, defaulted, openAt = 3 }: PortalProps) {
+export function Portal({ brand, ens, signer, account, live, nav, stages, defaulted, openAt = 3 }: PortalProps) {
   const [moment, setMoment] = useState(openAt);
   const [section, setSection] = useState(nav[0].id);
   const [broke, setBroke] = useState(false);
@@ -185,6 +192,7 @@ export function Portal({ brand, ens, signer, account, nav, stages, defaulted, op
             </div>
 
             <div key={swapKey} className="swap flex min-w-0 flex-col gap-5">
+              {live?.[section]}
               {blocks.map((block, i) => (
                 <BlockView key={i} block={block} />
               ))}

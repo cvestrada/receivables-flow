@@ -18,6 +18,8 @@
 
 Ironline Freight's customer is the one who actually owes the money. They never touch the platform, but their payment — or non-payment — is the event everything hinges on.
 
+Four people sign in across the two portals: three directors on the business side, who must agree two-of-three before the company account will sell anything, and one portfolio manager on the investor side, whose fund account refuses outside its mandate without asking anyone. [**Who signs in, and what each account refuses**](docs/accounts.md) sets out the cast, the two controls, and how to produce both refusals on screen.
+
 ## Why
 
 Ironline Freight does the work, sends the invoice, and then waits 60 days to get paid. Payroll and suppliers do not wait. The financing meant to bridge that gap keeps failing businesses like theirs: the global trade finance gap is **$2.5 trillion**, and small businesses still get **41% of their financing requests rejected** ([ADB Global Trade Finance Gap Survey](https://www.adb.org/publications/adb-global-trade-finance-gap-survey)).

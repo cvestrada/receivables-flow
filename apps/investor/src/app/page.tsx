@@ -1,3 +1,4 @@
+import { Allocate } from '@/components/allocate';
 import { PrivyPortal } from '@/components/privy';
 import { NAV, buildDefaulted, buildStages } from '@/data/investor.data';
 import { investorPass } from '@/lib/ens/pass';
@@ -20,6 +21,7 @@ export default async function Page() {
       nav={NAV}
       stages={buildStages(pass)}
       defaulted={buildDefaulted(pass)}
+      live={{ compliance: <Allocate /> }}
     />
   );
 }

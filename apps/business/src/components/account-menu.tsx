@@ -1,6 +1,7 @@
 'use client';
 
 import { usePrivy } from '@privy-io/react-auth';
+import { nameFromEmail } from '@rf/privy/policies';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -15,9 +16,9 @@ function initials(email: string | undefined): string {
   return (email?.slice(0, 2) ?? '··').toUpperCase();
 }
 
-/** The name before the @, which is how the approval record refers to them. */
+/** How the approval record refers to them. */
 function who(email: string | undefined): string {
-  return email?.split('@')[0] ?? 'director';
+  return email ? nameFromEmail(email) : 'director';
 }
 
 /**

@@ -33,6 +33,20 @@ export function usdToWeibar(usd: number): bigint {
   return (BigInt(usd) * WEIBAR_PER_HBAR) / BigInt(USD_PER_HBAR);
 }
 
+/**
+ * The person behind an address, as a portal should name them.
+ *
+ * The demo's addresses are prefixed by which side of the deal someone is on, which
+ * is useful in a mailbox and wrong on screen — a panel saying an approval came from
+ * `business-anna` reads as a system account rather than as a person. Kept here
+ * rather than beside the accounts because a browser needs it and this file is the
+ * half of the package that carries nothing a browser cannot have.
+ */
+export function nameFromEmail(email: string): string {
+  const local = email.split('@')[0].replace(/^(business|investor)-/, '');
+  return local.charAt(0).toUpperCase() + local.slice(1);
+}
+
 export interface ApprovingGroup {
   display_name: string;
   user_ids: string[];
@@ -122,4 +136,94 @@ export function buildFundPolicy(ratedListId: string): Policy {
       },
     ],
   };
+}
+
+/** Hedera testnet through its EVM interface. Both accounts sign for this chain only. */
+export const HEDERA_CAIP2 = process.env.HEDERA_CAIP2 ?? 'eip155:296';
+
+/**
+ * A request to Privy, in the exact form the signature is taken over.
+ *
+ * Directors do not sign a transaction; they sign an API request. Privy verifies
+ * each signature against these bytes, so what is described here is what is
+ * approved.
+ */
+export interface SignableRequest {
+  version: 1;
+  url: string;
+  method: 'POST';
+  headers: { 'privy-app-id': string };
+  body: {
+    caip2: string;
+    method: 'eth_sendTransaction';
+    chain_type: 'ethereum';
+    params: { transaction: { to: string; value: string; data: string } };
+  };
+}
+
+function request(
+  appId: string,
+  walletId: string,
+  transaction: { to: string; value: string; data: string },
+): SignableRequest {
+  return {
+    version: 1,
+    url: `https://api.privy.io/v1/wallets/${walletId}/rpc`,
+    method: 'POST',
+    headers: { 'privy-app-id': appId },
+    body: {
+      caip2: HEDERA_CAIP2,
+      method: 'eth_sendTransaction',
+      chain_type: 'ethereum',
+      params: { transaction },
+    },
+  };
+}
+
+/** The invoice a sale hands over, carried as the transaction's data so it is part of what is signed. */
+function invoiceMarker(invoiceId: string): string {
+  return `0x${Buffer.from(invoiceId, 'utf8').toString('hex')}`;
+}
+
+/**
+ * The sale of one invoice to one buyer, as the request two directors will each sign.
+ *
+ * Nothing in here varies between calls — no nonce, no timestamp, no clock. Two
+ * directors approving at different hours must produce signatures over identical
+ * bytes, because Privy counts signatures per request rather than per intent. A
+ * single varying field would make the two approvals count as one approval of each
+ * of two sales, and the sale would be refused for a reason indistinguishable from
+ * the quorum working correctly.
+ */
+export function buildSaleRequest(sale: {
+  appId: string;
+  walletId: string;
+  invoiceId: string;
+  buyer: string;
+}): SignableRequest {
+  return request(sale.appId, sale.walletId, {
+    to: sale.buyer,
+    value: '0x0',
+    data: invoiceMarker(sale.invoiceId),
+  });
+}
+
+/**
+ * The fund putting money into one invoice.
+ *
+ * The amount lands in the transaction's `value`, which is the field the fund's
+ * mandate compares against — so the cap is enforced on the same number the
+ * allocation actually moves.
+ */
+export function buildAllocationRequest(allocation: {
+  appId: string;
+  walletId: string;
+  invoice: string;
+  usd: number;
+}): SignableRequest {
+  return request(allocation.appId, allocation.walletId, {
+    to: allocation.invoice,
+    value: `0x${usdToWeibar(allocation.usd).toString(16)}`,
+    data: '0x',
+  });
 }
