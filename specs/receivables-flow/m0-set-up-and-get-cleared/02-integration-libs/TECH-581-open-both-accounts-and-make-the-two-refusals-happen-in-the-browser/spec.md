@@ -128,7 +128,7 @@ libs/privy/
 │   ├── policies.ts              # modified — also builds the exact sale and allocation requests both sides sign
 │   ├── provision.ts             # new — opens both accounts with their rules attached, writes accounts.json
 │   └── accounts.ts              # new — what the portals call: propose, approve, send, allocate, balances
-├── accounts.json                # new — the resolved account addresses, quorum id, policy id, rated list id
+├── accounts.json                # new — the account addresses, the three directors, quorum id, policy id, rated list id
 └── test/
     ├── policies.test.ts         # modified — the sale request is identical for every director
     └── refusals.test.ts         # new — the provider actually refuses one approval and an over-mandate allocation
@@ -305,6 +305,10 @@ director produces is over exactly what that panel shows.
 **Two accounts, not four.** Ironline has one company account owned by the three directors together;
 Woodgrove has one fund account of its own. A director has no account — only a key that approves what
 the company account does.
+
+**Added after approval, at the human's direction: the three directors are written down.**
+`accounts.json` now records each director's name, email and Privy id, so who may approve outlives the
+environment variable that named them and the portal can attribute an approval to a person.
 
 **Added after approval, at the human's direction: the directors are created, not looked up.** The
 setup originally asked for three Privy user ids pasted in by hand, which meant signing in three times

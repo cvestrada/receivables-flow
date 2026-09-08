@@ -11,7 +11,7 @@ import 'dotenv/config';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { APPROVERS_REQUIRED, buildApprovingGroup, buildFundPolicy } from './policies';
-import type { OpenedAccounts } from './accounts';
+import { nameFromEmail, type Director, type OpenedAccounts } from './accounts';
 
 const ACCOUNTS_PATH = join(import.meta.dirname, '..', 'accounts.json');
 const API = 'https://api.privy.io/v1';
@@ -50,7 +50,7 @@ async function privy<T>(path: string, body: unknown): Promise<T> {
  * paste it back. A director signing in later with the same address lands on the
  * account made here, so the group is built over the same three people either way.
  */
-async function directors(): Promise<string[]> {
+async function directors(): Promise<Director[]> {
   const emails = env('PRIVY_DIRECTOR_EMAILS')
     .split(',')
     .map((email) => email.trim())
@@ -60,20 +60,26 @@ async function directors(): Promise<string[]> {
     throw new Error(`PRIVY_DIRECTOR_EMAILS must name three directors, found ${emails.length}`);
   }
 
-  const ids: string[] = [];
-  for (const address of emails) {
+  const found: Director[] = [];
+  for (const email of emails) {
     /*
      * Asked for first, created second. Provisioning is re-run whenever anything
      * around it changes, and creating a director who already exists would either
      * fail or quietly make a second person out of one.
      */
-    const existing = await find('/users/email/address', { address });
-    ids.push(existing?.id ?? (await privy<{ id: string }>('/users', {
-      linked_accounts: [{ type: 'email', address }],
-    })).id);
+    const existing = await find('/users/email/address', { address: email });
+    const userId =
+      existing?.id ??
+      (
+        await privy<{ id: string }>('/users', {
+          linked_accounts: [{ type: 'email', address: email }],
+        })
+      ).id;
+
+    found.push({ name: nameFromEmail(email), email, userId });
   }
 
-  return ids;
+  return found;
 }
 
 /** Look something up, distinguishing "not there" from a real failure. */
@@ -109,7 +115,8 @@ export async function openAccounts(): Promise<OpenedAccounts> {
     return { ...open, created: [] };
   }
 
-  const group = buildApprovingGroup(await directors());
+  const board = await directors();
+  const group = buildApprovingGroup(board.map((director) => director.userId));
   const quorum = await privy<{ id: string }>('/key_quorums', group);
 
   const company = await privy<{ id: string; address: string }>('/wallets', {
@@ -138,7 +145,17 @@ export async function openAccounts(): Promise<OpenedAccounts> {
   });
 
   const opened: OpenedAccounts = {
-    company: { address: company.address, walletId: company.id, quorumId: quorum.id },
+    company: {
+      address: company.address,
+      walletId: company.id,
+      quorumId: quorum.id,
+      /*
+       * Written down so the record of who may approve outlives the environment
+       * variable that named them. Reading it back is how anyone answers "who are
+       * the three?" without a dashboard.
+       */
+      directors: board,
+    },
     fund: { address: fund.address, walletId: fund.id, policyId: policy.id },
     ratedListId: ratedList.id,
     created: ['company account', 'rated list', 'fund mandate', 'fund account'],

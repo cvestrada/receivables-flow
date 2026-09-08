@@ -33,6 +33,20 @@ export function usdToWeibar(usd: number): bigint {
   return (BigInt(usd) * WEIBAR_PER_HBAR) / BigInt(USD_PER_HBAR);
 }
 
+/**
+ * The person behind an address, as a portal should name them.
+ *
+ * The demo's addresses are prefixed by which side of the deal someone is on, which
+ * is useful in a mailbox and wrong on screen — a panel saying an approval came from
+ * `business-anna` reads as a system account rather than as a person. Kept here
+ * rather than beside the accounts because a browser needs it and this file is the
+ * half of the package that carries nothing a browser cannot have.
+ */
+export function nameFromEmail(email: string): string {
+  const local = email.split('@')[0].replace(/^(business|investor)-/, '');
+  return local.charAt(0).toUpperCase() + local.slice(1);
+}
+
 export interface ApprovingGroup {
   display_name: string;
   user_ids: string[];

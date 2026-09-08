@@ -16,6 +16,8 @@ import {
   type SignableRequest,
 } from './policies';
 
+export { nameFromEmail } from './policies';
+
 /*
  * Found by walking up from wherever the caller happens to be running.
  *
@@ -37,8 +39,18 @@ function accountsPath(): string {
   }
 }
 
+/** One of the three people who together own Ironline Freight's account. */
+export interface Director {
+  /** How the portal refers to them. */
+  name: string;
+  /** What they sign in with, and where Privy sends their code. */
+  email: string;
+  /** Who they are to Privy, and therefore who counts toward the two. */
+  userId: string;
+}
+
 export interface OpenedAccounts {
-  company: { address: string; walletId: string; quorumId: string };
+  company: { address: string; walletId: string; quorumId: string; directors: Director[] };
   fund: { address: string; walletId: string; policyId: string };
   ratedListId: string;
   /** What this run of provisioning created. Empty on every run after the first. */

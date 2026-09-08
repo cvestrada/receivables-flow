@@ -8,6 +8,7 @@ import {
   buildAllocationRequest,
   buildFundPolicy,
   buildSaleRequest,
+  nameFromEmail,
   usdToWeibar,
 } from '../src/policies';
 
@@ -109,5 +110,13 @@ describe('the request the fund signs', () => {
 
     expect(request.body.params.transaction.to).toBe(invoice);
     expect(BigInt(request.body.params.transaction.value)).toBe(usdToWeibar(47_500));
+  });
+});
+
+describe('naming a director', () => {
+  it('names the person, not the mailbox', () => {
+    expect(nameFromEmail('business-anna@galuaselou.resend.app')).toBe('Anna');
+    expect(nameFromEmail('investor-woodgrove@galuaselou.resend.app')).toBe('Woodgrove');
+    expect(nameFromEmail('grace@ironline.test')).toBe('Grace');
   });
 });

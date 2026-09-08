@@ -25,6 +25,7 @@ is that Privy refuses rather than our code.
 | 1 | [unit] | [happy-path] | Two directors approving one sale sign byte-identical requests | Business rule — the same sale, down to the byte |
 | 2 | [unit] | [boundary] | A sale of a different invoice is a different request | Business rule — two approvals of two sales are not two of one |
 | 3 | [unit] | [happy-path] | An allocation carries the stated dollars at the published rate | Business rule — the scale |
+| 3b | [unit] | [boundary] | A director is named as a person, not as a mailbox | Business rule — the portal names who approved |
 | 4 | [unit] | [happy-path] | The first approval leaves the sale at 1 of 2 | Business diagram — "one" branch |
 | 5 | [unit] | [boundary] | One director approving twice is still one approval | Business rule — one approval never moves anything |
 | 6 | [unit] | [happy-path] | The second approval brings the sale to 2 of 2 | Business diagram — "two" branch |
@@ -63,6 +64,13 @@ approving one sale silently approves another.
 A $47,500 allocation carries the chain amount that $47,500 converts to, and names the invoice being
 bought as the recipient. The fund's rule compares against exactly this field, so a conversion error
 here is refused as over-mandate and reads as a working control.
+
+### **nameFromEmail**
+
+**[unit] [boundary] a director is named as a person, not as a mailbox**
+`business-anna@…` is Anna. The demo's addresses carry the side of the deal someone is on, which is
+useful in a mailbox and wrong on screen — an approval attributed to `business-anna` reads as a system
+account rather than as one of the three people who own the company account.
 
 ---
 

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Portal, type PortalProps } from '@/components/portal';
 import { AccountMenu } from '@/components/account-menu';
 import { Approvals } from '@/components/approvals';
+import { nameFromEmail } from '@rf/privy/policies';
 
 const APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? '';
 
@@ -73,11 +74,6 @@ function Gate(props: PortalProps) {
   return <Portal {...props} account={<AccountMenu />} live={{ approvals: <SigningApprovals /> }} />;
 }
 
-/** The name before the @, which is how the approval record refers to a director. */
-function who(email: string | undefined): string {
-  return email?.split('@')[0] ?? 'director';
-}
-
 /**
  * The Approvals section with a signed-in director behind it.
  *
@@ -89,7 +85,7 @@ function who(email: string | undefined): string {
 function SigningApprovals() {
   const { user } = usePrivy();
   const { generateAuthorizationSignature } = useAuthorizationSignature();
-  const name = who(user?.email?.address);
+  const name = user?.email?.address ? nameFromEmail(user.email.address) : 'director';
 
   return (
     <Approvals
