@@ -1,6 +1,15 @@
 import type { HardhatUserConfig } from 'hardhat/config';
 import '@nomicfoundation/hardhat-toolbox';
-import 'dotenv/config';
+import { config as loadEnv } from 'dotenv';
+import { join } from 'node:path';
+
+/*
+ * Every credential this repository needs lives in one `.env` at the root, so a value shared by
+ * the contracts, the accounts and the portals is changed once rather than copied into each
+ * directory that reads it. Bare `dotenv/config` would only find a file beside whichever
+ * directory the process happened to start in, which is how the same key ended up in three.
+ */
+loadEnv({ path: join(__dirname, '..', '..', '.env') });
 
 const privateKey = process.env.SEPOLIA_PRIVATE_KEY;
 const sepoliaRpcUrl = process.env.SEPOLIA_RPC_URL ?? 'https://ethereum-sepolia-rpc.publicnode.com';
