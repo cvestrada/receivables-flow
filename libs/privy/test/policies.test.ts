@@ -5,7 +5,9 @@ import {
   FUND_CAP_USD,
   USD_PER_HBAR,
   buildApprovingGroup,
+  buildAllocationRequest,
   buildFundPolicy,
+  buildSaleRequest,
   usdToWeibar,
 } from '../src/policies';
 
@@ -70,5 +72,42 @@ describe('amounts', () => {
     expect(USD_PER_HBAR).toBe(10_000);
     expect(usdToWeibar(100_000)).toBe(10n * 10n ** 18n);
     expect(usdToWeibar(50_000)).toBe(5n * 10n ** 18n);
+  });
+});
+
+describe('the request a director signs', () => {
+  const sale = {
+    appId: 'app-1',
+    walletId: 'wallet-1',
+    invoiceId: 'INV-2026-0417',
+    buyer: `0x${'1'.repeat(40)}`,
+  };
+
+  it('is byte-identical for every director approving one sale', () => {
+    const first = JSON.stringify(buildSaleRequest(sale));
+    const second = JSON.stringify(buildSaleRequest(sale));
+
+    expect(first).toBe(second);
+  });
+
+  it('differs once the invoice differs', () => {
+    const other = JSON.stringify(buildSaleRequest({ ...sale, invoiceId: 'INV-2026-0418' }));
+
+    expect(other).not.toBe(JSON.stringify(buildSaleRequest(sale)));
+  });
+});
+
+describe('the request the fund signs', () => {
+  it('carries the stated dollars at the published rate', () => {
+    const invoice = `0x${'2'.repeat(40)}`;
+    const request = buildAllocationRequest({
+      appId: 'app-1',
+      walletId: 'wallet-2',
+      invoice,
+      usd: 47_500,
+    });
+
+    expect(request.body.params.transaction.to).toBe(invoice);
+    expect(BigInt(request.body.params.transaction.value)).toBe(usdToWeibar(47_500));
   });
 });

@@ -1,0 +1,129 @@
+import { beforeAll, describe, expect, it } from 'vitest';
+import { FUND_CAP_USD, type SignableRequest } from '../src/policies';
+import { allocate, balances, saleToApprove, sendSale, type Approval } from '../src/accounts';
+import { openAccounts } from '../src/provision';
+
+/*
+ * These assert that Privy refuses, not that we do. That is the whole claim of this
+ * lane, and it cannot be made against a mock: a mocked refusal proves only that we
+ * wrote a mock that refuses. So each group stands down without its credentials
+ * rather than substituting a fake and reporting a pass.
+ */
+const FUND_LIVE = Boolean(process.env.PRIVY_APP_SECRET && process.env.PRIVY_AUTHORIZATION_KEY);
+
+/*
+ * A director approves in their browser, with a key only they hold. Reaching that
+ * key from a test means holding a signed-in director's access token, so this group
+ * runs only when three of them are supplied. When they are not, the company's
+ * refusal is the one checked by hand in the portal — which is where the issue asks
+ * for it anyway.
+ */
+const DIRECTOR_TOKENS = (process.env.PRIVY_DIRECTOR_ACCESS_TOKENS ?? '')
+  .split(',')
+  .map((token) => token.trim())
+  .filter(Boolean);
+
+const INVOICE = 'INV-2026-0417';
+const WITHIN_MANDATE_USD = 47_500;
+const OVER_MANDATE_USD = 150_000;
+
+/** An invoice nobody has rated, so it is on no list the fund may buy from. */
+const UNRATED_INVOICE = `0x${'9'.repeat(40)}`;
+
+/**
+ * Every refusal here must name the rule that refused it.
+ *
+ * An account with no money refuses everything too, at the same point in the same
+ * call. Asserting only that the call failed would let an empty account masquerade
+ * as a working control for as long as it stayed empty.
+ */
+function refusedByRule(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  expect(message).not.toMatch(/insufficient|balance|funds/i);
+  return message;
+}
+
+/** One director approving the sale, signing with the key their own session holds. */
+async function approveAs(sale: SignableRequest, index: number): Promise<Approval> {
+  const response = await fetch('https://api.privy.io/v1/users/me/authorization_signature', {
+    method: 'POST',
+    headers: {
+      'privy-app-id': process.env.PRIVY_APP_ID ?? '',
+      Authorization: `Bearer ${DIRECTOR_TOKENS[index]}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ request: sale }),
+  });
+
+  if (!response.ok) throw new Error(`Director ${index} could not approve: ${await response.text()}`);
+
+  const { signature, user_id: userId } = (await response.json()) as {
+    signature: string;
+    user_id: string;
+  };
+  return { userId, name: `Director ${index}`, signature };
+}
+
+describe.skipIf(!FUND_LIVE)("Woodgrove Capital's fund account", () => {
+  beforeAll(async () => {
+    const held = await balances();
+    expect(held.fund).toBeGreaterThan(0n);
+  });
+
+  it(`refuses an allocation above $${FUND_CAP_USD.toLocaleString()}`, async () => {
+    await allocate({ invoice: 'company', usd: OVER_MANDATE_USD }).then(
+      () => expect.unreachable('an over-mandate allocation was signed'),
+      (error) => expect(refusedByRule(error)).toMatch(/polic|mandate|denied/i),
+    );
+  });
+
+  it('refuses an allocation into an invoice that is on no rated list', async () => {
+    await allocate({ invoice: UNRATED_INVOICE, usd: WITHIN_MANDATE_USD }).then(
+      () => expect.unreachable('an unrated invoice was funded'),
+      (error) => expect(refusedByRule(error)).toMatch(/polic|denied/i),
+    );
+  });
+
+  it('signs an allocation within the mandate into a rated invoice', async () => {
+    const sent = await allocate({ invoice: 'company', usd: WITHIN_MANDATE_USD });
+
+    expect(sent.hash).toMatch(/^0x[0-9a-f]+$/i);
+  });
+});
+
+describe.skipIf(DIRECTOR_TOKENS.length < 2)("Ironline Freight's company account", () => {
+  beforeAll(async () => {
+    const held = await balances();
+    expect(held.company).toBeGreaterThan(0n);
+  });
+
+  it('refuses a sale carrying one approval', async () => {
+    const sale = saleToApprove(INVOICE);
+
+    await sendSale(sale, [await approveAs(sale, 0)]).then(
+      () => expect.unreachable('one approval sold the invoice'),
+      (error) => expect(refusedByRule(error)).toMatch(/authoriz|quorum|threshold|signature/i),
+    );
+  });
+
+  it('accepts the same sale once a second director approves', async () => {
+    const sale = saleToApprove(INVOICE);
+    const both = [await approveAs(sale, 0), await approveAs(sale, 1)];
+
+    const sent = await sendSale(sale, both);
+
+    expect(sent.hash).toMatch(/^0x[0-9a-f]+$/i);
+  });
+});
+
+describe.skipIf(!FUND_LIVE)('opening the accounts again', () => {
+  it('creates nothing the second time', async () => {
+    const first = await openAccounts();
+    const second = await openAccounts();
+
+    expect(second.created).toEqual([]);
+    expect(second.company.address).toBe(first.company.address);
+    expect(second.fund.address).toBe(first.fund.address);
+    expect(second.ratedListId).toBe(first.ratedListId);
+  });
+});
