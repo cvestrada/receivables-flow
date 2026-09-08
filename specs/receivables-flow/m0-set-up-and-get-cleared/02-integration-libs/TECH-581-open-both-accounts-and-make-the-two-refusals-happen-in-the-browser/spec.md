@@ -172,8 +172,9 @@ cd libs/privy && npx tsx -e "import {buildSaleRequest} from './src/policies'; co
 
 **[~] Open both accounts with their rules attached** — written, unrun: no credentials
 
-Implement: Create `libs/privy/src/provision.ts` which opens Ironline Freight's account owned by a
-group of the three directors requiring two of them, creates the platform's list of invoices rated B
+Implement: Create `libs/privy/src/provision.ts` which creates the three directors from their email
+addresses if they do not already exist, opens Ironline Freight's account owned by a group of those
+three requiring two of them, creates the platform's list of invoices rated B
 or better, opens Woodgrove Capital's account under the mandate from `policies.ts`, and writes every
 resulting identifier to `libs/privy/accounts.json`. Running it a second time creates nothing.
 
@@ -304,6 +305,12 @@ director produces is over exactly what that panel shows.
 **Two accounts, not four.** Ironline has one company account owned by the three directors together;
 Woodgrove has one fund account of its own. A director has no account — only a key that approves what
 the company account does.
+
+**Added after approval, at the human's direction: the directors are created, not looked up.** The
+setup originally asked for three Privy user ids pasted in by hand, which meant signing in three times
+and copying three opaque identifiers off a dashboard before anything could be provisioned at all.
+Provisioning now creates the three from their email addresses, so the entire setup is one file of
+credentials and one command.
 
 **Added after approval, at the human's direction: a browser suite.** The spec verified the portals
 with `next build`, which proves they compile and nothing more. `apps/e2e` builds and serves both and

@@ -42,18 +42,58 @@ async function privy<T>(path: string, body: unknown): Promise<T> {
   return (await response.json()) as T;
 }
 
-/** The three directors, as Privy knows them. */
-function directors(): string[] {
-  const ids = env('PRIVY_DIRECTOR_USER_IDS')
+/**
+ * The three directors, created from their email addresses if they do not exist.
+ *
+ * Naming them by email rather than by Privy user id keeps the whole setup in one
+ * file: nobody has to sign in first, read an opaque identifier off a dashboard and
+ * paste it back. A director signing in later with the same address lands on the
+ * account made here, so the group is built over the same three people either way.
+ */
+async function directors(): Promise<string[]> {
+  const emails = env('PRIVY_DIRECTOR_EMAILS')
     .split(',')
-    .map((id) => id.trim())
+    .map((email) => email.trim())
     .filter(Boolean);
 
-  if (ids.length !== 3) {
-    throw new Error(`PRIVY_DIRECTOR_USER_IDS must name three directors, found ${ids.length}`);
+  if (emails.length !== 3) {
+    throw new Error(`PRIVY_DIRECTOR_EMAILS must name three directors, found ${emails.length}`);
+  }
+
+  const ids: string[] = [];
+  for (const address of emails) {
+    /*
+     * Asked for first, created second. Provisioning is re-run whenever anything
+     * around it changes, and creating a director who already exists would either
+     * fail or quietly make a second person out of one.
+     */
+    const existing = await find('/users/email/address', { address });
+    ids.push(existing?.id ?? (await privy<{ id: string }>('/users', {
+      linked_accounts: [{ type: 'email', address }],
+    })).id);
   }
 
   return ids;
+}
+
+/** Look something up, distinguishing "not there" from a real failure. */
+async function find(path: string, body: unknown): Promise<{ id: string } | null> {
+  const auth = Buffer.from(`${env('PRIVY_APP_ID')}:${env('PRIVY_APP_SECRET')}`).toString('base64');
+
+  const response = await fetch(`${API}${path}`, {
+    method: 'POST',
+    headers: {
+      'privy-app-id': env('PRIVY_APP_ID'),
+      Authorization: `Basic ${auth}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`POST ${path} failed (${response.status}): ${await response.text()}`);
+
+  return (await response.json()) as { id: string };
 }
 
 /**
@@ -69,7 +109,7 @@ export async function openAccounts(): Promise<OpenedAccounts> {
     return { ...open, created: [] };
   }
 
-  const group = buildApprovingGroup(directors());
+  const group = buildApprovingGroup(await directors());
   const quorum = await privy<{ id: string }>('/key_quorums', group);
 
   const company = await privy<{ id: string; address: string }>('/wallets', {
