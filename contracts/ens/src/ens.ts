@@ -403,3 +403,150 @@ export async function revokeReviewer(
   const [, resource] = await resolver.decodeSetter(buildSetterBlob(name, key));
   await (await resolver.revokeRoles(resource, ROLES.setText, reviewer)).wait();
 }
+
+/**
+ * The record naming the wallet a pass clears.
+ *
+ * The pass itself is the name and the expiry the registry holds against it — this record only
+ * says who the clearance is for. Keeping the wallet here rather than deriving it from the
+ * label is what lets a fund rotate its wallet without being re-issued a name, and clearing it
+ * is how the platform takes a pass back before its date comes round.
+ */
+export const PASS_WALLET_RECORD = 'rf.pass.wallet';
+
+export interface Pass {
+  name: string;
+  resolver: string;
+  wallet: string;
+  expiresAt: bigint;
+}
+
+export interface PassVerdict {
+  wallet: string;
+  expiresAt: bigint;
+  cleared: boolean;
+}
+
+/**
+ * Whether a pass clears a fund at a given moment.
+ *
+ * Split out from the chain read so the one decision that matters can be checked against dates
+ * directly. A fund is cleared while its expiry is ahead of the moment asked about — never at
+ * the expiry itself, so the answer does not depend on which side of a second the caller lands.
+ */
+export function decidePass(wallet: string, expiresAt: bigint, at: bigint): PassVerdict {
+  return { wallet, expiresAt, cleared: wallet !== '' && expiresAt > 0n && at < expiresAt };
+}
+
+/**
+ * Clear an investor to hold receivables, until a date.
+ *
+ * The name is issued with an expiry rather than a flag someone has to remember to turn off:
+ * a fund's accreditation is renewed on a date in the real world, and a permission that
+ * outlives it is quietly wrong from the day it stops being true.
+ *
+ * The platform stays owner, exactly as it does for a business page. A fund that owned its
+ * pass could hand it to a fund that was never cleared, which is the one thing the pass exists
+ * to prevent.
+ */
+export async function issuePass(
+  signer: Signer,
+  { registry: registryAddress, baseName }: Registry,
+  label: string,
+  wallet: string,
+  seconds: number,
+): Promise<Pass> {
+  const platform = await signer.getAddress();
+  const registry = new ethers.Contract(registryAddress, ABI.registry, signer);
+  const name = `${label}.${baseName}`;
+
+  const standing = await registry.getResolver(label).catch(() => ethers.ZeroAddress);
+  if (standing !== ethers.ZeroAddress) {
+    return {
+      name,
+      resolver: standing,
+      wallet: await readRecord(signer.provider, standing, name, PASS_WALLET_RECORD),
+      expiresAt: await registry.findExpiry(label),
+    };
+  }
+
+  const resolver = await deployProxy(
+    signer,
+    SEPOLIA.permissionedResolverImpl,
+    new ethers.Interface(ABI.resolver).encodeFunctionData('initialize', [
+      [[platform, RESOLVER_ROLES]],
+      [],
+    ]),
+  );
+
+  // The chain's clock, not this machine's. On a fork the two are not the same, and the expiry
+  // has to mean something to the registry that enforces it.
+  const now = BigInt((await signer.provider.getBlock('latest'))?.timestamp ?? 0);
+  const expiresAt = now + BigInt(seconds);
+
+  await (
+    await registry.register(
+      label,
+      platform,
+      ethers.ZeroAddress,
+      resolver,
+      ROLES.setResolver | ROLES.setSubregistry,
+      expiresAt,
+    )
+  ).wait();
+
+  const store = new ethers.Contract(resolver, ABI.resolver, signer);
+  await (await store.grantSetterRoles(buildSetterBlob(name, PASS_WALLET_RECORD), platform)).wait();
+  await (await store.setText(encodeName(name), PASS_WALLET_RECORD, wallet)).wait();
+
+  return { name, resolver, wallet, expiresAt };
+}
+
+/**
+ * Answer whether a fund may hold a receivable right now, the way a counterparty would.
+ *
+ * Takes a provider and the platform's registry and nothing else — no signer, no call to
+ * Receivables Flow. That is the property worth having: the other side of a trade decides for
+ * itself rather than trusting the platform earning a fee on it.
+ */
+export async function readPass(
+  provider: ethers.Provider,
+  { registry: registryAddress, baseName }: Registry,
+  label: string,
+  at?: bigint,
+): Promise<Pass & PassVerdict> {
+  const registry = new ethers.Contract(registryAddress, ABI.registry, provider);
+  const name = `${label}.${baseName}`;
+  const moment = at ?? BigInt((await provider.getBlock('latest'))?.timestamp ?? 0);
+
+  // An expired name stops resolving at all, so a missing resolver is a lapsed pass rather
+  // than an error — the same answer a fund that was never cleared gets.
+  const resolver = await registry.getResolver(label).catch(() => ethers.ZeroAddress);
+  if (resolver === ethers.ZeroAddress) {
+    return { name, resolver, ...decidePass('', 0n, moment) };
+  }
+
+  const expiresAt: bigint = await registry.findExpiry(label).catch(() => 0n);
+  const wallet = await readRecord(provider, resolver, name, PASS_WALLET_RECORD).catch(() => '');
+
+  return { name, resolver, ...decidePass(wallet, expiresAt, moment) };
+}
+
+/**
+ * Take a standing pass back before its expiry.
+ *
+ * Withdrawing the wallet rather than the name leaves the expiry visible, so a reader can tell
+ * a pass that was pulled from one that simply ran out. Only the platform holds the role that
+ * makes this write land; anyone else is refused by the resolver.
+ */
+export async function revokePass(
+  signer: Signer,
+  { registry: registryAddress, baseName }: Registry,
+  label: string,
+): Promise<void> {
+  const registry = new ethers.Contract(registryAddress, ABI.registry, signer);
+  const resolver = await registry.getResolver(label);
+  const store = new ethers.Contract(resolver, ABI.resolver, signer);
+
+  await (await store.setText(encodeName(`${label}.${baseName}`), PASS_WALLET_RECORD, '')).wait();
+}

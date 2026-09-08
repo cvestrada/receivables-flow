@@ -1,18 +1,22 @@
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
+import { loadFixture, time } from '@nomicfoundation/hardhat-network-helpers';
 import { expect } from 'chai';
 import { ethers as hre } from 'hardhat';
 import { ethers } from 'ethers';
 
 import {
   ABI,
+  PASS_WALLET_RECORD,
   PROFILE_RECORDS,
   RATING_RECORD,
   ROLES,
   appointReviewer,
   buildSetterBlob,
   givePage,
+  issuePass,
   openRegistry,
+  readPass,
   readRecord,
+  revokePass,
   revokeReviewer,
   writeRecords,
 } from '../../src/ens';
@@ -208,6 +212,108 @@ describe('registry', () => {
 
       expect(roleBitmap).to.equal(ROLES.setText);
       expect(await contract.hasRoles(resource, ROLES.setText, await reviewer.getAddress())).to.equal(true);
+    });
+  });
+
+  describe('the investor approval pass', () => {
+    const PASS_DAYS = 30;
+    const PASS_SECONDS = PASS_DAYS * 24 * 60 * 60;
+
+    async function cleared() {
+      const base = await loadFixture(onboarded);
+      const [, , , , , investor] = await hre.getSigners();
+      const wallet = await investor.getAddress();
+      const pass = await issuePass(
+        base.platform as never,
+        base.opened,
+        'woodgrove',
+        wallet,
+        PASS_SECONDS,
+      );
+
+      return { ...base, investor, wallet, pass };
+    }
+
+    describe('issuing the pass', () => {
+      it('gives the fund a name beneath the platform own registry', async () => {
+        const { registry, pass } = await cleared();
+        const ourRegistry = new ethers.Contract(registry, ABI.registry, hre.provider as never);
+
+        expect(pass.name).to.equal('woodgrove.receivablesflow.eth');
+        expect(await ourRegistry.getResolver('woodgrove')).to.not.equal(ethers.ZeroAddress);
+      });
+
+      it('leaves the platform as owner, so the fund cannot hand its clearance on', async () => {
+        const { platform, investor, registry } = await cleared();
+        const ourRegistry = new ethers.Contract(registry, ABI.registry, hre.provider as never);
+
+        expect(await ourRegistry.findOwner('woodgrove')).to.equal(await platform.getAddress());
+        expect(await ourRegistry.findOwner('woodgrove')).to.not.equal(await investor.getAddress());
+      });
+
+      it('carries the expiry it was issued with', async () => {
+        const { registry, pass } = await cleared();
+        const ourRegistry = new ethers.Contract(registry, ABI.registry, hre.provider as never);
+
+        expect(await ourRegistry.findExpiry('woodgrove')).to.equal(pass.expiresAt);
+        expect(pass.expiresAt).to.be.greaterThan(BigInt(await time.latest()));
+      });
+
+      it('records the wallet the pass clears', async () => {
+        const { pass, wallet } = await cleared();
+
+        expect(
+          await readRecord(hre.provider as never, pass.resolver, pass.name, PASS_WALLET_RECORD),
+        ).to.equal(wallet);
+      });
+
+      it('does not issue a second name when run again', async () => {
+        const { platform, opened, wallet, pass } = await cleared();
+
+        const again = await issuePass(platform as never, opened, 'woodgrove', wallet, PASS_SECONDS);
+
+        expect(again.resolver).to.equal(pass.resolver);
+        expect(again.expiresAt).to.equal(pass.expiresAt);
+        expect(again.wallet).to.equal(pass.wallet);
+      });
+    });
+
+    describe('reading the pass', () => {
+      it('answers cleared to a stranger holding only the name', async () => {
+        const { opened, wallet } = await cleared();
+
+        // No platform signer anywhere in this path — a plain provider is the whole of it.
+        const answer = await readPass(hre.provider as never, opened, 'woodgrove');
+
+        expect(answer.cleared).to.equal(true);
+        expect(answer.wallet).to.equal(wallet);
+      });
+
+      it('stops answering cleared once the chain clock passes the expiry', async () => {
+        const { opened } = await cleared();
+
+        await time.increase(PASS_SECONDS + 1);
+
+        expect((await readPass(hre.provider as never, opened, 'woodgrove')).cleared).to.equal(false);
+      });
+    });
+
+    describe('taking the pass back', () => {
+      it('lets the platform revoke a pass whose expiry is still ahead', async () => {
+        const { platform, opened } = await cleared();
+
+        await revokePass(platform as never, opened, 'woodgrove');
+        const answer = await readPass(hre.provider as never, opened, 'woodgrove');
+
+        expect(answer.cleared).to.equal(false);
+        expect(answer.expiresAt).to.be.greaterThan(BigInt(await time.latest()));
+      });
+
+      it('refuses the fund on its own pass', async () => {
+        const { investor, opened } = await cleared();
+
+        await expect(revokePass(investor as never, opened, 'woodgrove')).to.be.reverted;
+      });
     });
   });
 });

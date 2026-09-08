@@ -10,13 +10,24 @@ import {
   appointReviewer,
   encodeName,
   givePage,
+  issuePass,
   openRegistry,
+  readPass,
   readRecord,
   writeRecords,
 } from '../src/ens';
 
 const BASE_LABEL = process.env.ENS_BASE_LABEL ?? 'receivablesflow';
 const BUSINESS_LABEL = process.env.ENS_BUSINESS_LABEL ?? 'ironline';
+const INVESTOR_LABEL = process.env.ENS_INVESTOR_LABEL ?? 'woodgrove';
+
+/**
+ * How long Woodgrove's clearance lasts.
+ *
+ * A quarter is the interval a fund's accreditation is actually reviewed on, and short enough
+ * that the lapse is a real event during the project rather than a hypothetical one.
+ */
+const PASS_SECONDS = 90 * 24 * 60 * 60;
 
 /** What Ironline Freight has done so far, as three numbers anyone can recompute from. */
 const COUNTS = {
@@ -69,6 +80,7 @@ async function main(): Promise<void> {
   const platformAddress = await platform.getAddress();
   const reviewer = process.env.REVIEWER_ADDRESS ?? placeholder('reviewer', platformAddress);
   const business = process.env.BUSINESS_ADDRESS ?? placeholder('business', platformAddress);
+  const investor = process.env.INVESTOR_ADDRESS ?? placeholder('investor', platformAddress);
 
   console.log(`platform ${platformAddress}`);
 
@@ -97,6 +109,21 @@ async function main(): Promise<void> {
     console.log(`  ${label.padEnd(32)} ${await attempt(page.resolver, from, page.name, key, value)}`);
   }
 
+  const pass = await issuePass(platform as never, registry, INVESTOR_LABEL, investor, PASS_SECONDS);
+  console.log(`\npass     ${pass.name} -> ${pass.resolver}`);
+
+  const standing = await readPass(hre.provider as never, registry, INVESTOR_LABEL);
+  console.log('\napproval pass, read back from chain:');
+  console.log(`  wallet                 ${standing.wallet}`);
+  console.log(`  expires                ${new Date(Number(standing.expiresAt) * 1000).toISOString()}`);
+
+  // The same read, asked at two moments. Nothing is written between them — the pass lapses
+  // because the date passed, which is the whole reason it is a date and not a flag.
+  const lapsed = await readPass(hre.provider as never, registry, INVESTOR_LABEL, standing.expiresAt + 1n);
+  console.log('\nmay Woodgrove hold a receivable:');
+  console.log(`  today                  ${standing.cleared ? 'cleared' : 'lapsed'}`);
+  console.log(`  once the pass expires  ${lapsed.cleared ? 'cleared' : 'lapsed'}`);
+
   const record = {
     network: (await hre.provider.getNetwork()).name,
     baseName: registry.baseName,
@@ -104,6 +131,12 @@ async function main(): Promise<void> {
     business: { name: page.name, resolver: page.resolver },
     reviewer,
     ratingRecord: RATING_RECORD,
+    investor: {
+      name: pass.name,
+      resolver: pass.resolver,
+      wallet: pass.wallet,
+      expiresAt: pass.expiresAt.toString(),
+    },
   };
   const path = join(__dirname, '..', 'deployed.json');
   writeFileSync(path, `${JSON.stringify(record, null, 2)}\n`);
