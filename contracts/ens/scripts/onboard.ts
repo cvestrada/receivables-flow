@@ -112,6 +112,11 @@ async function main(): Promise<void> {
   const page = await givePage(platform as never, businesses, BUSINESS_LABEL);
   console.log(`page     ${page.name} -> ${page.resolver}`);
 
+  // The company is approved at onboarding the same way the fund is, so HQ has one kind of row
+  // to flip rather than two.
+  const companyPass = await issuePass(platform as never, businesses, BUSINESS_LABEL, business, PASS_SECONDS);
+  console.log(`approved ${page.name} for ${business}`);
+
   await writeRecords(platform as never, page.resolver, page.name, COUNTS);
   await appointReviewer(platform as never, page.resolver, page.name, reviewer);
   console.log(`reviewer ${reviewer} appointed on ${RATING_RECORD}`);
@@ -152,7 +157,7 @@ async function main(): Promise<void> {
     registry: registry.registry,
     businesses,
     investors,
-    business: { name: page.name, resolver: page.resolver },
+    business: { name: page.name, resolver: page.resolver, wallet: companyPass.wallet },
     reviewer,
     ratingRecord: RATING_RECORD,
     investor: {

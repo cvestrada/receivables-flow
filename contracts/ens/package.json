@@ -16,7 +16,8 @@
     "test:unit": "hardhat test test/unit/*.test.ts --network hardhat",
     "test:int": "ENS_FORK=1 hardhat test test/integration/*.test.ts --network hardhat",
     "onboard": "hardhat run scripts/onboard.ts --network sepolia",
-    "onboard:fork": "ENS_FORK=1 hardhat run scripts/onboard.ts --network hardhat"
+    "onboard:fork": "ENS_FORK=1 hardhat run scripts/onboard.ts --network hardhat",
+    "standing": "hardhat run scripts/standing.ts --network sepolia"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",

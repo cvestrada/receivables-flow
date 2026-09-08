@@ -83,6 +83,17 @@ export const PROFILE_RECORDS = [
 /** The one record the platform never writes — see `appointReviewer`. */
 export const RATING_RECORD = 'credit.rating';
 
+/**
+ * The record naming the wallet a pass clears.
+ *
+ * The pass itself is the name and the expiry the registry holds against it — this record only
+ * says who the clearance is for. Keeping the wallet here rather than deriving it from the
+ * label is what lets a fund rotate its wallet without being re-issued a name, and clearing it
+ * is how the platform takes a pass back before its date comes round.
+ */
+export const PASS_WALLET_RECORD = 'rf.pass.wallet';
+
+
 export const ABI = {
   registrar: [
     'function isAvailable(string) view returns (bool)',
@@ -379,7 +390,13 @@ export async function givePage(
   const name = `${label}.${baseName}`;
 
   const existing = await registry.getResolver(label).catch(() => ethers.ZeroAddress);
-  if (existing !== ethers.ZeroAddress) return { name, resolver: existing };
+  if (existing !== ethers.ZeroAddress) {
+    // A page issued before a record existed has no grant for it. Topping the grants up rather
+    // than reissuing the name keeps the company's history intact, and a run that changes
+    // nothing spends nothing, because each grant is checked before it is made.
+    await grantWritable(signer, existing, name, platform);
+    return { name, resolver: existing };
+  }
 
   const resolver = await deployProxy(
     signer,
@@ -402,16 +419,35 @@ export async function givePage(
     )
   ).wait();
 
-  // The platform gives itself write access to the counts and to nothing else. The rating is
-  // conspicuously absent: it is the reviewer's field, and the platform holds no role that
-  // would let it be written here.
-  const store = new ethers.Contract(resolver, ABI.resolver, signer);
-  for (const key of PROFILE_RECORDS) {
-    if (key === RATING_RECORD) continue;
-    await (await store.grantSetterRoles(buildSetterBlob(name, key), platform)).wait();
-  }
+  await grantWritable(signer, resolver, name, platform);
 
   return { name, resolver };
+}
+
+/**
+ * Give the platform write access to every record on a page except the rating.
+ *
+ * The rating is conspicuously absent: it is the reviewer's field, and the platform holds no
+ * role that would let it be written here. Each grant is checked first, so calling this on a
+ * page that already has them is free.
+ */
+async function grantWritable(
+  signer: Signer,
+  resolverAddress: string,
+  name: string,
+  platform: string,
+): Promise<void> {
+  const store = new ethers.Contract(resolverAddress, ABI.resolver, signer);
+
+  for (const key of [...PROFILE_RECORDS, PASS_WALLET_RECORD]) {
+    if (key === RATING_RECORD) continue;
+
+    const blob = buildSetterBlob(name, key);
+    const [, resource] = await store.decodeSetter(blob);
+    if (await store.hasRoles(resource, ROLES.setText, platform)) continue;
+
+    await (await store.grantSetterRoles(blob, platform)).wait();
+  }
 }
 
 /** Write a company's record onto its page. */
@@ -485,16 +521,6 @@ export async function revokeReviewer(
   const [, resource] = await resolver.decodeSetter(buildSetterBlob(name, key));
   await (await resolver.revokeRoles(resource, ROLES.setText, reviewer)).wait();
 }
-
-/**
- * The record naming the wallet a pass clears.
- *
- * The pass itself is the name and the expiry the registry holds against it — this record only
- * says who the clearance is for. Keeping the wallet here rather than deriving it from the
- * label is what lets a fund rotate its wallet without being re-issued a name, and clearing it
- * is how the platform takes a pass back before its date comes round.
- */
-export const PASS_WALLET_RECORD = 'rf.pass.wallet';
 
 export interface Pass {
   name: string;
