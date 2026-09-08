@@ -30,6 +30,14 @@ The cleared-or-not decision, as a pure question about two dates. No chain.
 Hardhat forking Sepolia at a pinned block. The registry is the one TECH-562 opens, so the
 investor pass is issued beneath the same platform name a business page is.
 
+### Opening the two sides of the market
+
+| # | Statement under test | Assertion |
+|---|---|---|
+| 6a | [happy-path] A fund's name says which side of the market it is on | the issued name is `woodgrove.investor.<base>.eth` |
+| 6b | [happy-path] The investor side is a registry of its own | the platform registry's subregistry for `investor` is the branch registry |
+| 6c | [boundary] Opening a side already open does not open a second one | a second call returns the same registry address |
+
 ### Issuing the pass
 
 | # | Statement under test | Assertion |

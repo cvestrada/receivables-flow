@@ -36,9 +36,12 @@ flowchart TD
 
     SETUP["Platform already owns receivablesflow.eth and the registry beneath it — TECH-562"]
 
+    SIDES["Two sides of the market, each its own registry:<br/>business.receivablesflow.eth · investor.receivablesflow.eth"]
+    SETUP --> SIDES
+
     subgraph ISSUE["Clearing Woodgrove Capital"]
         I1["Fund passes KYC off chain"]
-        I2["Platform issues woodgrove.receivablesflow.eth with an expiry"]
+        I2["Platform issues woodgrove.investor.receivablesflow.eth with an expiry"]
         I3["Platform stays the owner of the name"]
         I4["The fund's wallet is recorded on the name"]
         I1 --> I2 --> I3 --> I4
@@ -66,6 +69,9 @@ flowchart TD
 
 - The name is the pass. There is no separate cleared/not-cleared flag that could disagree with
   the name's own expiry.
+- Which side of the market a name belongs to is readable from the name itself — a fund sits
+  under `investor`, a company under `business` — so nobody has to resolve a record to tell a
+  buyer from a seller.
 - The expiry is set when the pass is issued, and a pass whose expiry has passed reads as not
   cleared without anyone acting.
 - The platform owns the investor's name and never transfers it, so a cleared fund cannot pass
@@ -169,3 +175,18 @@ Verify:
 npm -w @rf/investor run test:e2e
 ```
 → exits 0, all specs pass
+
+---
+
+**[x] Separate the two sides of the market**
+
+Implement: In `contracts/ens/src/ens.ts`, add an operation that opens one side of the market as
+a registry of its own beneath the platform's name, and one that retires a name issued before
+the split; in `contracts/ens/scripts/onboard.ts`, open `business` and `investor`, retire the
+two flat names, and issue the company and the fund one level deeper.
+
+Verify:
+```
+npm -w @rf/contracts-ens run typecheck && npm -w @rf/contracts-ens run test
+```
+→ exits 0

@@ -11,7 +11,9 @@ import {
   encodeName,
   givePage,
   issuePass,
+  openBranch,
   openRegistry,
+  retireName,
   readPass,
   readRecord,
   writeRecords,
@@ -19,6 +21,14 @@ import {
 
 const BASE_LABEL = process.env.ENS_BASE_LABEL ?? 'receivablesflow';
 const BUSINESS_LABEL = process.env.ENS_BUSINESS_LABEL ?? 'ironline';
+
+/*
+ * The two sides of the market, each a registry of its own between the platform's name and the
+ * companies on it. `woodgrove.investor.receivablesflow.eth` says which side it is before a
+ * single record is read; two names on one flat level cannot.
+ */
+const BUSINESS_BRANCH = 'business';
+const INVESTOR_BRANCH = 'investor';
 const INVESTOR_LABEL = process.env.ENS_INVESTOR_LABEL ?? 'woodgrove';
 
 /**
@@ -87,7 +97,19 @@ async function main(): Promise<void> {
   const registry = await openRegistry(platform as never, BASE_LABEL);
   console.log(`registry ${registry.registry} under ${registry.baseName}`);
 
-  const page = await givePage(platform as never, registry, BUSINESS_LABEL);
+  // Names issued before the market had two sides would otherwise sit beside the new ones and
+  // read as a second, contradictory record for the same company.
+  for (const stale of [BUSINESS_LABEL, INVESTOR_LABEL]) {
+    const hash = await retireName(platform as never, registry, stale);
+    if (hash) console.log(`retired  ${stale}.${registry.baseName} in ${hash}`);
+  }
+
+  const businesses = await openBranch(platform as never, registry, BUSINESS_BRANCH);
+  const investors = await openBranch(platform as never, registry, INVESTOR_BRANCH);
+  console.log(`branch   ${businesses.baseName} -> ${businesses.registry}`);
+  console.log(`branch   ${investors.baseName} -> ${investors.registry}`);
+
+  const page = await givePage(platform as never, businesses, BUSINESS_LABEL);
   console.log(`page     ${page.name} -> ${page.resolver}`);
 
   await writeRecords(platform as never, page.resolver, page.name, COUNTS);
@@ -109,17 +131,17 @@ async function main(): Promise<void> {
     console.log(`  ${label.padEnd(32)} ${await attempt(page.resolver, from, page.name, key, value)}`);
   }
 
-  const pass = await issuePass(platform as never, registry, INVESTOR_LABEL, investor, PASS_SECONDS);
+  const pass = await issuePass(platform as never, investors, INVESTOR_LABEL, investor, PASS_SECONDS);
   console.log(`\npass     ${pass.name} -> ${pass.resolver}`);
 
-  const standing = await readPass(hre.provider as never, registry, INVESTOR_LABEL);
+  const standing = await readPass(hre.provider as never, investors, INVESTOR_LABEL);
   console.log('\napproval pass, read back from chain:');
   console.log(`  wallet                 ${standing.wallet}`);
   console.log(`  expires                ${new Date(Number(standing.expiresAt) * 1000).toISOString()}`);
 
   // The same read, asked at two moments. Nothing is written between them — the pass lapses
   // because the date passed, which is the whole reason it is a date and not a flag.
-  const lapsed = await readPass(hre.provider as never, registry, INVESTOR_LABEL, standing.expiresAt + 1n);
+  const lapsed = await readPass(hre.provider as never, investors, INVESTOR_LABEL, standing.expiresAt + 1n);
   console.log('\nmay Woodgrove hold a receivable:');
   console.log(`  today                  ${standing.cleared ? 'cleared' : 'lapsed'}`);
   console.log(`  once the pass expires  ${lapsed.cleared ? 'cleared' : 'lapsed'}`);
@@ -128,6 +150,8 @@ async function main(): Promise<void> {
     network: (await hre.provider.getNetwork()).name,
     baseName: registry.baseName,
     registry: registry.registry,
+    businesses,
+    investors,
     business: { name: page.name, resolver: page.resolver },
     reviewer,
     ratingRecord: RATING_RECORD,

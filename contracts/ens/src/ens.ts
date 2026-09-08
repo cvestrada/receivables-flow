@@ -276,6 +276,81 @@ async function waitForCommitment(signer: Signer, minAge: bigint): Promise<void> 
   await new Promise((resolve) => setTimeout(resolve, (Number(minAge) + 5) * 1000));
 }
 
+/**
+ * Open a side of the market as a registry of its own.
+ *
+ * `business` and `investor` sit between the platform's name and the companies beneath it, so
+ * `woodgrove.investor.receivablesflow.eth` says which side of the trade it is before anyone
+ * resolves a single record. Two names on one flat level cannot say that, and on a two-sided
+ * market that is the first thing a reader needs.
+ *
+ * Runs once per side. Everything beneath it is a call, exactly as the platform's own registry
+ * made each company page a call rather than a purchase.
+ */
+export async function openBranch(
+  signer: Signer,
+  { registry: registryAddress, baseName }: RegistryRef,
+  label: string,
+  years = 1,
+): Promise<RegistryRef> {
+  const platform = await signer.getAddress();
+  const registry = new ethers.Contract(registryAddress, ABI.registry, signer);
+  const name = `${label}.${baseName}`;
+
+  const standing = await registry.getSubregistry(label).catch(() => ethers.ZeroAddress);
+  if (standing !== ethers.ZeroAddress) return { baseName: name, registry: standing };
+
+  const subregistry = await deployProxy(
+    signer,
+    SEPOLIA.userRegistryImpl,
+    new ethers.Interface(['function initialize((address,uint256)[])']).encodeFunctionData(
+      'initialize',
+      [[[platform, REGISTRY_ROLES]]],
+    ),
+  );
+
+  const expiry = BigInt(Math.floor(Date.now() / 1000)) + BigInt(years) * 31_536_000n;
+  await (
+    await registry.register(
+      label,
+      platform,
+      subregistry,
+      ethers.ZeroAddress,
+      ROLES.setResolver | ROLES.setSubregistry,
+      expiry,
+    )
+  ).wait();
+
+  return { baseName: name, registry: subregistry };
+}
+
+/**
+ * Take a name back out of the registry.
+ *
+ * Only used to clear away names issued before the market had two sides — a name left on the
+ * old flat level would show up beside the new ones and read as a second, contradictory record
+ * for the same company.
+ */
+export async function retireName(
+  signer: Signer,
+  { registry: registryAddress }: RegistryRef,
+  label: string,
+): Promise<string | undefined> {
+  const registry = new ethers.Contract(
+    registryAddress,
+    [...ABI.registry, 'function unregister(uint256)'],
+    signer,
+  );
+
+  const tokenId = await registry.findTokenId(label).catch(() => 0n);
+  if (tokenId === 0n || (await registry.getResolver(label).catch(() => ethers.ZeroAddress)) === ethers.ZeroAddress) {
+    return undefined;
+  }
+
+  const receipt = await (await registry.unregister(tokenId)).wait();
+  return receipt.hash as string;
+}
+
 export interface Page {
   name: string;
   resolver: string;
@@ -295,7 +370,7 @@ export interface Page {
  */
 export async function givePage(
   signer: Signer,
-  { registry: registryAddress, baseName }: Registry,
+  { registry: registryAddress, baseName }: RegistryRef,
   label: string,
   years = 1,
 ): Promise<Page> {
@@ -426,6 +501,8 @@ export interface Pass {
   resolver: string;
   wallet: string;
   expiresAt: bigint;
+  /** The transaction that changed the pass, when this call changed anything. */
+  hash?: string;
 }
 
 export interface PassVerdict {
@@ -467,13 +544,26 @@ export async function issuePass(
   const registry = new ethers.Contract(registryAddress, ABI.registry, signer);
   const name = `${label}.${baseName}`;
 
+  /*
+   * A name that already stands is kept and its record brought up to date, rather than a second
+   * name being issued. That is what makes clearing a fund again after a revocation the same
+   * action as clearing it the first time — the operator has one button, not two.
+   */
   const standing = await registry.getResolver(label).catch(() => ethers.ZeroAddress);
   if (standing !== ethers.ZeroAddress) {
+    const current = await readRecord(signer.provider, standing, name, PASS_WALLET_RECORD);
+    const store = new ethers.Contract(standing, ABI.resolver, signer);
+    const receipt =
+      current === wallet
+        ? undefined
+        : await (await store.setText(encodeName(name), PASS_WALLET_RECORD, wallet)).wait();
+
     return {
       name,
       resolver: standing,
-      wallet: await readRecord(signer.provider, standing, name, PASS_WALLET_RECORD),
+      wallet,
       expiresAt: await registry.findExpiry(label),
+      hash: receipt?.hash,
     };
   }
 
@@ -504,9 +594,9 @@ export async function issuePass(
 
   const store = new ethers.Contract(resolver, ABI.resolver, signer);
   await (await store.grantSetterRoles(buildSetterBlob(name, PASS_WALLET_RECORD), platform)).wait();
-  await (await store.setText(encodeName(name), PASS_WALLET_RECORD, wallet)).wait();
+  const receipt = await (await store.setText(encodeName(name), PASS_WALLET_RECORD, wallet)).wait();
 
-  return { name, resolver, wallet, expiresAt };
+  return { name, resolver, wallet, expiresAt, hash: receipt.hash };
 }
 
 /**
@@ -550,10 +640,14 @@ export async function revokePass(
   signer: Signer,
   { registry: registryAddress, baseName }: RegistryRef,
   label: string,
-): Promise<void> {
+): Promise<string> {
   const registry = new ethers.Contract(registryAddress, ABI.registry, signer);
   const resolver = await registry.getResolver(label);
   const store = new ethers.Contract(resolver, ABI.resolver, signer);
 
-  await (await store.setText(encodeName(`${label}.${baseName}`), PASS_WALLET_RECORD, '')).wait();
+  const receipt = await (
+    await store.setText(encodeName(`${label}.${baseName}`), PASS_WALLET_RECORD, '')
+  ).wait();
+
+  return receipt.hash as string;
 }

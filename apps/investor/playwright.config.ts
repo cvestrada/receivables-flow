@@ -18,6 +18,11 @@ export default defineConfig({
     command: 'npm run build && npm run start -- --port 3100',
     url: 'http://127.0.0.1:3100',
     timeout: 120_000,
-    reuseExistingServer: true,
+    /*
+     * Never reuse a server that happens to be up. The page bakes the deployment record in at
+     * build time, so a leftover process would let the suite pass against a bundle built before
+     * the chain state it is meant to be checking.
+     */
+    reuseExistingServer: false,
   },
 });

@@ -23,15 +23,15 @@ export interface PassView {
  * pass had lapsed.
  */
 const NONE: PassView = {
-  name: 'woodgrove.receivablesflow.eth',
+  name: 'woodgrove.investor.receivablesflow.eth',
   wallet: '—',
   expiresOn: '—',
   cleared: false,
 };
 
 interface Deployment {
-  baseName?: string;
-  registry?: string;
+  /** The investor side of the market — its own registry, so a fund's name says which side it is. */
+  investors?: { baseName: string; registry: string };
   investor?: { name: string };
 }
 
@@ -45,13 +45,13 @@ const RPC_URL = process.env.SEPOLIA_RPC_URL ?? 'https://sepolia.gateway.tenderly
  * endpoint with no key, which is the same route a counterparty checking the fund would take.
  */
 export async function investorPass(): Promise<PassView> {
-  const { baseName, registry } = deployed as Deployment;
-  if (!baseName || !registry) return NONE;
+  const { investors, investor } = deployed as Deployment;
+  if (!investors) return NONE;
 
   const provider = new JsonRpcProvider(RPC_URL);
   try {
-    const label = (deployed as Deployment).investor?.name.split('.')[0] ?? 'woodgrove';
-    const answer = await readPass(provider, { baseName, registry }, label);
+    const label = investor?.name.split('.')[0] ?? 'woodgrove';
+    const answer = await readPass(provider, investors, label);
 
     return {
       name: answer.name,
