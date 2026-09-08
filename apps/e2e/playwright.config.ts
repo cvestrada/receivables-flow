@@ -12,7 +12,16 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   reporter: [['list']],
-  use: { trace: 'retain-on-failure', screenshot: 'only-on-failure' },
+  use: {
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    /*
+     * Kept only when something failed. Pass `--video on` to record a passing run
+     * too — worth doing when the point is to watch a refusal happen rather than
+     * to find out whether it did.
+     */
+    video: 'retain-on-failure',
+  },
   /*
    * Built and served, not run in dev.
    *
