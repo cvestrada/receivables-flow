@@ -1,4 +1,3 @@
-import { Card } from '@/components/ui/card';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -20,12 +19,18 @@ function Rich({ html, className }: { html: string; className?: string }) {
 
 function Note({ html }: { html: string }) {
   return (
-    <div className="panel-note border-t px-4 py-3 text-[12.5px] leading-relaxed bg-[var(--surface-2)] text-[var(--muted-ink)]">
+    <div className="panel-note border-t bg-[var(--surface-alt)] px-5 py-3.5 text-[14px] leading-relaxed text-[var(--muted)]">
       <Rich html={html} />
     </div>
   );
 }
 
+/*
+ * The panel heading is sentence case at 16px/600, not an uppercase eyebrow. Uppercase
+ * is rationed to the sidebar's section label, a stat's caption, and a table column
+ * header — spending it on every panel would flatten that distinction and make the
+ * page read as one long run of labels.
+ */
 function Panel({
   heading, tag, tagTone, flag, children, note,
 }: {
@@ -33,23 +38,21 @@ function Panel({
   children: React.ReactNode; note?: string;
 }) {
   return (
-    <Card
-      className={`desk gap-0 overflow-hidden rounded-[3px] p-0 ${flag ? 'border-[var(--brand-line)]' : ''}`}
-    >
-      <div className="flex items-center justify-between gap-3 border-b px-4 py-[11px]">
-        <span className={`eyebrow ${flag ? 'text-[var(--brand)]' : ''}`}>{heading}</span>
+    <section className={`desk overflow-hidden ${flag ? 'border-[var(--accent)]' : ''}`}>
+      <div className="flex items-center justify-between gap-3 border-b px-5 py-3.5">
+        <h3 className="text-[16px] font-semibold text-[var(--ink)]">{heading}</h3>
         {tag ? <Chip label={tag} tone={tagTone} /> : null}
       </div>
       {children}
       {note ? <Note html={note} /> : null}
-    </Card>
+    </section>
   );
 }
 
 function cell(c: Cell, i: number) {
   if (typeof c === 'object' && 'chip' in c) {
     return (
-      <TableCell key={i} className="px-4 py-[11px]">
+      <TableCell key={i} className="px-5 py-3">
         <Chip label={c.chip} tone={c.tone} />
       </TableCell>
     );
@@ -59,12 +62,12 @@ function cell(c: Cell, i: number) {
   return (
     <TableCell
       key={i}
-      className={`px-4 py-[11px] whitespace-nowrap tabular-nums ${
-        cls.includes('id') ? 'font-mono text-[12px] text-[var(--ink)]' : ''
+      className={`px-5 py-3 text-[15px] whitespace-nowrap tabular-nums text-[var(--body)] ${
+        cls.includes('id') ? 'text-[14px] text-[var(--body)]' : ''
       } ${cls.includes('strong') ? 'font-medium text-[var(--ink)]' : ''} ${
-        cls.includes('ok') ? 'text-[var(--pos)]' : ''
-      } ${cls.includes('bad') ? 'text-[var(--neg)]' : ''} ${
-        cls.includes('dim') ? 'text-[var(--muted-ink)]' : ''
+        cls.includes('ok') ? 'text-[var(--pos-ink)]' : ''
+      } ${cls.includes('bad') ? 'text-[var(--neg-ink)]' : ''} ${
+        cls.includes('dim') ? 'text-[var(--muted)]' : ''
       }`}
     >
       {value}
@@ -73,21 +76,22 @@ function cell(c: Cell, i: number) {
 }
 
 export function BlockView({ block }: { block: Block }) {
+  /*
+   * Stat cards are separate surfaces on a grid, not one panel subdivided by rules.
+   */
   if (block.t === 'tiles') {
     return (
-      <Card className="desk grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-0 overflow-hidden rounded-[3px] p-0">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-4">
         {block.items.map(([label, value, tone, note]) => (
-          <div key={label} className="border-r px-[18px] py-4 last:border-r-0">
-            <span className="eyebrow mb-[7px] block">{label}</span>
+          <div key={label} className="desk px-[18px] py-4">
+            <span className="eyebrow block">{label}</span>
             <Figure value={value} tone={tone} />
             {note ? (
-              <span className="mt-[5px] block text-[11.5px] leading-snug text-[var(--muted-ink)]">
-                {note}
-              </span>
+              <span className="mt-1 block text-[15px] leading-snug text-[var(--body)]">{note}</span>
             ) : null}
           </div>
         ))}
-      </Card>
+      </div>
     );
   }
 
@@ -97,9 +101,12 @@ export function BlockView({ block }: { block: Block }) {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="hover:bg-transparent">
+              <TableRow className="bg-[var(--surface-alt)] hover:bg-[var(--surface-alt)]">
                 {block.head.map((h) => (
-                  <TableHead key={h} className="eyebrow h-auto px-4 py-[9px] whitespace-nowrap">
+                  <TableHead
+                    key={h}
+                    className="h-auto px-5 py-2.5 text-[13px] font-medium tracking-[.08em] whitespace-nowrap uppercase text-[var(--muted)]"
+                  >
                     {h}
                   </TableHead>
                 ))}
@@ -107,7 +114,7 @@ export function BlockView({ block }: { block: Block }) {
             </TableHeader>
             <TableBody>
               {block.rows.map((row, i) => (
-                <TableRow key={i} className="hover:bg-transparent">
+                <TableRow key={i} className="hover:bg-[var(--surface-alt)]">
                   {row.map(cell)}
                 </TableRow>
               ))}
@@ -125,9 +132,9 @@ export function BlockView({ block }: { block: Block }) {
           {block.rows.map(([label, value, tone]) => (
             <div
               key={label}
-              className="flex items-center justify-between gap-4 border-b px-4 py-[10px] text-[13.5px] last:border-b-0"
+              className="flex items-center justify-between gap-4 border-b px-5 py-3 text-[15px] last:border-b-0"
             >
-              <span className="text-[var(--muted-ink)]">{label}</span>
+              <span className="text-[var(--muted)]">{label}</span>
               <span className={`text-right tabular-nums text-[var(--ink)] tone-${tone ?? ''}`}>
                 {value}
               </span>
@@ -156,8 +163,8 @@ export function BlockView({ block }: { block: Block }) {
 
   return (
     <Panel heading={block.h}>
-      <div className="px-4 py-[34px] text-center text-[13.5px] leading-relaxed text-[var(--muted-ink)]">
-        <b className="mb-[3px] block text-[14.5px] font-medium text-[var(--ink-2)]">{block.title}</b>
+      <div className="px-5 py-10 text-center text-[15px] leading-relaxed text-[var(--muted)]">
+        <b className="mb-1 block text-[16px] font-semibold text-[var(--ink)]">{block.title}</b>
         {block.text}
       </div>
     </Panel>
