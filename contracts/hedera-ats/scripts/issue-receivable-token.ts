@@ -45,8 +45,14 @@ async function main(): Promise<void> {
   console.log(`matures  ${new Date(terms.maturityDate * 1000).toISOString()}`);
 
   const path = join(__dirname, '..', 'deployed.json');
-  const existing: Record<string, unknown> = JSON.parse(readFileSync(path, 'utf8'));
+  const existing: Record<string, Record<string, unknown>> = JSON.parse(readFileSync(path, 'utf8'));
+
+  /*
+   * Merged, not replaced. The settlement contract is deployed by its own script and recorded
+   * under the same network key, and reissuing the token must not wipe its address.
+   */
   existing[network.name] = {
+    ...existing[network.name],
     receivableToken: token,
     factory: ats.factory,
     resolver: ats.resolver,

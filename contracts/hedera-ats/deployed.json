@@ -1,1 +1,10 @@
-{}
+{
+  "hederaTestnet": {
+    "receivableToken": "0x6871D6F903C3a2977f89c079B87DA9bBb8ed2960",
+    "factory": "0xd1F118A40f3b02883D35909eF2517e7EDd78379d",
+    "resolver": "0xBA2D5FC2083A0b8f164c50e65d782087fBA18E0a",
+    "faceValueUsd": 50000,
+    "maturityDate": 1794074696,
+    "receivableDvp": "0x46900157F8137F4545F8F1237549cafaBAaF7Cb9"
+  }
+}
