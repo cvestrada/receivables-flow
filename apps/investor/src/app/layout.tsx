@@ -1,10 +1,14 @@
 import type { Metadata } from 'next';
-import { Archivo, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
+import { Inter_Tight } from 'next/font/google';
 import './globals.css';
 
-const archivo = Archivo({ subsets: ['latin'], weight: ['500', '600', '700'], variable: '--font-archivo' });
-const plex = IBM_Plex_Sans({ subsets: ['latin'], weight: ['400', '500', '600'], variable: '--font-plex' });
-const plexMono = IBM_Plex_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-plex-mono' });
+/*
+ * One variable family covers both the sans and the mono role. `font-variant-numeric:
+ * tabular-nums` (set in globals.css) does the column alignment a second monospaced
+ * family would otherwise be carried for, which keeps a money column aligned without
+ * the width jump a font swap introduces.
+ */
+const tight = Inter_Tight({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-tight' });
 
 export const metadata: Metadata = {
   title: 'Woodgrove Capital',
@@ -13,7 +17,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${archivo.variable} ${plex.variable} ${plexMono.variable}`}>
+    <html lang="en" className={tight.variable}>
       <body className="min-h-screen antialiased">{children}</body>
     </html>
   );
