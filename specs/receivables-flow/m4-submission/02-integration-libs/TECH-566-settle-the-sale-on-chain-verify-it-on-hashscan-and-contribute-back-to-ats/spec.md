@@ -81,12 +81,15 @@ contracts/hedera-ats/
 │   └── test/
 │       └── MockUsdc.sol               # minimal ERC-20 standing in for USDC in tests
 ├── scripts/
-│   └── deploy-dvp.ts                  # deploys the settlement contract, records its address
+│   ├── deploy-dvp.ts                  # deploys the settlement contract, records its address
+│   ├── demo-settlement.ts             # walks the refusal and the sale end to end
+│   └── verify-hashscan.ts             # publishes the source to Sourcify, which HashScan reads
 ├── test/
 │   ├── receivable-dvp.spec.ts         # settlement against the full ATS system in-memory
 │   └── receivable-token.spec.ts       # existing — clock fix so it survives a longer chain
 ├── deployed.json                      # token and settlement contract addresses per network
 └── package.json                       # adds the deploy:dvp script
+docs/settlement.md                     # why the gap exists and how the contract closes it
 README.md                              # HashScan links to everything deployed
 ```
 
@@ -129,27 +132,27 @@ cd contracts/hedera-ats && npx tsc --noEmit && npx hardhat test
 ```
 → exits 0, 11 passing, 0 failing
 
-**[ ] Deploy to Hedera testnet**
+**[x] Deploy to Hedera testnet**
 
-Implement: Run `contracts/hedera-ats/scripts/issue-receivable-token.ts` and `contracts/hedera-ats/scripts/deploy-dvp.ts` against Hedera testnet, recording both addresses in `contracts/hedera-ats/deployed.json`.
-
-Verify:
-```
-cd contracts/hedera-ats && cat deployed.json | jq -e '.hederaTestnet.receivableToken and .hederaTestnet.receivableDvp'
-```
-→ exits 0, prints `true`
-
-**[ ] Verify the settlement contract on HashScan**
-
-Implement: Submit the compiled standard-JSON metadata and sources for `ReceivableDvp` to HashScan's verification service so its source is readable at its address.
+Implement: Run `contracts/hedera-ats/scripts/issue-receivable-token.ts` and `contracts/hedera-ats/scripts/deploy-dvp.ts` against Hedera testnet, recording both addresses in `contracts/hedera-ats/deployed.json`. Each script merges into its network's entry rather than replacing it, so one does not wipe the other's address.
 
 Verify:
 ```
-curl -s "https://server-verify.hashscan.io/check-by-addresses?addresses=$(jq -r .hederaTestnet.receivableDvp contracts/hedera-ats/deployed.json)&chainIds=296" | jq -r '.[0].status'
+cd contracts/hedera-ats && node -e "const d=require('./deployed.json').hederaTestnet;if(!d.receivableToken||!d.receivableDvp)process.exit(1);console.log(d.receivableToken,d.receivableDvp)"
 ```
-→ prints `perfect`
+→ exits 0, prints both addresses
 
-**[ ] HashScan links in the README**
+**[x] Verify the settlement contract on HashScan**
+
+Implement: Create `contracts/hedera-ats/scripts/verify-hashscan.ts`, which submits the compiled standard-JSON input and sources for `ReceivableDvp` to Sourcify — where HashScan reads verified sources from — so the contract's source is readable at its address. Re-running it on an already-verified contract is a no-op rather than an error.
+
+Verify:
+```
+curl -s "https://sourcify.dev/server/v2/contract/296/0x46900157F8137F4545F8F1237549cafaBAaF7Cb9" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).match))"
+```
+→ prints `exact_match`
+
+**[x] HashScan links in the README**
 
 Implement: Add a section to `README.md` listing every address this project put on-chain — the receivable token, the settlement contract, and the ATS factory and resolver it builds on — each as a HashScan link.
 

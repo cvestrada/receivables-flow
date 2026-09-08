@@ -299,7 +299,7 @@ Every address this project put on the ledger, and the two ATS addresses it build
 | | Hedera contract ID | What it is |
 |---|---|---|
 | **Receivable token** | [`0.0.10425572`](https://hashscan.io/testnet/contract/0.0.10425572) | Acme Invoice #1042 as a security — $50,000 face value, matures 2026-11-07, whitelist-only |
-| **Settlement contract** | [`0.0.10425570`](https://hashscan.io/testnet/contract/0.0.10425570) | `ReceivableDvp` — the only Solidity we wrote. Moves the payment and the units in one transaction |
+| **Settlement contract** | [`0.0.10425570`](https://hashscan.io/testnet/contract/0.0.10425570) | `ReceivableDvp` — the only Solidity we wrote. Moves the payment and the units in one transaction. Source verified, exact match |
 | **Issuing account** | [`0.0.10422573`](https://hashscan.io/testnet/account/0.0.10422573) | Receivables Flow's operator — holds the compliance and issuer roles on the token |
 | ATS Factory | [`0.0.9213391`](https://hashscan.io/testnet/contract/0.0.9213391) | Hedera's, not ours. Deploys the token |
 | ATS BusinessLogicResolver | [`0.0.9212226`](https://hashscan.io/testnet/contract/0.0.9212226) | Hedera's, not ours. Points the token at its 108 shared facets |

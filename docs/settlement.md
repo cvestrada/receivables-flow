@@ -65,7 +65,7 @@ pass-through so it never has to be trusted with custody.
 
 ## What it looks like live
 
-Deployed at [`0.0.10425570`](https://hashscan.io/testnet/contract/0.0.10425570), settling
+Deployed and source-verified at [`0.0.10425570`](https://hashscan.io/testnet/contract/0.0.10425570), settling
 [`0.0.10425572`](https://hashscan.io/testnet/contract/0.0.10425572) — Acme Invoice #1042,
 $50,000 face, matures 2026-11-07.
 
@@ -94,6 +94,14 @@ it is unchanged. Two separate transfers could not do that.
   last, so on a chain that has already run a few hundred transactions they are minutes apart.
   The assertion now uses the wall clock, matching what the code does.
 - **`jq` is not installed on this machine.** Verify commands in the spec use `node -e`.
+- **HashScan does not hold verified sources itself.** `server-verify.hashscan.io` now
+  redirects to Sourcify, and Hedera testnet is chain 296 there. Hardhat's `verify` task still
+  speaks Sourcify's retired v1 API and gets an HTML 404 back, so `scripts/verify-hashscan.ts`
+  submits to v2 directly. A resubmission completes with `already_verified` rather than a
+  match, so the script treats that as success.
+- **Only the settlement contract is verifiable as ours.** The receivable token is an ATS
+  `ResolverProxy` whose source belongs upstream, not to this repo — there is nothing of ours
+  to publish for it.
 
 ---
 

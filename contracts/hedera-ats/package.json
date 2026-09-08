@@ -5,6 +5,7 @@
   "scripts": {
     "check:balance": "hardhat run scripts/check-balance.ts --network hederaTestnet",
     "deploy:dvp": "hardhat run scripts/deploy-dvp.ts --network hederaTestnet",
+    "verify:dvp": "hardhat run scripts/verify-hashscan.ts --network hederaTestnet",
     "compile": "hardhat compile",
     "typecheck": "tsc --noEmit",
     "test": "hardhat test"
