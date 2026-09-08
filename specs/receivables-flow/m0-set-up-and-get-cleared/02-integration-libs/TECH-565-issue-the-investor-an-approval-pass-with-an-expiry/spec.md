@@ -57,6 +57,8 @@ flowchart TD
     CLEARED --> REVOKE["Platform takes the pass back early"]
     REVOKE --> LAPSED
 
+    CLEARED --> PORTAL["Fund's own portal shows the pass on its Compliance page"]
+    LAPSED --> PORTAL
     CLEARED --> HEDERA["Invoice token reads this answer before a transfer — TECH-566"]
 ```
 
@@ -73,6 +75,8 @@ flowchart TD
 - The platform can take a standing pass back before its expiry, and doing so is a public event.
 - A reader holding only the name and a public node can reach the answer — no call to
   Receivables Flow is part of the path.
+- The fund's portal shows the pass it actually holds on chain, never a written-down copy of
+  it, so the screen cannot disagree with the registry.
 - Running onboarding twice leaves the same name, the same wallet and the same expiry.
 
 ---
@@ -81,11 +85,22 @@ flowchart TD
 
 ```
 contracts/ens/
+├── package.json                        # publish the package's source so the portal can import it
 ├── src/ens.ts                          # add: issue the pass, read it back, take it back early
 ├── scripts/onboard.ts                  # add: Woodgrove's pass, read back, and the lapse
 ├── test/unit/encoding.test.ts          # add: the cleared / lapsed decision, no chain
 ├── test/integration/registry.test.ts   # add: pass issued, read by a stranger, lapses on time
 └── deployed.json                       # generated — now also the investor name and its expiry
+
+apps/investor/
+├── package.json                        # add the ENS package and the browser test runner
+├── next.config.ts                      # compile the ENS package the same way the shared one is
+├── tsconfig.json                       # raise the target so the chain package's bigints compile
+├── playwright.config.ts                # boot the portal and drive it in a real browser
+├── src/lib/ens/pass.ts                 # read Woodgrove's pass from Sepolia at request time
+├── src/data/investor.data.ts           # the pass block stops being written down
+├── src/app/page.tsx                    # hand the page the pass it read
+└── e2e/pass.spec.ts                    # the fund opens Compliance and sees the pass it holds
 ```
 
 ---
@@ -125,3 +140,32 @@ npm -w @rf/contracts-ens run onboard:fork
 ```
 → exits 0 and prints Woodgrove's wallet and expiry read back from chain, then two outcomes:
 today `cleared`, past the expiry `lapsed`
+
+---
+
+**[x] Show the fund the pass it actually holds**
+
+Implement: Create `apps/investor/src/lib/ens/pass.ts`, reading Woodgrove's pass from Sepolia
+through the registry recorded in `contracts/ens/deployed.json`, and render the Compliance
+page's eligibility block from that answer instead of the written-down one — holder, status and
+expiry all as the chain reports them, and the status reading lapsed when the chain says so.
+
+Verify:
+```
+npm -w @rf/investor run typecheck && npm -w @rf/investor run build
+```
+→ exits 0
+
+---
+
+**[x] Prove it in a browser**
+
+Implement: Create `apps/investor/e2e/pass.spec.ts` driving the running portal to the
+Compliance page and asserting the eligibility block carries the name, wallet and expiry that
+are on chain, plus `apps/investor/playwright.config.ts` booting the portal for the run.
+
+Verify:
+```
+npm -w @rf/investor run test:e2e
+```
+→ exits 0, all specs pass

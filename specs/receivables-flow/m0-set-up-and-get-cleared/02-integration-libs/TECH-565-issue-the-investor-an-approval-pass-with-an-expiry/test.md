@@ -64,3 +64,16 @@ Asserted by printed output rather than a test runner, matching TECH-562.
 |---|---|---|
 | 15 | The pass is issued during onboarding, not hard-coded | the script prints Woodgrove's wallet and expiry read back from chain |
 | 16 | The same read answers both ways depending on when it is asked | the script prints `cleared` for today and `lapsed` for a date past the expiry |
+
+---
+
+## Browser — `apps/investor/e2e/pass.spec.ts`
+
+Playwright boots the portal and drives it. The expected values are read from what onboarding
+recorded on Sepolia, so the test fails if the screen and the chain disagree.
+
+| # | Statement under test | Assertion |
+|---|---|---|
+| 17 | [happy-path] The fund's Compliance page shows the pass it holds on chain | the eligibility block carries the name, wallet and expiry recorded by onboarding |
+| 18 | [happy-path] The status reflects the expiry rather than a written-down word | the block reads `Valid` while the expiry is ahead and `Lapsed` once it is not |
+| 19 | [happy-path] The transfer log agrees with the pass above it | the row for Woodgrove quotes the same wallet and expiry the eligibility block does |

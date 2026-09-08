@@ -178,6 +178,13 @@ export interface Registry {
 }
 
 /**
+ * What a caller needs to reach a name: where the platform's registry lives, and what it sits
+ * beneath. Narrower than `Registry` on purpose — reading a pass should not require holding the
+ * platform's own resolver address, which a stranger has no reason to have.
+ */
+export type RegistryRef = Pick<Registry, 'baseName' | 'registry'>;
+
+/**
  * Buy the platform's own public name and open its registry beneath it.
  *
  * Runs once, before anyone signs up. Everything after this is a call rather than a purchase,
@@ -451,7 +458,7 @@ export function decidePass(wallet: string, expiresAt: bigint, at: bigint): PassV
  */
 export async function issuePass(
   signer: Signer,
-  { registry: registryAddress, baseName }: Registry,
+  { registry: registryAddress, baseName }: RegistryRef,
   label: string,
   wallet: string,
   seconds: number,
@@ -511,7 +518,7 @@ export async function issuePass(
  */
 export async function readPass(
   provider: ethers.Provider,
-  { registry: registryAddress, baseName }: Registry,
+  { registry: registryAddress, baseName }: RegistryRef,
   label: string,
   at?: bigint,
 ): Promise<Pass & PassVerdict> {
@@ -541,7 +548,7 @@ export async function readPass(
  */
 export async function revokePass(
   signer: Signer,
-  { registry: registryAddress, baseName }: Registry,
+  { registry: registryAddress, baseName }: RegistryRef,
   label: string,
 ): Promise<void> {
   const registry = new ethers.Contract(registryAddress, ABI.registry, signer);

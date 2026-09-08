@@ -1,1 +1,17 @@
-{}
+{
+  "network": "sepolia",
+  "baseName": "receivablesflow.eth",
+  "registry": "0x74E4bE70DF12152a6674dC3d303B9C4e25175ab2",
+  "business": {
+    "name": "ironline.receivablesflow.eth",
+    "resolver": "0xF9FdC97bb673Fa37b1711495D0f6fC3Ef396844f"
+  },
+  "reviewer": "0xd12351B3e29a012698351c5e3fE41f63dbeE81a5",
+  "ratingRecord": "credit.rating",
+  "investor": {
+    "name": "woodgrove.receivablesflow.eth",
+    "resolver": "0xB3D965e66F882e5B1Fed7600c9Bb8F327AD808DE",
+    "wallet": "0xE1e76C63fb819B35cDC09dbb3D03B3d85eeaE2D8",
+    "expiresAt": "1796663028"
+  }
+}
