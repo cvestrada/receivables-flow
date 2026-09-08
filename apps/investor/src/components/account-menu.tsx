@@ -45,29 +45,29 @@ export function AccountMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex cursor-pointer items-center gap-[10px] rounded-[2px] border border-transparent px-2 py-1 text-left transition-colors hover:border-[var(--brand-line)]">
-        <Avatar className="size-8 rounded-[2px]">
-          <AvatarFallback className="rounded-[2px] bg-[var(--surface-2)] font-mono text-[11px] font-medium text-[var(--ink-2)]">
+      <DropdownMenuTrigger className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg border border-transparent px-2 py-1.5 text-left transition-colors hover:border-[var(--hairline-active)] hover:bg-[var(--surface)]">
+        <Avatar className="size-8 rounded-full">
+          <AvatarFallback className="rounded-full bg-[var(--accent-subtle)] text-[13px] font-medium text-[var(--accent)]">
             {initials(email)}
           </AvatarFallback>
         </Avatar>
-        <span className="hidden leading-tight sm:block">
-          <span className="block text-[11px] text-[var(--muted-ink)]">Woodgrove Capital</span>
-          <span className="block font-mono text-[10.5px] text-[var(--ink-2)]">{short(address)}</span>
+        <span className="min-w-0 leading-tight">
+          <span className="block text-[14px] text-[var(--muted)]">Woodgrove Capital</span>
+          <span className="block font-mono text-[10.5px] text-[var(--body)]">{short(address)}</span>
         </span>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-72 rounded-[2px]">
+      <DropdownMenuContent align="end" className="w-72 rounded-xl">
         <div className="px-2 py-1.5">
-          <span className="block text-[11px] text-[var(--muted-ink)]">Signed in as</span>
-          <span className="block font-mono text-[11px] break-all text-[var(--ink-2)]">{email}</span>
+          <span className="block text-[14px] text-[var(--muted)]">Signed in as</span>
+          <span className="block text-[14px] break-all text-[var(--body)]">{email}</span>
         </div>
 
         <DropdownMenuSeparator />
 
         <div className="px-2 py-1.5">
-          <span className="block text-[11px] text-[var(--muted-ink)]">Fund account</span>
-          <span className="block font-mono text-[11px] break-all text-[var(--ink-2)]">
+          <span className="block text-[14px] text-[var(--muted)]">Fund account</span>
+          <span className="block text-[14px] break-all text-[var(--body)]">
             {address ?? 'creating…'}
           </span>
         </div>

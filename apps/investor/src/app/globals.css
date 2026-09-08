@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-plex);
-  --font-mono: var(--font-plex-mono);
-  --font-heading: var(--font-archivo);
+  --font-sans: var(--font-tight);
+  --font-mono: var(--font-tight);
+  --font-heading: var(--font-tight);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -34,139 +34,250 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
 }
 
 /*
- * Sodium amber on blue-slate, taken from the dock-lighting palette the reference
- * prototype uses. Every shadcn semantic token is repointed at one of these, so the
- * installed components inherit the portal's identity instead of shadcn's neutral
- * default — there is no second palette anywhere in the app.
+ * The Receivables Flow palette. Indigo is the only saturated hue in the chrome;
+ * everything else is navy ink, slate, and hairline grey, with three state colours
+ * carrying settled, failed, and pending.
+ *
+ * Two shadow scales exist on purpose. Dashboard surfaces take the quiet contact
+ * shadow — a page carries a dozen panels, and a heavy drop shadow on each reads as a
+ * pile of brochure tiles. --shadow-float is the loud one, reserved for modals and
+ * hero surfaces where a surface really is meant to lift off the page.
+ *
+ * Full rationale and component anatomy: docs/design.md.
  */
 :root {
-  --ground:#eceff4; --surface:#ffffff; --surface-2:#f5f7fa; --sunk:#e4e8ee;
-  --line:#d6dce5; --line-soft:#e7ebf1;
-  --ink:#151a21; --ink-2:#48525f; --muted-ink:#7b8593;
-  --brand:#9a5a08; --brand-soft:#f7e6cd; --brand-line:#e0bd86;
-  --pos:#1d7550; --pos-soft:#dcefe4; --neg:#ab382a; --neg-soft:#f7dfdb;
-  --shadow-desk:0 1px 2px rgba(20,26,34,.06), 0 8px 24px -12px rgba(20,26,34,.16);
+  /* brand */
+  --accent:#635BFF; --accent-strong:#533AFD;
+  --accent-subtle:rgba(99,91,255,.08); --accent-surface:rgba(99,91,255,.05);
 
-  --radius:0.1875rem;
-  --background:var(--ground); --foreground:var(--ink);
+  /* ink */
+  --ink:#0A2540; --ink-deep:#061B31; --body:#3C4F69;
+  --muted:#64748D; --muted-light:#707F98;
+
+  /* surface */
+  --surface:#FFFFFF; --surface-alt:#F8FAFD; --surface-tint:#E5EDF5;
+  --hairline:#E5EDF5; --hairline-active:#D3E0EC;
+
+  /* state — settled, pending, failed */
+  --pos:#1B9C68; --pos-ink:#11734B; --pos-subtle:rgba(27,156,104,.10);
+  --warn:#C8871B; --warn-ink:#8A5D0F; --warn-subtle:rgba(200,135,27,.10);
+  --neg:#D2483A; --neg-ink:#A4342A; --neg-subtle:rgba(210,72,58,.10);
+
+  --shadow-sm:0 1px 3px rgba(10,37,64,.04);
+  --shadow-md:0 1px 3px rgba(10,37,64,.04), 0 8px 32px rgba(10,37,64,.06);
+  --shadow-lg:0 2px 8px rgba(10,37,64,.06), 0 16px 48px rgba(10,37,64,.10);
+  --shadow-float:rgba(50,50,93,.25) 0 30px 60px -12px, rgba(0,0,0,.3) 0 18px 36px -18px;
+
+  --ease-out:cubic-bezier(.16,1,.3,1);
+  --radius:8px;
+
+  --background:var(--surface-alt); --foreground:var(--ink);
   --card:var(--surface); --card-foreground:var(--ink);
   --popover:var(--surface); --popover-foreground:var(--ink);
-  --primary:var(--brand); --primary-foreground:var(--surface);
-  --secondary:var(--surface-2); --secondary-foreground:var(--ink-2);
-  --muted:var(--surface-2); --muted-foreground:var(--muted-ink);
-  --accent:var(--brand-soft); --accent-foreground:var(--brand);
+  --primary:var(--accent); --primary-foreground:#FFFFFF;
+  --secondary:var(--surface-alt); --secondary-foreground:var(--body);
+  --muted-foreground:var(--muted);
+  --accent-foreground:var(--accent-strong);
   --destructive:var(--neg);
-  --border:var(--line); --input:var(--line); --ring:var(--brand);
-  --sidebar:var(--surface); --sidebar-foreground:var(--ink-2);
-  --sidebar-primary:var(--brand); --sidebar-primary-foreground:var(--surface);
-  --sidebar-accent:var(--brand-soft); --sidebar-accent-foreground:var(--brand);
-  --sidebar-border:var(--line); --sidebar-ring:var(--brand);
+  --border:var(--hairline); --input:var(--hairline); --ring:var(--accent);
+  --sidebar:var(--surface-alt); --sidebar-foreground:var(--body);
+  --sidebar-primary:var(--accent); --sidebar-primary-foreground:#FFFFFF;
+  --sidebar-accent:var(--accent-subtle); --sidebar-accent-foreground:var(--accent);
+  --sidebar-border:var(--hairline); --sidebar-ring:var(--accent);
 }
 
 /*
- * Dark is defined twice on purpose. shadcn drives its own components off a `.dark`
- * class, but nothing in this app ever sets that class, so without the media query
- * a viewer on a dark OS would get the light palette. The `:not(.light)` guard keeps
- * an explicit light choice winning over the operating system.
+ * Dark is not a second palette — it is the same navy taken all the way down, with the
+ * indigo lifted so it still separates from the surface it sits on.
+ *
+ * Defined twice on purpose: once for the OS preference (guarded so an explicit light
+ * choice still wins) and once for the `.dark` class shadcn's own components read,
+ * which nothing in this app ever sets. Without the media query a viewer on a dark OS
+ * would get light panels inside dark browser chrome.
  */
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    --ground:#0f131a; --surface:#171c24; --surface-2:#1c222b; --sunk:#12171e;
-    --line:#2b333f; --line-soft:#232a34;
-    --ink:#e9edf3; --ink-2:#aeb9c6; --muted-ink:#78838f;
-    --brand:#f0a63c; --brand-soft:#3a2b14; --brand-line:#6b501f;
-    --pos:#54bd89; --pos-soft:#143226; --neg:#e4695a; --neg-soft:#341a1a;
-    --shadow-desk:0 1px 2px rgba(0,0,0,.5), 0 10px 30px -14px rgba(0,0,0,.7);
-    --primary-foreground:#12171e;
-    --sidebar-primary-foreground:#12171e;
+    --accent:#8B85FF; --accent-strong:#A29BFF;
+    --accent-subtle:rgba(139,133,255,.14); --accent-surface:rgba(139,133,255,.07);
+    --ink:#F2F6FB; --ink-deep:#FFFFFF; --body:#B4C2D4;
+    --muted:#8695AB; --muted-light:#7A889D;
+    --surface:#0E2138; --surface-alt:#09182A; --surface-tint:#16304C;
+    --hairline:#1D3A57; --hairline-active:#2A4E71;
+    --pos:#3FCB8E; --pos-ink:#5FDCA6; --pos-subtle:rgba(63,203,142,.14);
+    --warn:#E5A93C; --warn-ink:#F0BE63; --warn-subtle:rgba(229,169,60,.14);
+    --neg:#EF6B5C; --neg-ink:#F58C80; --neg-subtle:rgba(239,107,92,.14);
+    --shadow-sm:0 1px 3px rgba(0,0,0,.4);
+    --shadow-md:0 1px 3px rgba(0,0,0,.4), 0 8px 32px rgba(0,0,0,.45);
+    --shadow-lg:0 2px 8px rgba(0,0,0,.5), 0 16px 48px rgba(0,0,0,.55);
+    --shadow-float:rgba(0,0,0,.55) 0 30px 60px -12px, rgba(0,0,0,.6) 0 18px 36px -18px;
+    --primary-foreground:#09182A;
+    --sidebar-primary-foreground:#09182A;
   }
 }
 .dark {
-  --ground:#0f131a; --surface:#171c24; --surface-2:#1c222b; --sunk:#12171e;
-  --line:#2b333f; --line-soft:#232a34;
-  --ink:#e9edf3; --ink-2:#aeb9c6; --muted-ink:#78838f;
-  --brand:#f0a63c; --brand-soft:#3a2b14; --brand-line:#6b501f;
-  --pos:#54bd89; --pos-soft:#143226; --neg:#e4695a; --neg-soft:#341a1a;
-  --shadow-desk:0 1px 2px rgba(0,0,0,.5), 0 10px 30px -14px rgba(0,0,0,.7);
-  --primary-foreground:#12171e;
-  --sidebar-primary-foreground:#12171e;
+  --accent:#8B85FF; --accent-strong:#A29BFF;
+  --accent-subtle:rgba(139,133,255,.14); --accent-surface:rgba(139,133,255,.07);
+  --ink:#F2F6FB; --ink-deep:#FFFFFF; --body:#B4C2D4;
+  --muted:#8695AB; --muted-light:#7A889D;
+  --surface:#0E2138; --surface-alt:#09182A; --surface-tint:#16304C;
+  --hairline:#1D3A57; --hairline-active:#2A4E71;
+  --pos:#3FCB8E; --pos-ink:#5FDCA6; --pos-subtle:rgba(63,203,142,.14);
+  --warn:#E5A93C; --warn-ink:#F0BE63; --warn-subtle:rgba(229,169,60,.14);
+  --neg:#EF6B5C; --neg-ink:#F58C80; --neg-subtle:rgba(239,107,92,.14);
+  --shadow-sm:0 1px 3px rgba(0,0,0,.4);
+  --shadow-md:0 1px 3px rgba(0,0,0,.4), 0 8px 32px rgba(0,0,0,.45);
+  --shadow-lg:0 2px 8px rgba(0,0,0,.5), 0 16px 48px rgba(0,0,0,.55);
+  --shadow-float:rgba(0,0,0,.55) 0 30px 60px -12px, rgba(0,0,0,.6) 0 18px 36px -18px;
+  --primary-foreground:#09182A;
+  --sidebar-primary-foreground:#09182A;
 }
 
 @layer base {
-  * { border-color: var(--border); }
+  * { border-color: var(--border); box-sizing: border-box; }
   body {
-    background: var(--ground);
+    background: var(--background);
     color: var(--ink);
-    font-family: var(--font-plex), 'Segoe UI', system-ui, sans-serif;
+    font-family: var(--font-tight), 'Inter', system-ui, -apple-system, sans-serif;
+    line-height: 1.55;
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  /*
+   * One variable family covers both roles, so `.mono` is a numeric treatment rather
+   * than a font swap — tabular figures line a column of money up without the width
+   * jump a second typeface would introduce.
+   */
+  code, .mono {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1, 'ss01' 1;
+  }
+  code {
+    background: var(--surface-tint); color: var(--body);
+    padding: 3px 8px; border-radius: 5px; font-size: .92em;
   }
 }
 
 /* ── portal furniture the installed components do not cover ─────────── */
 
-.desk { background:var(--surface); border:1px solid var(--line); box-shadow:var(--shadow-desk) }
+/*
+ * The workhorse surface. Every panel and every stat card is this: white fill, one
+ * hairline, 12px radius, and the quiet contact shadow rather than the loud one.
+ */
+.desk {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+}
 
-.eyebrow { font-family:var(--font-plex-mono),monospace; font-size:9.5px; letter-spacing:.11em;
-  text-transform:uppercase; color:var(--muted-ink) }
+/*
+ * Uppercase is rationed to three places — this label, a stat caption, and a table
+ * column header. Spending it on every panel heading would flatten the distinction
+ * and leave the page reading as one long run of labels.
+ */
+.eyebrow {
+  font-size: 13px; font-weight: 500; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted);
+}
 
-.figure { font-family:var(--font-archivo),sans-serif; font-weight:600; letter-spacing:-.022em;
-  font-variant-numeric:tabular-nums }
+/*
+ * Figures sit at weight 600 while body text stays at 400-500. On a receivables desk
+ * the number is the display element, so it outranks every heading around it.
+ */
+.figure {
+  font-weight: 600; letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums; color: var(--ink);
+}
 
-.tone-ok{color:var(--pos)} .tone-bad{color:var(--neg)} .tone-pos{color:var(--pos)}
-.tone-neg{color:var(--neg)} .tone-dim{color:var(--muted-ink)}
-.tone-m{font-family:var(--font-plex-mono),monospace;font-size:12.5px}
+.tone-ok, .tone-pos { color: var(--pos-ink) }
+.tone-bad, .tone-neg { color: var(--neg-ink) }
+.tone-dim { color: var(--muted) }
+.tone-m { font-variant-numeric: tabular-nums }
 
-/* status chip — four tones, more than Badge's variants carry */
-.st{font-family:var(--font-plex-mono),monospace;font-size:10px;letter-spacing:.08em;
-  text-transform:uppercase;padding:3px 7px;border-radius:2px;border:1px solid;white-space:nowrap}
-.st-ok{background:var(--pos-soft);color:var(--pos);border-color:var(--pos)}
-.st-bad{background:var(--neg-soft);color:var(--neg);border-color:var(--neg)}
-.st-hot{background:var(--brand-soft);color:var(--brand);border-color:var(--brand-line)}
-.st-idle{background:var(--sunk);color:var(--muted-ink);border-color:var(--line)}
+/*
+ * Status badge: fully pill, tinted subtle fill, ink-toned text, no border. The
+ * leading dot carries the state for anyone who cannot separate the fills by hue.
+ */
+.st {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 13px; font-weight: 500; padding: 4px 10px;
+  border-radius: 999px; white-space: nowrap; border: 0;
+}
+.st::before {
+  content: ''; width: 5px; height: 5px; border-radius: 50%;
+  background: currentColor; flex-shrink: 0;
+}
+.st-ok   { background: var(--pos-subtle);    color: var(--pos-ink) }
+.st-bad  { background: var(--neg-subtle);    color: var(--neg-ink) }
+.st-hot  { background: var(--accent-subtle); color: var(--accent) }
+.st-idle { background: var(--surface-tint);  color: var(--body) }
+
+.panel-note b { color: var(--ink); font-weight: 500 }
 
 /* activity feed */
-.feed-row{display:grid;grid-template-columns:78px 9px 1fr;gap:11px;align-items:start;
-  padding:11px 16px;border-bottom:1px solid var(--line-soft);font-size:13.5px}
-.feed-row:last-child{border-bottom:0}
-.feed-when{font-family:var(--font-plex-mono),monospace;font-size:11px;color:var(--muted-ink);
-  font-variant-numeric:tabular-nums;padding-top:3px}
-.feed-dot{width:7px;height:7px;border-radius:50%;background:var(--line);margin-top:7px}
-.feed-row.ok .feed-dot{background:var(--pos)}
-.feed-row.bad .feed-dot{background:var(--neg)}
-.feed-row.hot .feed-dot{background:var(--brand)}
-.feed-text{color:var(--ink-2);line-height:1.45}
-.feed-text b{color:var(--ink);font-weight:500}
-.panel-note b{color:var(--ink-2);font-weight:500}
+.feed-row {
+  display: grid; grid-template-columns: 86px 9px 1fr; gap: 12px; align-items: start;
+  padding: 12px 20px; border-top: 1px solid var(--hairline); font-size: 15px;
+  transition: background 120ms var(--ease-out);
+}
+.feed-row:first-child { border-top: 0 }
+.feed-row:hover { background: var(--surface-alt) }
+.feed-when {
+  font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums;
+  padding-top: 3px; white-space: nowrap;
+}
+.feed-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--hairline-active); margin-top: 8px }
+.feed-row.ok  .feed-dot { background: var(--pos) }
+.feed-row.bad .feed-dot { background: var(--neg) }
+.feed-row.hot .feed-dot { background: var(--accent) }
+.feed-text { color: var(--body); line-height: 1.5 }
+.feed-text b { color: var(--ink); font-weight: 500 }
 
 /* demo timeline */
-.rail{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;padding-top:5px}
-.rail::before{content:"";position:absolute;left:0;right:0;top:11px;height:1px;background:var(--line)}
-.rail::after{content:"";position:absolute;left:0;top:11px;height:1px;background:var(--brand);
-  width:var(--fill,0%);transition:width .45s cubic-bezier(.2,.7,.3,1)}
-.stop{position:relative;background:none;border:0;padding:24px 4px 0;cursor:pointer;text-align:center;
-  font-family:var(--font-plex-mono),monospace;color:var(--muted-ink);font-size:10.5px}
-.stop::before{content:"";position:absolute;top:5px;left:50%;transform:translateX(-50%);
-  width:12px;height:12px;border-radius:50%;background:var(--surface);border:1px solid var(--line);
-  transition:background .25s,border-color .25s,transform .25s}
-.stop:hover{color:var(--ink-2)} .stop:hover::before{border-color:var(--brand-line)}
-.stop:focus-visible{outline:2px solid var(--brand);outline-offset:3px;border-radius:2px}
-.stop[data-past="1"]::before{background:var(--brand);border-color:var(--brand)}
-.stop[aria-current="true"]{color:var(--ink);font-weight:500}
-.stop[aria-current="true"]::before{background:var(--brand);border-color:var(--brand);
-  transform:translateX(-50%) scale(1.35)}
+.rail { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding-top: 5px }
+.rail::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 11px;
+  height: 2px; border-radius: 999px; background: var(--hairline);
+}
+.rail::after {
+  content: ""; position: absolute; left: 0; top: 11px; height: 2px; border-radius: 999px;
+  background: var(--accent); width: var(--fill, 0%);
+  transition: width .45s var(--ease-out);
+}
+.stop {
+  position: relative; background: none; border: 0; padding: 26px 4px 0; cursor: pointer;
+  text-align: center; color: var(--muted); font-size: 13px; font-weight: 500;
+  transition: color 120ms var(--ease-out);
+}
+.stop::before {
+  content: ""; position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
+  width: 14px; height: 14px; border-radius: 50%; background: var(--surface);
+  border: 2px solid var(--hairline-active);
+  transition: background .25s, border-color .25s, transform .25s;
+}
+.stop:hover { color: var(--body) }
+.stop:hover::before { border-color: var(--accent) }
+.stop:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px }
+.stop[data-past="1"]::before { background: var(--accent); border-color: var(--accent) }
+.stop[aria-current="true"] { color: var(--ink); font-weight: 600 }
+.stop[aria-current="true"]::before {
+  background: var(--accent); border-color: var(--accent);
+  transform: translateX(-50%) scale(1.25);
+  box-shadow: 0 0 0 4px var(--accent-subtle);
+}
 
-@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-.swap > *{animation:fadeUp .3s ease-out both}
-.swap > *:nth-child(2){animation-delay:.04s}
-.swap > *:nth-child(3){animation-delay:.08s}
+@keyframes fadeUp { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: translateY(0) } }
+.swap > * { animation: fadeUp .3s var(--ease-out) both }
+.swap > *:nth-child(2) { animation-delay: .04s }
+.swap > *:nth-child(3) { animation-delay: .08s }
 
-@media (prefers-reduced-motion:reduce){
-  *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important }
 }

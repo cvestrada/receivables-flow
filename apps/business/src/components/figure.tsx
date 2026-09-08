@@ -50,5 +50,5 @@ export function Figure({ value, tone }: { value: string; tone?: string }) {
     return () => cancelAnimationFrame(frame);
   }, [value]);
 
-  return <span className={`figure block text-[26px] leading-none tone-${tone ?? ''}`}>{shown}</span>;
+  return <span className={`figure mt-1.5 block text-[26px] leading-none tone-${tone ?? ''}`}>{shown}</span>;
 }

@@ -25,7 +25,7 @@ export function PrivyPortal(props: PortalProps) {
       appId={APP_ID}
       config={{
         loginMethods: ['email'],
-        appearance: { theme: 'dark', accentColor: '#c8a24a' },
+        appearance: { theme: 'light', accentColor: '#635BFF' },
         embeddedWallets: { ethereum: { createOnLogin: 'users-without-wallets' } },
       }}
     >
@@ -39,7 +39,7 @@ function Gate(props: PortalProps) {
 
   if (!ready) {
     return (
-      <main className="flex min-h-svh items-center justify-center text-sm text-[var(--muted-ink)]">
+      <main className="flex min-h-svh items-center justify-center text-sm text-[var(--muted)]">
         Loading…
       </main>
     );
@@ -48,11 +48,11 @@ function Gate(props: PortalProps) {
   if (!authenticated) {
     return (
       <main className="flex min-h-svh flex-col items-center justify-center gap-5 px-6 text-center">
-        <div className="font-heading text-[10.5px] font-bold tracking-[.16em] uppercase text-[var(--muted-ink)]">
-          Receivables <span className="text-[var(--brand)]">Flow</span>
+        <div className="eyebrow">
+          Receivables <span className="text-[var(--accent)]">Flow</span>
         </div>
-        <h1 className="font-heading text-2xl font-semibold text-[var(--ink)]">{props.brand}</h1>
-        <p className="max-w-sm text-sm text-[var(--muted-ink)]">
+        <h1 className="text-[28px] font-semibold tracking-[-.02em] text-[var(--ink)]">{props.brand}</h1>
+        <p className="max-w-sm text-[16px] text-[var(--body)]">
           Sign in with an email address. Your account is created for you — no extension, no seed
           phrase.
         </p>
