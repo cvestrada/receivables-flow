@@ -28,3 +28,6 @@ deployments/
 
 # other info dump
 references/
+
+# Approvals waiting for a second director — signatures over one sale, not secrets
+.approvals.json

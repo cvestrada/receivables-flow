@@ -1,3 +1,4 @@
+import { Approvals } from '@/components/approvals';
 import { PrivyPortal } from '@/components/privy';
 import { DEFAULTED, NAV, STAGES } from '@/data/business.data';
 
@@ -6,10 +7,11 @@ export default function Page() {
     <PrivyPortal
       brand="Ironline Freight"
       ens="ironline.receivables.eth"
-      signer="K. Adeyemi · Finance Director"
+      signer="Anna Reed · Finance Director"
       nav={NAV}
       stages={STAGES}
       defaulted={DEFAULTED}
+      live={{ approvals: <Approvals /> }}
     />
   );
 }

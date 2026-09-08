@@ -1,3 +1,4 @@
+import { Allocate } from '@/components/allocate';
 import { PrivyPortal } from '@/components/privy';
 import { DEFAULTED, NAV, STAGES } from '@/data/investor.data';
 
@@ -10,6 +11,7 @@ export default function Page() {
       nav={NAV}
       stages={STAGES}
       defaulted={DEFAULTED}
+      live={{ compliance: <Allocate /> }}
     />
   );
 }
