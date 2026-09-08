@@ -2,6 +2,12 @@
   "name": "@rf/contracts-ens",
   "version": "0.0.1",
   "private": true,
+  "main": "./src/ens.ts",
+  "types": "./src/ens.ts",
+  "exports": {
+    ".": "./src/ens.ts",
+    "./deployed.json": "./deployed.json"
+  },
   "scripts": {
     "check:balance": "hardhat run scripts/check-balance.ts --network sepolia",
     "compile": "hardhat compile",

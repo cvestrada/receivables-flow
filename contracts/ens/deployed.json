@@ -1,1 +1,25 @@
-{}
+{
+  "network": "sepolia",
+  "baseName": "receivablesflow.eth",
+  "registry": "0x74E4bE70DF12152a6674dC3d303B9C4e25175ab2",
+  "businesses": {
+    "baseName": "business.receivablesflow.eth",
+    "registry": "0x8D4d018F30A1fe0A63B0a43725D51B7Ec1C230f5"
+  },
+  "investors": {
+    "baseName": "investor.receivablesflow.eth",
+    "registry": "0xE4e2De277A20507cC2e94FAF29415F1e5c85BEc8"
+  },
+  "business": {
+    "name": "ironline.business.receivablesflow.eth",
+    "resolver": "0xE96C1E21DddC1038EB752ED0a36E196d8c119eF4"
+  },
+  "reviewer": "0xd12351B3e29a012698351c5e3fE41f63dbeE81a5",
+  "ratingRecord": "credit.rating",
+  "investor": {
+    "name": "woodgrove.investor.receivablesflow.eth",
+    "resolver": "0x3B1F30D376Bf142AF282B3808F40421C9c5eBee8",
+    "wallet": "0xE1e76C63fb819B35cDC09dbb3D03B3d85eeaE2D8",
+    "expiresAt": "1796665548"
+  }
+}
