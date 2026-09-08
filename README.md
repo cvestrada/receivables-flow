@@ -289,3 +289,27 @@ Had the customer not paid, the token would be marked defaulted, both investors w
 | **The investor's wallet** | Privy | The investor funds and holds positions without managing an external wallet |
 | **Identity and eligibility** | ENSv2 permissioned records | Holds Ironline Freight's verified status, credit tier, and repayment history, and gates which investors may hold a receivable — checked by the contracts, not displayed as a label |
 | **Repayment signal** | Mock bank webhook | Stands in for the customer's payment, which is the event the maturity action responds to |
+
+---
+
+## On-chain — Hedera testnet
+
+Every address this project put on the ledger, and the two ATS addresses it builds on. Nothing here is a screenshot of our own database — open any of them and read the state for yourself.
+
+| | Hedera contract ID | What it is |
+|---|---|---|
+| **Receivable token** | [`0.0.10425572`](https://hashscan.io/testnet/contract/0.0.10425572) | Acme Invoice #1042 as a security — $50,000 face value, matures 2026-11-07, whitelist-only |
+| **Settlement contract** | [`0.0.10425570`](https://hashscan.io/testnet/contract/0.0.10425570) | `ReceivableDvp` — the only Solidity we wrote. Moves the payment and the units in one transaction |
+| **Issuing account** | [`0.0.10422573`](https://hashscan.io/testnet/account/0.0.10422573) | Receivables Flow's operator — holds the compliance and issuer roles on the token |
+| ATS Factory | [`0.0.9213391`](https://hashscan.io/testnet/contract/0.0.9213391) | Hedera's, not ours. Deploys the token |
+| ATS BusinessLogicResolver | [`0.0.9212226`](https://hashscan.io/testnet/contract/0.0.9212226) | Hedera's, not ours. Points the token at its 108 shared facets |
+
+**What to look at.** The token is issued in whitelist mode, which cannot be switched off after creation: an address that is not on its approved list can never receive it. The settlement contract is what makes a purchase safe in both directions — an investor who is not approved has their payment reverted along with the delivery, so they cannot pay for something the token will refuse to give them.
+
+```bash
+cd contracts/hedera-ats
+npx hardhat run scripts/demo-settlement.ts   # the refusal and the sale, end to end
+npx hardhat test                             # 11 tests, including the refusal
+```
+
+**Addresses come from** `contracts/hedera-ats/deployed.json`, written by the deploy scripts rather than typed by hand.
