@@ -8,7 +8,13 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   timeout: 180_000,
-  use: { baseURL: 'http://127.0.0.1:3200' },
+  use: {
+    baseURL: 'http://127.0.0.1:3200',
+    /* A recording of the run survives where a trace does not — a trace viewer needs a secure
+     * context, which a machine on a LAN address is not. */
+    video: 'on',
+    trace: 'on',
+  },
   webServer: {
     command: 'npm run build && npm run start -- --port 3200',
     url: 'http://127.0.0.1:3200',

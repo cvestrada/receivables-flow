@@ -5,7 +5,7 @@ import { ethers } from 'ethers';
 
 import {
   ABI,
-  PASS_WALLET_RECORD,
+  KYC_WALLET_RECORD,
   PROFILE_RECORDS,
   RATING_RECORD,
   ROLES,
@@ -293,7 +293,7 @@ describe('registry', () => {
         const { pass, wallet } = await cleared();
 
         expect(
-          await readRecord(hre.provider as never, pass.resolver, pass.name, PASS_WALLET_RECORD),
+          await readRecord(hre.provider as never, pass.resolver, pass.name, KYC_WALLET_RECORD),
         ).to.equal(wallet);
       });
 
