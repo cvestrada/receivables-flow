@@ -22,6 +22,14 @@ export interface Invoice {
   reference: string;
   /** Short code for the token, e.g. "RF1042". */
   code: string;
+  /**
+   * The token's full name, when the invoice record already carries one.
+   *
+   * Falls back to the reference, which is what the earlier demo tokens were named
+   * after. A note that is sold on has a name of its own, and it is decided by the
+   * record rather than assembled here.
+   */
+  name?: string;
   /** Total face value in whole US dollars. */
   faceValueUsd: number;
   /** Days from issuance until the invoice is payable. */
@@ -91,7 +99,7 @@ export async function issueReceivableToken(
         isWhiteList: true,
         maxSupply: BigInt(invoice.faceValueUsd) * 10n ** BigInt(TOKEN_DECIMALS),
         erc20MetadataInfo: {
-          name: `Receivables Flow · ${invoice.reference}`,
+          name: invoice.name ?? `Receivables Flow · ${invoice.reference}`,
           symbol: invoice.code,
           isin: buildIsin(invoice.code),
           decimals: TOKEN_DECIMALS,
@@ -188,6 +196,35 @@ export async function isApprovedHolder(signer: Signer, token: string, holder: st
 /** Mints token units to an address. Requires the issuer role, and the address must be approved. */
 export async function mintTo(signer: Signer, token: string, to: string, units: number): Promise<void> {
   const tx = await IMint__factory.connect(token, signer).mint(to, units);
+  await tx.wait();
+}
+
+/**
+ * Hands the right to issue the token to another account.
+ *
+ * The account that created the token holds this role, and the account that should
+ * hold it is the one the directors approve through. Requires the admin role.
+ */
+export async function grantIssuerRole(signer: Signer, token: string, account: string): Promise<void> {
+  const tx = await IAccessControl__factory.connect(token, signer).grantRole(
+    ATS_ROLES.ROLE_ISSUER,
+    account,
+  );
+  await tx.wait();
+}
+
+/**
+ * Takes the right to issue the token away from an account.
+ *
+ * Used on the account that created the token, so that afterwards no key we hold
+ * can issue the note — which is what makes two directors approving the only way it
+ * comes into existence.
+ */
+export async function revokeIssuerRole(signer: Signer, token: string, account: string): Promise<void> {
+  const tx = await IAccessControl__factory.connect(token, signer).revokeRole(
+    ATS_ROLES.ROLE_ISSUER,
+    account,
+  );
   await tx.wait();
 }
 

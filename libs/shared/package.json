@@ -2,10 +2,17 @@
   "name": "@rf/shared",
   "version": "0.0.1",
   "private": true,
-  "type": "module",
   "main": "./src/types.ts",
   "types": "./src/types.ts",
-  "exports": { ".": "./src/types.ts" },
+  "exports": {
+    ".": "./src/types.ts",
+    "./invoice": "./src/invoice.ts"
+  },
+  "typesVersions": {
+    "*": {
+      "invoice": ["./src/invoice.ts"]
+    }
+  },
   "scripts": { "typecheck": "tsc --noEmit" },
   "devDependencies": { "typescript": "^5.6.0" }
 }

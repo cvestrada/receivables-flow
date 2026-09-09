@@ -9,9 +9,11 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { INVOICE } from '@rf/shared/invoice';
 import {
   APPROVERS_REQUIRED,
   buildAllocationRequest,
+  buildIssuanceRequest,
   buildSaleRequest,
   type SignableRequest,
 } from './policies';
@@ -36,6 +38,34 @@ function accountsPath(): string {
     const candidate = join(dir, 'libs', 'privy', 'accounts.json');
     if (existsSync(candidate)) return candidate;
     if (dirname(dir) === dir) throw new Error('libs/privy/accounts.json not found — run provisioning');
+  }
+}
+
+/*
+ * The note's address, found the same way the accounts are.
+ *
+ * The issue run records it, and everything downstream reads it back rather than
+ * being told it again — a note address written a second time somewhere else is a
+ * second note waiting to be approved by mistake. The override exists so a run
+ * against a freshly issued note needs no edit to a recorded file.
+ */
+export function noteAddress(): string {
+  const override = process.env.RECEIVABLE_TOKEN_ADDRESS;
+  if (override) return override;
+
+  for (let dir = process.cwd(); ; dir = dirname(dir)) {
+    const candidate = join(dir, 'contracts', 'hedera-ats', 'deployed.json');
+    if (existsSync(candidate)) {
+      const deployed = JSON.parse(readFileSync(/* turbopackIgnore: true */ candidate, 'utf8')) as {
+        hederaTestnet?: { receivableToken?: string };
+      };
+      const note = deployed.hederaTestnet?.receivableToken;
+      if (!note) throw new Error('No receivable note recorded — run npm run issue -w @rf/contracts-hedera-ats');
+      return note;
+    }
+    if (dirname(dir) === dir) {
+      throw new Error('contracts/hedera-ats/deployed.json not found — run npm run issue -w @rf/contracts-hedera-ats');
+    }
   }
 }
 
@@ -161,15 +191,34 @@ export function saleToApprove(invoiceId: string): SignableRequest {
 }
 
 /**
- * Send a sale carrying the approvals collected so far.
+ * The issuance currently on offer, as the request each director signs in their browser.
+ *
+ * Both halves come from a record rather than from an argument: the note from what
+ * the issue run wrote down, the face value from the invoice itself. Nothing a
+ * caller passes can change what the directors are asked to approve.
+ */
+export function issuanceToApprove(): SignableRequest {
+  const accounts = openedAccounts();
+
+  return buildIssuanceRequest({
+    appId: appId(),
+    walletId: accounts.company.walletId,
+    note: noteAddress(),
+    to: accounts.company.address,
+    faceValueUsd: INVOICE.faceValueUsd,
+  });
+}
+
+/**
+ * Send an approved request carrying the approvals collected so far.
  *
  * Deliberately willing to send too few. The portal offers that button so the
  * refusal can be produced on demand, and the refusal has to come from Privy
  * counting the signatures — not from us declining to ask.
  */
-export function sendSale(sale: SignableRequest, approvals: Approval[]): Promise<Sent> {
+export function sendApproved(request: SignableRequest, approvals: Approval[]): Promise<Sent> {
   return send(
-    sale,
+    request,
     approvals.map((approval) => approval.signature),
   );
 }
