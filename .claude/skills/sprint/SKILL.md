@@ -185,6 +185,11 @@ Examples:
 
 ---
 
+**Every spec must land in the app and be provable through the front end**
+- **What:** A spec is not approvable unless its Action Items change something a person sees in `apps/business`, `apps/investor` or `apps/hq`, and add or extend a Playwright test in `apps/e2e` that drives the browser and asserts the change on screen.
+- **Why:** This is judged on a five-minute demo video. A correct contract, library or script that no screen reads is invisible work — it cannot be shown, so it scores nothing. TECH-625 shipped a correct credit-score formula in `contracts/ens` that no portal read, and the e2e run showed nothing related to it.
+- **How:** At the Phase 1 gate, read the spec's File Tree. If every path is under `libs/`, `contracts/`, `scripts/`, or `tools/`, send it back and add the smallest real UI surface plus its e2e test before ratifying. Backend correctness still needs its own unit and integration tests — the screen is an addition, not a substitute.
+
 **Skip tests when there is no business logic**
 - **What:** If every Action Item in the spec is a config file, shell command, or infra wiring step — with no functions, services, or data transformations to reason about — skip the test file entirely and go straight to implementation.
 - **Why:** Wrapping shell verify commands in a test framework adds ceremony with no verification value. The spec's verify clauses are already the acceptance criteria; running them after implementation is the test.
