@@ -54,6 +54,24 @@ test.describe('Ironline Freight — one approval does not issue the receivable',
     await expect(panel).not.toContainText('Issued.');
   });
 
+  /*
+   * The answer has to be unmissable, not merely present. A strip below the fold is
+   * something a room watching a demo does not see, so the account's answer is put
+   * over the page and this asserts it arrived there.
+   */
+  test('the answer arrives as a dialog nobody can scroll past', async ({ page }) => {
+    await openSection(page, BUSINESS, 'Approvals');
+
+    await page.getByRole('button', { name: 'Send to the company account' }).click();
+
+    const answer = page.getByRole('dialog', { name: 'What the company account answered' });
+    await expect(answer).toBeVisible({ timeout: 20_000 });
+    await expect(answer).toContainText('Not issued');
+
+    await answer.getByRole('button', { name: 'Close' }).click();
+    await expect(answer).toBeHidden();
+  });
+
   test('the portal no longer describes an office manager with a $10,000 limit', async ({ page }) => {
     await openSection(page, BUSINESS, 'Approvals');
 

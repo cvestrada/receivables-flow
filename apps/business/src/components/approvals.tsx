@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { Approval } from '@rf/privy/accounts';
 
@@ -49,6 +49,9 @@ export function Approvals({
   const [view, setView] = useState<View | null>(null);
   const [busy, setBusy] = useState(false);
 
+  /** The company account's answer, shown over the page so nobody can miss it. */
+  const answer = useRef<HTMLDialogElement>(null);
+
   /*
    * A director arriving mid-approval must see where the issuance already stands, so the
    * record is read once on arrival rather than assumed empty. Every later change to
@@ -95,7 +98,18 @@ export function Approvals({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'send' }),
       });
-      setView(await response.json());
+      const fresh = (await response.json()) as View;
+      setView(fresh);
+
+      /*
+       * The answer is put in the way rather than left at the bottom of the panel.
+       *
+       * A refusal is the whole point of pressing this button, and a strip appearing
+       * below the fold is something a room full of people watching a demo will miss
+       * entirely — they see a click and then nothing, which reads as a broken button
+       * rather than as a control doing its job.
+       */
+      if (fresh.refusal || fresh.unopened || fresh.hash) answer.current?.showModal();
     } finally {
       setBusy(false);
     }
@@ -185,6 +199,43 @@ export function Approvals({
           </a>
         </div>
       )}
+      <dialog
+        ref={answer}
+        aria-label="What the company account answered"
+        className="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-xl border bg-[var(--surface)] p-0 text-[var(--body)] shadow-2xl backdrop:bg-black/50"
+      >
+        <div className="border-b px-6 py-5">
+          <h2 className="text-[18px] font-semibold text-[var(--ink)]">
+            {view.hash ? 'Issued' : 'Not issued'}
+          </h2>
+          <p className="mt-1.5 text-[15px] leading-relaxed">
+            {view.hash
+              ? `${view.amount.replace('$', '')} ${view.note} notes now exist.`
+              : 'The company account did not act. Nothing was issued.'}
+          </p>
+        </div>
+
+        <div className="px-6 py-5 text-[14px] leading-relaxed">
+          {/*
+            * The reason is repeated word for word rather than summarised. A sentence
+            * we wrote here would be a sentence we could write whether or not anything
+            * had refused.
+            */}
+          {view.hash ? (
+            <a className="underline" href={`${HASHSCAN_TRANSACTION}/${view.hash}`} target="_blank" rel="noreferrer">
+              {view.hash}
+            </a>
+          ) : (
+            <span className="text-[var(--neg)]">{view.refusal ?? view.unopened}</span>
+          )}
+        </div>
+
+        <div className="flex justify-end border-t px-6 py-4">
+          <Button variant="outline" onClick={() => answer.current?.close()}>
+            Close
+          </Button>
+        </div>
+      </dialog>
     </section>
   );
 }
