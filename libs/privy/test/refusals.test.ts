@@ -1,6 +1,14 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { FUND_CAP_USD, type SignableRequest } from '../src/policies';
-import { allocate, balances, saleToApprove, sendSale, type Approval } from '../src/accounts';
+import { FUND_CAP_USD, notesForFaceValue, type SignableRequest } from '../src/policies';
+import { INVOICE } from '@rf/shared/invoice';
+import {
+  allocate,
+  balances,
+  issuanceToApprove,
+  noteAddress,
+  sendApproved,
+  type Approval,
+} from '../src/accounts';
 import { openAccounts } from '../src/provision';
 
 /*
@@ -23,8 +31,11 @@ const DIRECTOR_TOKENS = (process.env.PRIVY_DIRECTOR_ACCESS_TOKENS ?? '')
   .map((token) => token.trim())
   .filter(Boolean);
 
-const INVOICE = 'INV-2026-0417';
 const WITHIN_MANDATE_USD = 47_500;
+const NOTES_ISSUED = notesForFaceValue(INVOICE.faceValueUsd);
+
+/** `totalSupply()` — the note answers this without an ABI, so nothing chain-shaped is imported here. */
+const TOTAL_SUPPLY_SELECTOR = '0x18160ddd';
 const OVER_MANDATE_USD = 150_000;
 
 /** An invoice nobody has rated, so it is on no list the fund may buy from. */
@@ -43,8 +54,30 @@ function refusedByRule(error: unknown): string {
   return message;
 }
 
-/** One director approving the sale, signing with the key their own session holds. */
-async function approveAs(sale: SignableRequest, index: number): Promise<Approval> {
+/**
+ * How many notes the note itself says exist.
+ *
+ * Read off the chain rather than off a receipt, because a receipt says a
+ * transaction was accepted and this has to say the supply changed.
+ */
+async function noteSupply(): Promise<bigint> {
+  const rpc = process.env.HEDERA_RPC_URL ?? 'https://testnet.hashio.io/api';
+  const response = await fetch(rpc, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'eth_call',
+      params: [{ to: noteAddress(), data: TOTAL_SUPPLY_SELECTOR }, 'latest'],
+    }),
+  });
+  const { result } = (await response.json()) as { result: string };
+  return BigInt(result);
+}
+
+/** One director approving the request, signing with the key their own session holds. */
+async function approveAs(request: SignableRequest, index: number): Promise<Approval> {
   const response = await fetch('https://api.privy.io/v1/users/me/authorization_signature', {
     method: 'POST',
     headers: {
@@ -52,7 +85,7 @@ async function approveAs(sale: SignableRequest, index: number): Promise<Approval
       Authorization: `Bearer ${DIRECTOR_TOKENS[index]}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ request: sale }),
+    body: JSON.stringify({ request }),
   });
 
   if (!response.ok) throw new Error(`Director ${index} could not approve: ${await response.text()}`);
@@ -97,22 +130,27 @@ describe.skipIf(DIRECTOR_TOKENS.length < 2)("Ironline Freight's company account"
     expect(held.company).toBeGreaterThan(0n);
   });
 
-  it('refuses a sale carrying one approval', async () => {
-    const sale = saleToApprove(INVOICE);
+  it('refuses an issuance carrying one approval', async () => {
+    const issuance = issuanceToApprove();
 
-    await sendSale(sale, [await approveAs(sale, 0)]).then(
-      () => expect.unreachable('one approval sold the invoice'),
+    await sendApproved(issuance, [await approveAs(issuance, 0)]).then(
+      () => expect.unreachable('one approval issued the notes'),
       (error) => expect(refusedByRule(error)).toMatch(/authoriz|quorum|threshold|signature/i),
     );
   });
 
-  it('accepts the same sale once a second director approves', async () => {
-    const sale = saleToApprove(INVOICE);
-    const both = [await approveAs(sale, 0), await approveAs(sale, 1)];
+  it('issues the notes once a second director approves', async () => {
+    const issuance = issuanceToApprove();
+    const before = await noteSupply();
+    expect(before).toBe(0n);
 
-    const sent = await sendSale(sale, both);
+    const sent = await sendApproved(issuance, [
+      await approveAs(issuance, 0),
+      await approveAs(issuance, 1),
+    ]);
 
     expect(sent.hash).toMatch(/^0x[0-9a-f]+$/i);
+    expect(await noteSupply()).toBe(NOTES_ISSUED);
   });
 });
 
