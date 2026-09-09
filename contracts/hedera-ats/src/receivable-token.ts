@@ -65,10 +65,16 @@ const REGULATION_SUBTYPE_NONE = 0;
  * seeds that list at creation; the signer must be among them to hold the supply
  * it mints.
  *
+ * `externalKycLists` are contracts ATS consults on every transfer, for the sender as well as the
+ * recipient, so a party they refuse cannot sell any more than it can buy. They are fixed at
+ * creation: a token whose KYC source could be swapped afterwards would let whoever holds the
+ * admin role decide a trade the source was supposed to decide.
+ *
  * @param signer - Account that becomes admin, issuer and compliance operator
  * @param ats - Where the ATS factory and resolver live on this network
  * @param invoice - The invoice's reference, face value and payment window
  * @param approvedHolders - Addresses allowed to hold the token from the start
+ * @param externalKycLists - Contracts asked whether a party is KYC approved, during the transfer
  * @returns Address of the newly issued token
  */
 export async function issueReceivableToken(
@@ -76,6 +82,7 @@ export async function issueReceivableToken(
   ats: AtsDeployment,
   invoice: Invoice,
   approvedHolders: string[] = [],
+  externalKycLists: string[] = [],
 ): Promise<string> {
   const admin = await signer.getAddress();
   const factory = IFactory__factory.connect(ats.factory, signer);
@@ -109,7 +116,7 @@ export async function issueReceivableToken(
         erc20VotesActivated: false,
         externalPauses: [],
         externalControlLists: [],
-        externalKycLists: [],
+        externalKycLists,
         compliance: ZeroAddress,
         identityRegistry: ZeroAddress,
         rbacs: [
