@@ -86,11 +86,10 @@ test.describe('Woodgrove Capital — the mandate refuses on screen', () => {
 
     await page.getByRole('button', { name: /Allocate \$150,000/ }).click();
 
-    const panel = page.getByRole('region', { name: 'Allocate into RCV-0001' });
-    await expect(panel).toContainText(PROVISIONED ? 'Will not sign.' : 'not open yet', {
-      timeout: 20_000,
-    });
-    await expect(panel).not.toContainText('Signed and sent.');
+    const answer = page.getByRole('dialog', { name: "What the fund's account answered" });
+    await expect(answer).toBeVisible({ timeout: 20_000 });
+    await expect(answer).toContainText('Will not sign');
+    await expect(answer).not.toContainText('Signed and sent');
   });
 
   test('an allocation into an unrated invoice will not sign', async ({ page }) => {
@@ -98,11 +97,10 @@ test.describe('Woodgrove Capital — the mandate refuses on screen', () => {
 
     await page.getByRole('button', { name: 'Allocate into an unrated invoice' }).click();
 
-    const panel = page.getByRole('region', { name: 'Allocate into RCV-0001' });
-    await expect(panel).toContainText(PROVISIONED ? 'Will not sign.' : 'not open yet', {
-      timeout: 20_000,
-    });
-    await expect(panel).not.toContainText('Signed and sent.');
+    const answer = page.getByRole('dialog', { name: "What the fund's account answered" });
+    await expect(answer).toBeVisible({ timeout: 20_000 });
+    await expect(answer).toContainText('Will not sign');
+    await expect(answer).not.toContainText('Signed and sent');
   });
 
   test('an allocation within the mandate is signed and sent', async ({ page }) => {
@@ -111,7 +109,7 @@ test.describe('Woodgrove Capital — the mandate refuses on screen', () => {
 
     await page.getByRole('button', { name: /Allocate \$47,500/ }).click();
 
-    const panel = page.getByRole('region', { name: 'Allocate into RCV-0001' });
-    await expect(panel).toContainText('Signed and sent.', { timeout: 30_000 });
+    const answer = page.getByRole('dialog', { name: "What the fund's account answered" });
+    await expect(answer).toContainText('Signed and sent', { timeout: 30_000 });
   });
 });

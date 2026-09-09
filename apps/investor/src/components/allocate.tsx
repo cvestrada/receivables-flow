@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 
 interface Answer {
@@ -36,6 +36,9 @@ export function Allocate() {
   const [answer, setAnswer] = useState<Answer | null>(null);
   const [busy, setBusy] = useState(false);
 
+  /** The fund account's answer, shown over the page so nobody can miss it. */
+  const shown = useRef<HTMLDialogElement>(null);
+
   async function ask(usd: number, invoice?: string) {
     setBusy(true);
     setAnswer(null);
@@ -45,7 +48,18 @@ export function Allocate() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ usd, invoice }),
       });
-      setAnswer(await response.json());
+      const fresh = (await response.json()) as Answer;
+      setAnswer(fresh);
+
+      /*
+       * The answer is put in the way rather than left at the bottom of the panel.
+       *
+       * A mandate refusing is the whole reason these two buttons exist, and a strip
+       * appearing below the fold is something a room watching a demo does not see —
+       * they watch a click produce nothing, which reads as a dead button rather than
+       * as a control doing its job.
+       */
+      if (fresh.refusal || fresh.hash) shown.current?.showModal();
     } finally {
       setBusy(false);
     }
@@ -93,6 +107,43 @@ export function Allocate() {
           <b>Signed and sent.</b> {dollars(answer.usd)} — transaction {answer.hash}
         </div>
       )}
+      <dialog
+        ref={shown}
+        aria-label="What the fund's account answered"
+        className="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-xl border bg-[var(--surface)] p-0 text-[var(--body)] shadow-2xl backdrop:bg-black/50"
+      >
+        <div className="border-b px-6 py-5">
+          <h2 className="text-[18px] font-semibold text-[var(--ink)]">
+            {answer?.hash ? 'Signed and sent' : 'Will not sign'}
+          </h2>
+          <p className="mt-1.5 text-[15px] leading-relaxed">
+            {answer?.hash
+              ? `${dollars(answer.usd)} allocated into RCV-0001.`
+              : 'The fund\u2019s account declined to sign. No money moved.'}
+          </p>
+        </div>
+
+        <div className="px-6 py-5 text-[14px] leading-relaxed">
+          {/*
+            * The reason is repeated word for word rather than summarised. A sentence
+            * we wrote here would be a sentence we could write whether or not anything
+            * had refused.
+            */}
+          {answer?.hash ? (
+            <span>transaction {answer.hash}</span>
+          ) : (
+            <span className={answer?.refusal && isRefusal(answer.refusal) ? 'text-[var(--neg)]' : 'text-[var(--muted)]'}>
+              {answer?.refusal}
+            </span>
+          )}
+        </div>
+
+        <div className="flex justify-end border-t px-6 py-4">
+          <Button variant="outline" onClick={() => shown.current?.close()}>
+            Close
+          </Button>
+        </div>
+      </dialog>
     </section>
   );
 }
