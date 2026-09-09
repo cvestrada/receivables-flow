@@ -21,20 +21,31 @@ const usd = (amount: bigint) => `$${(Number(amount) / 1_000_000).toLocaleString(
 const day = (seconds: bigint) => new Date(Number(seconds) * 1000).toISOString().slice(0, 10);
 
 /**
- * Reads the grade published on Ironline Freight's profile.
+ * Works out Ironline Freight's score from the counts on its public profile.
  *
  * The profile lives on Sepolia while the sale happens on Hedera, so this reaches out to the
  * public record over its own connection — the same route a counterparty checking the business
- * for themselves would take. A business nobody has rated comes back empty, and the pricing
- * treats that as the worst grade rather than the best.
+ * for themselves would take. Nothing here is a grade anyone assigned: the score is the share
+ * of matured invoices that were repaid, and a business with nothing matured yet comes back
+ * unrated rather than scored.
+ *
+ * @returns The score out of 100, or null when no invoice has matured yet
  */
-async function publishedRating(): Promise<string> {
+async function publishedScore(): Promise<number | null> {
   const { business } = ensDeployed as { business?: { name: string; resolver: string } };
-  if (!business) return '';
+  if (!business) return null;
 
   const provider = new JsonRpcProvider(process.env.SEPOLIA_RPC_URL ?? 'https://sepolia.gateway.tenderly.co');
   try {
-    return await readRecord(provider, business.resolver, business.name, 'credit.rating');
+    const count = async (key: string) =>
+      Number(await readRecord(provider, business.resolver, business.name, key)) || 0;
+    const [repaid, defaulted] = await Promise.all([
+      count('rf.invoices.repaid'),
+      count('rf.invoices.defaulted'),
+    ]);
+
+    const matured = repaid + defaulted;
+    return matured === 0 ? null : Math.round((repaid * 100) / matured);
   } finally {
     provider.destroy();
   }
@@ -104,8 +115,8 @@ async function main(): Promise<void> {
    * the invoice; the grade comes from Ironline's own public profile. Anyone who disagrees with
    * the number can read the same three inputs and check it.
    */
-  const rating = await publishedRating();
-  const quote = priceFor(FACE_VALUE_USD, MATURITY_DAYS, rating);
+  const score = await publishedScore();
+  const quote = priceFor(FACE_VALUE_USD, MATURITY_DAYS, score);
   const price = quote.price;
 
   const terms = [token, UNITS, await usdc.getAddress(), price, MATURITY_DAYS] as const;
@@ -115,7 +126,7 @@ async function main(): Promise<void> {
   const balances = IBalanceTracker__factory.connect(token, business);
   line('receivable', `${token}`);
   line('face value', `$${FACE_VALUE_USD.toLocaleString('en-US')}, payable in ${MATURITY_DAYS} days`);
-  line('published rating', rating === '' ? 'none — priced as the lowest grade' : rating);
+  line('published score', score === null ? 'unrated — nothing matured yet, priced at the bottom' : `${score} out of 100`);
   line('annual rate', `${(quote.annualRateBps / 100).toFixed(2)}% on a 360-day year`);
   line('discount', `${usd(quote.discount)} — the investor's return`);
   line('asking price', `${usd(price)} — worked out, not typed in`);
