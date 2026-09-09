@@ -25,14 +25,30 @@ test.describe('staff decide a fund’s KYC', () => {
     await expect(status(page)).toBeVisible();
   });
 
-  test('rejecting flips the row, and approving flips it back', async ({ page }) => {
+  test('offers only the decision that applies, and asks before making it', async ({ page }) => {
     await page.goto('/');
     await expect(status(page)).toContainText('Approved');
 
-    await row(page).getByRole('button', { name: 'Reject KYC' }).click();
+    // An approved party can only be revoked — offering "Approve" here would be a button that
+    // spends gas to write the value the record already holds.
+    await expect(row(page).getByRole('button', { name: 'Approve KYC' })).toHaveCount(0);
+    await row(page).getByRole('button', { name: 'Revoke KYC' }).click();
+
+    await expect(page.getByTestId('confirm-woodgrove')).toBeVisible();
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await expect(status(page)).toContainText('Approved');
+  });
+
+  test('revoking flips the row, and approving flips it back', async ({ page }) => {
+    await page.goto('/');
+    await expect(status(page)).toContainText('Approved');
+
+    await row(page).getByRole('button', { name: 'Revoke KYC' }).click();
+    await page.getByTestId('confirm-go-woodgrove').click();
     await expect(status(page)).toContainText('Not approved', { timeout: 120_000 });
 
     await row(page).getByRole('button', { name: 'Approve KYC' }).click();
+    await page.getByTestId('confirm-go-woodgrove').click();
     await expect(status(page)).toContainText('Approved', { timeout: 120_000 });
   });
 

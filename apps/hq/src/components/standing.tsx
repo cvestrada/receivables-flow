@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 
 import { approve, reject, type Decision } from '@/lib/ens/actions';
 import type { Party } from '@/lib/ens/standing';
@@ -9,18 +9,20 @@ const EXPLORER = 'https://hackathon-deployment-portal-app.ens-cf.workers.dev';
 const ETHERSCAN = 'https://sepolia.etherscan.io/tx';
 
 /**
- * One row per party, and the two decisions staff can make about it.
+ * One row per party, and the one decision that is available on it.
  *
- * The row shows what the registry says right now, not what was clicked — a decision that fails
- * on chain has to leave the row reading the way the chain does, or the page becomes the thing
- * staff trust instead of the record.
+ * A party is either approved or not, so only one of the two decisions can ever apply — showing
+ * both would offer staff a button that does nothing and invite a click that spends gas to
+ * rewrite a record with the value it already holds.
  */
 export function Standing({ parties }: { parties: Party[] }) {
   return (
     <div className="desk overflow-hidden">
       <div className="flex items-center justify-between gap-3 border-b px-5 py-3.5">
         <h3 className="text-[16px] font-semibold text-[var(--ink)]">Parties</h3>
-        <span className="st st-idle">{parties.filter((p) => p.approved).length} of {parties.length} approved</span>
+        <span className="st st-idle">
+          {parties.filter((p) => p.approved).length} of {parties.length} approved
+        </span>
       </div>
       <div className="flex flex-col">
         {parties.map((party) => (
@@ -38,11 +40,18 @@ export function Standing({ parties }: { parties: Party[] }) {
 function Row({ party }: { party: Party }) {
   const [pending, start] = useTransition();
   const [result, setResult] = useState<Decision | undefined>();
+  const confirming = useRef<HTMLDialogElement>(null);
 
-  const run = (decision: () => Promise<Decision>) =>
+  /*
+   * Both decisions are irreversible in the sense that matters: each one spends gas and changes
+   * a record strangers read. Asking first is what stops a mis-aimed click from doing that, and
+   * the question names the party so it is obvious which row is about to change.
+   */
+  const act = () =>
     start(async () => {
+      confirming.current?.close();
       setResult(undefined);
-      setResult(await decision());
+      setResult(party.approved ? await reject(party) : await approve(party, party.subject));
     });
 
   return (
@@ -74,24 +83,75 @@ function Row({ party }: { party: Party }) {
         {party.approved ? `Approved · to ${party.until}` : 'Not approved'}
       </span>
 
-      <div className="flex gap-2">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => confirming.current?.showModal()}
+        className={
+          party.approved
+            ? 'rounded-[8px] border border-[var(--neg-subtle)] bg-[var(--surface)] px-[14px] py-[8px] text-[14px] font-medium text-[var(--neg-ink)] disabled:opacity-50'
+            : 'rounded-[8px] bg-[var(--accent)] px-[14px] py-[8px] text-[14px] font-medium text-white disabled:opacity-50'
+        }
+      >
+        {pending ? 'Working…' : party.approved ? 'Revoke KYC' : 'Approve KYC'}
+      </button>
+
+      <Confirm party={party} ref={confirming} onConfirm={act} />
+    </div>
+  );
+}
+
+function Confirm({
+  party,
+  ref,
+  onConfirm,
+}: {
+  party: Party;
+  ref: React.RefObject<HTMLDialogElement | null>;
+  onConfirm: () => void;
+}) {
+  const revoking = party.approved;
+
+  return (
+    <dialog
+      ref={ref}
+      data-testid={`confirm-${party.id}`}
+      className="m-auto w-[min(440px,92vw)] rounded-[12px] border bg-[var(--surface)] p-0 text-[var(--body)] backdrop:bg-[rgba(10,37,64,.35)]"
+    >
+      <div className="flex flex-col gap-3 px-6 py-5">
+        <h4 className="text-[17px] font-semibold text-[var(--ink)]">
+          {revoking ? 'Revoke KYC' : 'Approve KYC'} for {party.label}?
+        </h4>
+        <p className="text-[14.5px] leading-relaxed">
+          {revoking
+            ? `This takes ${party.label} off the register straight away. It will not be able to hold a receivable until it is approved again.`
+            : `This puts ${party.label} on the register for 90 days, naming ${party.subject.slice(0, 10)}…${party.subject.slice(-6)}.`}
+        </p>
+        <p className="text-[13px] text-[var(--muted)]">
+          Published to ENS on Sepolia. It spends gas and anyone can read the result.
+        </p>
+      </div>
+      <div className="flex justify-end gap-2 border-t bg-[var(--surface-alt)] px-6 py-3.5">
         <button
           type="button"
-          disabled={pending}
-          onClick={() => run(() => approve(party, party.subject))}
-          className="rounded-[8px] bg-[var(--accent)] px-[14px] py-[8px] text-[14px] font-medium text-white disabled:opacity-50"
+          onClick={() => ref.current?.close()}
+          className="rounded-[8px] border border-[var(--hairline-active)] bg-[var(--surface)] px-[14px] py-[8px] text-[14px] font-medium text-[var(--body)]"
         >
-          {pending ? 'Working…' : 'Approve KYC'}
+          Cancel
         </button>
         <button
           type="button"
-          disabled={pending}
-          onClick={() => run(() => reject(party))}
-          className="rounded-[8px] border border-[var(--neg-subtle)] bg-[var(--surface)] px-[14px] py-[8px] text-[14px] font-medium text-[var(--neg-ink)] disabled:opacity-50"
+          onClick={onConfirm}
+          data-testid={`confirm-go-${party.id}`}
+          className={
+            revoking
+              ? 'rounded-[8px] bg-[var(--neg)] px-[14px] py-[8px] text-[14px] font-medium text-white'
+              : 'rounded-[8px] bg-[var(--accent)] px-[14px] py-[8px] text-[14px] font-medium text-white'
+          }
         >
-          Reject KYC
+          {revoking ? 'Revoke KYC' : 'Approve KYC'}
         </button>
       </div>
-    </div>
+    </dialog>
   );
 }
