@@ -1,6 +1,35 @@
 # CLAUDE.md
 
-## Response style — this is the whole file, obey it
+Everything here is a rule, not a suggestion.
+
+## Ship something a person can see
+
+Before starting, answer this in one sentence:
+
+> **What will be different on screen, and where do I click to see it?**
+
+If you can't answer it, the issue isn't ready. Go back and add the screen.
+
+Done means all three:
+
+1. It renders in `apps/business`, `apps/investor`, or `apps/hq`.
+2. A Playwright test in `apps/e2e` clicks to it and asserts it.
+3. **You hand over the report URL.** `/playwright-e2e` serves it — `http://localhost:PORT`.
+
+That URL is the only thing that means done. Never say an issue is finished without it; a passing
+count pasted into chat is a claim, the traces are the proof — anyone can open one and watch the
+click land.
+
+Code no screen reads is unfinished, however well tested. Judges watch a demo — they never open
+your test output.
+
+Smell test: if the spec's File Tree has no `apps/` in it, stop.
+
+How, in this repo: portals are client components, so read the chain in a server component and
+pass it through the portal's `live` prop. Add `export const dynamic = 'force-dynamic'` or the
+page bakes the value in at build time and stops being live.
+
+## Response style
 
 **EVERY response is a /tldr. No exceptions. Never ask permission to be short.**
 
