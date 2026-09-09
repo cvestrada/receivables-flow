@@ -31,13 +31,13 @@ async function openSection(page: Page, url: string, label: string) {
   }).toPass({ timeout: 30_000 });
 }
 
-test.describe('Ironline Freight — one approval does not sell the invoice', () => {
+test.describe('Ironline Freight — one approval does not issue the receivable', () => {
   test('the Approvals section counts approvals rather than describing them', async ({ page }) => {
     await openSection(page, BUSINESS, 'Approvals');
 
-    const panel = page.getByRole('region', { name: 'Sell this invoice' });
+    const panel = page.getByRole('region', { name: 'Issue this receivable' });
     await expect(panel).toContainText('INV-2026-0417');
-    await expect(panel).toContainText('$47,500');
+    await expect(panel).toContainText('$50,000');
     await expect(panel).toContainText('0 of 2 approved');
     await expect(panel).toContainText('Nobody has approved yet.');
   });
@@ -47,11 +47,11 @@ test.describe('Ironline Freight — one approval does not sell the invoice', () 
 
     await page.getByRole('button', { name: 'Send to the company account' }).click();
 
-    const panel = page.getByRole('region', { name: 'Sell this invoice' });
+    const panel = page.getByRole('region', { name: 'Issue this receivable' });
     await expect(panel).toContainText(PROVISIONED ? 'Refused by Privy.' : 'not open yet', {
       timeout: 20_000,
     });
-    await expect(panel).not.toContainText('Sold.');
+    await expect(panel).not.toContainText('Issued.');
   });
 
   test('the portal no longer describes an office manager with a $10,000 limit', async ({ page }) => {
