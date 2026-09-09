@@ -7,18 +7,16 @@ import {
   ABI,
   KYC_WALLET_RECORD,
   PROFILE_RECORDS,
-  RATING_RECORD,
-  ROLES,
-  appointReviewer,
-  buildSetterBlob,
+  creditScore,
+  encodeName,
   givePage,
   issuePass,
   openBranch,
   openRegistry,
   readPass,
   readRecord,
+  readScore,
   revokePass,
-  revokeReviewer,
   writeRecords,
 } from '../../src/ens';
 
@@ -41,19 +39,18 @@ describe('registry', () => {
   };
 
   async function onboarded() {
-    const [platform, business, reviewer, stranger, otherBusiness] = await hre.getSigners();
+    const [platform, business, stranger, otherBusiness] = await hre.getSigners();
 
     const opened = await openRegistry(platform as never, BASE_LABEL);
     const { baseName, registry } = opened;
     const { name, resolver } = await givePage(platform as never, opened, 'ironline');
 
     await writeRecords(platform as never, resolver, name, COUNTS);
-    await appointReviewer(platform as never, resolver, name, await reviewer.getAddress());
 
-    return { platform, business, reviewer, stranger, otherBusiness, opened, baseName, registry, resolver, name };
+    return { platform, business, stranger, otherBusiness, opened, baseName, registry, resolver, name };
   }
 
-  const asReviewer = (resolver: string, signer: ethers.Signer) =>
+  const asOutsider = (resolver: string, signer: ethers.Signer) =>
     new ethers.Contract(resolver, ABI.resolver, signer);
 
   describe('standing up the registry', () => {
@@ -122,7 +119,7 @@ describe('registry', () => {
       // A score field would make the platform the author of an opinion; the counts are
       // observations anyone can recompute from.
       expect(await readRecord(hre.provider as never, resolver, name, 'rf.score')).to.equal('');
-      expect(PROFILE_RECORDS).to.have.lengthOf(4);
+      expect(PROFILE_RECORDS).to.have.lengthOf(3);
     });
 
     it('replaces a count rather than appending to it', async () => {
@@ -134,90 +131,46 @@ describe('registry', () => {
     });
   });
 
-  describe('the reviewer role', () => {
-    it('lets the appointed reviewer set the rating', async () => {
-      const { reviewer, resolver, name } = await loadFixture(onboarded);
+  describe('the credit score', () => {
+    it('derives the score a stranger reads from the counts on the page', async () => {
+      const { opened } = await loadFixture(onboarded);
 
-      await asReviewer(resolver, reviewer as never).setText(
-        (await import('../../src/ens')).encodeName(name),
-        RATING_RECORD,
-        'B',
+      // No signer in this path. The score is not something we hand out — it is something
+      // a counterparty works out from the same public page anyone else can read.
+      expect(await readScore(hre.provider as never, opened, 'ironline')).to.equal(
+        creditScore({ financed: 6, repaid: 6, defaulted: 0 }),
       );
-
-      expect(await readRecord(hre.provider as never, resolver, name, RATING_RECORD)).to.equal('B');
     });
 
-    it('refuses the reviewer on any other field', async () => {
-      const { reviewer, resolver, name } = await loadFixture(onboarded);
-      const { encodeName } = await import('../../src/ens');
+    it('leaves no rating on the page for anyone to write', async () => {
+      const { resolver, name } = await loadFixture(onboarded);
 
-      await expect(
-        asReviewer(resolver, reviewer as never).setText(encodeName(name), 'description', 'hijacked'),
-      ).to.be.reverted;
+      // The field an appointed reviewer used to own. Nothing publishes it and nothing
+      // reads it, so there is no grade on this platform that a person authored.
+      expect(await readRecord(hre.provider as never, resolver, name, 'credit.rating')).to.equal('');
+      expect(PROFILE_RECORDS).to.deep.equal([
+        'rf.invoices.financed',
+        'rf.invoices.repaid',
+        'rf.invoices.defaulted',
+      ]);
     });
 
-    it('refuses the business on its own rating — the demo moment', async () => {
+    it('refuses the business writing the counts its own score is built from', async () => {
       const { business, resolver, name } = await loadFixture(onboarded);
-      const { encodeName } = await import('../../src/ens');
 
+      // With the grade gone, the counts are the only input left — so this refusal is now
+      // the thing standing between a business and its own score.
       await expect(
-        asReviewer(resolver, business as never).setText(encodeName(name), RATING_RECORD, 'AAA'),
+        asOutsider(resolver, business as never).setText(encodeName(name), 'rf.invoices.repaid', '99'),
       ).to.be.reverted;
     });
 
-    it('refuses the business on every other field too', async () => {
-      const { business, resolver, name } = await loadFixture(onboarded);
-      const { encodeName } = await import('../../src/ens');
-
-      await expect(
-        asReviewer(resolver, business as never).setText(encodeName(name), 'rf.invoices.repaid', '99'),
-      ).to.be.reverted;
-    });
-
-    it('refuses a stranger who was never appointed', async () => {
+    it('refuses a stranger writing the counts too', async () => {
       const { stranger, resolver, name } = await loadFixture(onboarded);
-      const { encodeName } = await import('../../src/ens');
 
       await expect(
-        asReviewer(resolver, stranger as never).setText(encodeName(name), RATING_RECORD, 'AAA'),
+        asOutsider(resolver, stranger as never).setText(encodeName(name), 'rf.invoices.defaulted', '0'),
       ).to.be.reverted;
-    });
-
-    it('lets the platform take the rating back', async () => {
-      const { platform, reviewer, resolver, name } = await loadFixture(onboarded);
-      const { encodeName } = await import('../../src/ens');
-
-      await revokeReviewer(platform as never, resolver, name, await reviewer.getAddress());
-
-      await expect(
-        asReviewer(resolver, reviewer as never).setText(encodeName(name), RATING_RECORD, 'B'),
-      ).to.be.reverted;
-    });
-
-    it('scopes an appointment to one company, not to every company', async () => {
-      const { platform, reviewer, resolver, opened } = await loadFixture(onboarded);
-      const { encodeName } = await import('../../src/ens');
-
-      const other = await givePage(platform as never, opened, 'woodgrove');
-
-      await expect(
-        asReviewer(other.resolver, reviewer as never).setText(
-          encodeName(other.name),
-          RATING_RECORD,
-          'AAA',
-        ),
-      ).to.be.reverted;
-    });
-
-    it('grants the text-setter role and nothing wider', async () => {
-      const { reviewer, resolver, name } = await loadFixture(onboarded);
-      const contract = new ethers.Contract(resolver, ABI.resolver, hre.provider as never);
-      const [, resource, roleBitmap] = await contract.decodeSetter(
-        buildSetterBlob(name, RATING_RECORD),
-      );
-
-      expect(roleBitmap).to.equal(ROLES.setText);
-      expect(await contract.hasRoles(resource, ROLES.setText, await reviewer.getAddress())).to.equal(true);
     });
   });
 

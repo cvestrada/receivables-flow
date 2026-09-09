@@ -15,8 +15,6 @@
     "resolver": "0xE96C1E21DddC1038EB752ED0a36E196d8c119eF4",
     "wallet": "0xd70415b716EEdD7A5F76BfaD4af9E6fa50E0BA4d"
   },
-  "reviewer": "0xd12351B3e29a012698351c5e3fE41f63dbeE81a5",
-  "ratingRecord": "credit.rating",
   "investor": {
     "name": "woodgrove.investor.receivablesflow.eth",
     "resolver": "0x3B1F30D376Bf142AF282B3808F40421C9c5eBee8",
