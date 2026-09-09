@@ -1,15 +1,64 @@
 import { ethers } from 'hardhat';
+import { JsonRpcProvider } from 'ethers';
 import { deploySystemWithNewBlr } from '@hashgraph/asset-tokenization-contracts/scripts';
 import { IAllowance__factory, IBalanceTracker__factory } from '@hashgraph/asset-tokenization-contracts';
-import { MockUsdc__factory, ReceivableDvp__factory } from '../typechain-types';
+import { readRecord } from '@rf/contracts-ens';
+import ensDeployed from '@rf/contracts-ens/deployed.json';
+import { MockScheduleService__factory, MockUsdc__factory, ReceivableDvp__factory } from '../typechain-types';
 import { approveHolder, isApprovedHolder, issueReceivableToken, mintTo } from '../src/receivable-token';
+import { priceFor } from '../src/pricing';
 
-const UNITS = 50_000n;
-const PRICE = 47_500_000_000n;
+const FACE_VALUE_USD = 50_000;
+const MATURITY_DAYS = 60;
+const UNITS = BigInt(FACE_VALUE_USD);
+
+/** Where Hedera's schedule service answers on every Hedera network. */
+const SCHEDULE_SERVICE = '0x000000000000000000000000000000000000016b';
 
 const line = (label: string, value: string) => console.log(`  ${label.padEnd(22)}${value}`);
 const step = (n: string, title: string) => console.log(`\n${'─'.repeat(64)}\n${n}  ${title}\n${'─'.repeat(64)}`);
-const usd = (amount: bigint) => `$${(amount / 1_000_000n).toLocaleString('en-US')}`;
+const usd = (amount: bigint) => `$${(Number(amount) / 1_000_000).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+const day = (seconds: bigint) => new Date(Number(seconds) * 1000).toISOString().slice(0, 10);
+
+/**
+ * Reads the grade published on Ironline Freight's profile.
+ *
+ * The profile lives on Sepolia while the sale happens on Hedera, so this reaches out to the
+ * public record over its own connection — the same route a counterparty checking the business
+ * for themselves would take. A business nobody has rated comes back empty, and the pricing
+ * treats that as the worst grade rather than the best.
+ */
+async function publishedRating(): Promise<string> {
+  const { business } = ensDeployed as { business?: { name: string; resolver: string } };
+  if (!business) return '';
+
+  const provider = new JsonRpcProvider(process.env.SEPOLIA_RPC_URL ?? 'https://sepolia.gateway.tenderly.co');
+  try {
+    return await readRecord(provider, business.resolver, business.name, 'credit.rating');
+  } finally {
+    provider.destroy();
+  }
+}
+
+/**
+ * Makes sure something answers where the schedule service lives.
+ *
+ * Hedera has the real thing at that address. Hardhat is a plain EVM with nothing there, so the
+ * stand-in's code is placed at it — otherwise the sale would fail locally at the booking step
+ * for a reason that has nothing to do with what the demo is showing.
+ */
+async function ensureScheduleService(): Promise<boolean> {
+  if ((await ethers.provider.getCode(SCHEDULE_SERVICE)) !== '0x') return true;
+
+  const [operator] = await ethers.getSigners();
+  const stand = await new MockScheduleService__factory(operator).deploy();
+  await ethers.provider.send('hardhat_setCode', [
+    SCHEDULE_SERVICE,
+    await ethers.provider.getCode(await stand.getAddress()),
+  ]);
+  await MockScheduleService__factory.connect(SCHEDULE_SERVICE, operator).reset();
+  return false;
+}
 
 /**
  * Shows the sale settling as one exchange, and refusing as one refusal.
@@ -32,14 +81,16 @@ async function main(): Promise<void> {
   const dvp = await new ReceivableDvp__factory(business).deploy();
   const usdc = await new MockUsdc__factory(business).deploy();
   const dvpAddress = await dvp.getAddress();
+  const onHedera = await ensureScheduleService();
   line('ATS factory', ats.factory);
   line('settlement contract', `${dvpAddress} — the only Solidity we wrote`);
+  line('schedule service', onHedera ? `${SCHEDULE_SERVICE} — the real one` : `${SCHEDULE_SERVICE} — stand-in, no Hedera here`);
 
   step('1', 'Ironline Freight offers invoice #1042 for sale');
   const token = await issueReceivableToken(
     business,
     ats,
-    { reference: 'Acme Invoice #1042', code: 'RF1042', faceValueUsd: 50_000, maturityDays: 60 },
+    { reference: 'Acme Invoice #1042', code: 'RF1042', faceValueUsd: FACE_VALUE_USD, maturityDays: MATURITY_DAYS },
     [business.address],
   );
   await mintTo(business, token, business.address, Number(UNITS));
@@ -48,18 +99,31 @@ async function main(): Promise<void> {
   await approveHolder(business, token, dvpAddress);
   await IAllowance__factory.connect(token, business).approve(dvpAddress, UNITS);
 
-  const id = await dvp.connect(business).offer.staticCall(token, UNITS, await usdc.getAddress(), PRICE);
-  await dvp.connect(business).offer(token, UNITS, await usdc.getAddress(), PRICE);
+  /*
+   * The price is worked out here rather than written down. Face value and maturity come from
+   * the invoice; the grade comes from Ironline's own public profile. Anyone who disagrees with
+   * the number can read the same three inputs and check it.
+   */
+  const rating = await publishedRating();
+  const quote = priceFor(FACE_VALUE_USD, MATURITY_DAYS, rating);
+  const price = quote.price;
+
+  const terms = [token, UNITS, await usdc.getAddress(), price, MATURITY_DAYS] as const;
+  const id = await dvp.connect(business).offer.staticCall(...terms);
+  await dvp.connect(business).offer(...terms);
 
   const balances = IBalanceTracker__factory.connect(token, business);
   line('receivable', `${token}`);
-  line('face value', '$50,000, payable in 60 days');
-  line('asking price', `${usd(PRICE)} — the discount is the investor's return`);
+  line('face value', `$${FACE_VALUE_USD.toLocaleString('en-US')}, payable in ${MATURITY_DAYS} days`);
+  line('published rating', rating === '' ? 'none — priced as the lowest grade' : rating);
+  line('annual rate', `${(quote.annualRateBps / 100).toFixed(2)}% on a 360-day year`);
+  line('discount', `${usd(quote.discount)} — the investor's return`);
+  line('asking price', `${usd(price)} — worked out, not typed in`);
   line('offer id', id.toString());
 
   step('2', 'A wallet nobody approved tries to buy it');
-  await usdc.mint(stranger.address, PRICE);
-  await usdc.connect(stranger).approve(dvpAddress, PRICE);
+  await usdc.mint(stranger.address, price);
+  await usdc.connect(stranger).approve(dvpAddress, price);
   line('buyer', stranger.address);
   line('on approved list?', String(await isApprovedHolder(business, token, stranger.address)));
   line('buyer USDC before', usd(await usdc.balanceOf(stranger.address)));
@@ -76,8 +140,8 @@ async function main(): Promise<void> {
 
   step('3', 'Woodgrove Capital, an approved investor, buys it');
   await approveHolder(business, token, investor.address);
-  await usdc.mint(investor.address, PRICE);
-  await usdc.connect(investor).approve(dvpAddress, PRICE);
+  await usdc.mint(investor.address, price);
+  await usdc.connect(investor).approve(dvpAddress, price);
   line('buyer', investor.address);
   line('on approved list?', String(await isApprovedHolder(business, token, investor.address)));
   line('buyer USDC before', usd(await usdc.balanceOf(investor.address)));
@@ -86,9 +150,21 @@ async function main(): Promise<void> {
   const receipt = await (await dvp.connect(investor).settle(id)).wait();
   line('settle result', `SETTLED in one transaction — ${receipt?.hash}`);
   line('buyer USDC after', usd(await usdc.balanceOf(investor.address)));
-  line('buyer units after', `${(await balances.balanceOf(investor.address)).toString()} units = $50,000 of face value`);
+  line(
+    'buyer units after',
+    `${(await balances.balanceOf(investor.address)).toString()} units = $${FACE_VALUE_USD.toLocaleString('en-US')} of face value`,
+  );
   line('business USDC after', `${usd(await usdc.balanceOf(business.address))} — funded`);
   line('business units after', `${(await balances.balanceOf(business.address)).toString()} units`);
+
+  step('4', 'The repayment is already booked, in that same transaction');
+  const settled = await dvp.offerOf(id);
+  line('booked schedule', settled.schedule);
+  line('runs on', `${day(settled.maturesAt)} — ${MATURITY_DAYS} days after the money moved`);
+  line('matured yet?', String(settled.matured));
+  if (onHedera) {
+    line('see it waiting', `https://hashscan.io/testnet/schedule/${settled.schedule}`);
+  }
   console.log('');
 }
 
