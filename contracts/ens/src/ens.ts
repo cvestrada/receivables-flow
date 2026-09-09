@@ -83,6 +83,20 @@ export const PROFILE_RECORDS = [
 /** The one record the platform never writes — see `appointReviewer`. */
 export const RATING_RECORD = 'credit.rating';
 
+/**
+ * The record naming the wallet whose KYC has passed.
+ *
+ * Named for what a reader would look for rather than for our internals: an explorer shows the
+ * raw key, so `rf.kyc.wallet` has to say on its own that this is the wallet KYC applies to.
+ * Keeping the wallet in a record rather than deriving it from the label lets a party rotate its
+ * wallet without being re-issued a name, and emptying it is how KYC is taken back.
+ */
+export const KYC_WALLET_RECORD = 'rf.kyc.wallet';
+
+/** What the record was called before it said KYC. Cleared on sight so no name carries both. */
+export const RETIRED_WALLET_RECORD = 'rf.pass.wallet';
+
+
 export const ABI = {
   registrar: [
     'function isAvailable(string) view returns (bool)',
@@ -379,7 +393,13 @@ export async function givePage(
   const name = `${label}.${baseName}`;
 
   const existing = await registry.getResolver(label).catch(() => ethers.ZeroAddress);
-  if (existing !== ethers.ZeroAddress) return { name, resolver: existing };
+  if (existing !== ethers.ZeroAddress) {
+    // A page issued before a record existed has no grant for it. Topping the grants up rather
+    // than reissuing the name keeps the company's history intact, and a run that changes
+    // nothing spends nothing, because each grant is checked before it is made.
+    await grantWritable(signer, existing, name, platform);
+    return { name, resolver: existing };
+  }
 
   const resolver = await deployProxy(
     signer,
@@ -402,16 +422,49 @@ export async function givePage(
     )
   ).wait();
 
-  // The platform gives itself write access to the counts and to nothing else. The rating is
-  // conspicuously absent: it is the reviewer's field, and the platform holds no role that
-  // would let it be written here.
-  const store = new ethers.Contract(resolver, ABI.resolver, signer);
-  for (const key of PROFILE_RECORDS) {
-    if (key === RATING_RECORD) continue;
-    await (await store.grantSetterRoles(buildSetterBlob(name, key), platform)).wait();
-  }
+  await grantWritable(signer, resolver, name, platform);
 
   return { name, resolver };
+}
+
+/**
+ * Give the platform write access to every record on a page except the rating.
+ *
+ * The rating is conspicuously absent: it is the reviewer's field, and the platform holds no
+ * role that would let it be written here. Each grant is checked first, so calling this on a
+ * page that already has them is free.
+ */
+async function grantWritable(
+  signer: Signer,
+  resolverAddress: string,
+  name: string,
+  platform: string,
+): Promise<void> {
+  for (const key of [...PROFILE_RECORDS, KYC_WALLET_RECORD, RETIRED_WALLET_RECORD]) {
+    if (key === RATING_RECORD) continue;
+    await grantSetter(signer, resolverAddress, name, key, platform);
+  }
+}
+
+/**
+ * Give one address write access to one record, unless it already has it.
+ *
+ * Checking first is what makes every operation in this package safe to run again: a record
+ * added after a name was issued needs its grant, and a name that already has it costs nothing.
+ */
+async function grantSetter(
+  signer: Signer,
+  resolverAddress: string,
+  name: string,
+  key: string,
+  grantee: string,
+): Promise<void> {
+  const store = new ethers.Contract(resolverAddress, ABI.resolver, signer);
+  const blob = buildSetterBlob(name, key);
+  const [, resource] = await store.decodeSetter(blob);
+
+  if (await store.hasRoles(resource, ROLES.setText, grantee)) return;
+  await (await store.grantSetterRoles(blob, grantee)).wait();
 }
 
 /** Write a company's record onto its page. */
@@ -486,16 +539,6 @@ export async function revokeReviewer(
   await (await resolver.revokeRoles(resource, ROLES.setText, reviewer)).wait();
 }
 
-/**
- * The record naming the wallet a pass clears.
- *
- * The pass itself is the name and the expiry the registry holds against it — this record only
- * says who the clearance is for. Keeping the wallet here rather than deriving it from the
- * label is what lets a fund rotate its wallet without being re-issued a name, and clearing it
- * is how the platform takes a pass back before its date comes round.
- */
-export const PASS_WALLET_RECORD = 'rf.pass.wallet';
-
 export interface Pass {
   name: string;
   resolver: string;
@@ -551,12 +594,16 @@ export async function issuePass(
    */
   const standing = await registry.getResolver(label).catch(() => ethers.ZeroAddress);
   if (standing !== ethers.ZeroAddress) {
-    const current = await readRecord(signer.provider, standing, name, PASS_WALLET_RECORD);
+    // A name issued before this record existed has no grant for it — see `grantSetter`.
+    await grantSetter(signer, standing, name, KYC_WALLET_RECORD, platform);
+    await grantSetter(signer, standing, name, RETIRED_WALLET_RECORD, platform);
+
+    const current = await readRecord(signer.provider, standing, name, KYC_WALLET_RECORD);
     const store = new ethers.Contract(standing, ABI.resolver, signer);
     const receipt =
       current === wallet
         ? undefined
-        : await (await store.setText(encodeName(name), PASS_WALLET_RECORD, wallet)).wait();
+        : await (await store.setText(encodeName(name), KYC_WALLET_RECORD, wallet)).wait();
 
     return {
       name,
@@ -593,8 +640,8 @@ export async function issuePass(
   ).wait();
 
   const store = new ethers.Contract(resolver, ABI.resolver, signer);
-  await (await store.grantSetterRoles(buildSetterBlob(name, PASS_WALLET_RECORD), platform)).wait();
-  const receipt = await (await store.setText(encodeName(name), PASS_WALLET_RECORD, wallet)).wait();
+  await (await store.grantSetterRoles(buildSetterBlob(name, KYC_WALLET_RECORD), platform)).wait();
+  const receipt = await (await store.setText(encodeName(name), KYC_WALLET_RECORD, wallet)).wait();
 
   return { name, resolver, wallet, expiresAt, hash: receipt.hash };
 }
@@ -624,7 +671,7 @@ export async function readPass(
   }
 
   const expiresAt: bigint = await registry.findExpiry(label).catch(() => 0n);
-  const wallet = await readRecord(provider, resolver, name, PASS_WALLET_RECORD).catch(() => '');
+  const wallet = await readRecord(provider, resolver, name, KYC_WALLET_RECORD).catch(() => '');
 
   return { name, resolver, ...decidePass(wallet, expiresAt, moment) };
 }
@@ -646,7 +693,30 @@ export async function revokePass(
   const store = new ethers.Contract(resolver, ABI.resolver, signer);
 
   const receipt = await (
-    await store.setText(encodeName(`${label}.${baseName}`), PASS_WALLET_RECORD, '')
+    await store.setText(encodeName(`${label}.${baseName}`), KYC_WALLET_RECORD, '')
+  ).wait();
+
+  return receipt.hash as string;
+}
+
+/**
+ * Empty the record this one used to be called, on a name that still carries it.
+ *
+ * A name showing both `rf.pass.wallet` and `rf.kyc.wallet` would read as two answers to one
+ * question, and the explorer shows every record it finds. Skipped when there is nothing there,
+ * so a name issued after the rename costs nothing.
+ */
+export async function clearRetiredRecord(
+  signer: Signer,
+  resolverAddress: string,
+  name: string,
+): Promise<string | undefined> {
+  const standing = await readRecord(signer.provider, resolverAddress, name, RETIRED_WALLET_RECORD);
+  if (standing === '') return undefined;
+
+  const store = new ethers.Contract(resolverAddress, ABI.resolver, signer);
+  const receipt = await (
+    await store.setText(encodeName(name), RETIRED_WALLET_RECORD, '')
   ).wait();
 
   return receipt.hash as string;

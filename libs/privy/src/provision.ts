@@ -7,11 +7,19 @@
  * how both portals find the accounts without holding any credential of their own.
  */
 
-import 'dotenv/config';
+import { config as loadEnv } from 'dotenv';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { APPROVERS_REQUIRED, buildApprovingGroup, buildFundPolicy } from './policies';
 import { nameFromEmail, type Director, type OpenedAccounts } from './accounts';
+
+/*
+ * Every credential this repository needs lives in one `.env` at the root, so a value shared by
+ * the contracts, the accounts and the portals is changed once rather than copied into each
+ * directory that reads it. Bare `dotenv/config` would only find a file beside whichever
+ * directory the process happened to start in, which is how the same key ended up in three.
+ */
+loadEnv({ path: join(import.meta.dirname, '..', '..', '..', '.env') });
 
 const ACCOUNTS_PATH = join(import.meta.dirname, '..', 'accounts.json');
 const API = 'https://api.privy.io/v1';

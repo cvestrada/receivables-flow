@@ -8,6 +8,7 @@ import {
   ABI,
   RATING_RECORD,
   appointReviewer,
+  clearRetiredRecord,
   encodeName,
   givePage,
   issuePass,
@@ -112,6 +113,15 @@ async function main(): Promise<void> {
   const page = await givePage(platform as never, businesses, BUSINESS_LABEL);
   console.log(`page     ${page.name} -> ${page.resolver}`);
 
+  // The company is approved at onboarding the same way the fund is, so HQ has one kind of row
+  // to flip rather than two.
+  const companyPass = await issuePass(platform as never, businesses, BUSINESS_LABEL, business, PASS_SECONDS);
+  console.log(`approved ${page.name} for ${business}`);
+
+  // Names issued before the record was renamed still carry the old key beside the new one.
+  const stale = await clearRetiredRecord(platform as never, page.resolver, page.name);
+  if (stale) console.log(`cleared  the old record on ${page.name} in ${stale}`);
+
   await writeRecords(platform as never, page.resolver, page.name, COUNTS);
   await appointReviewer(platform as never, page.resolver, page.name, reviewer);
   console.log(`reviewer ${reviewer} appointed on ${RATING_RECORD}`);
@@ -134,6 +144,9 @@ async function main(): Promise<void> {
   const pass = await issuePass(platform as never, investors, INVESTOR_LABEL, investor, PASS_SECONDS);
   console.log(`\npass     ${pass.name} -> ${pass.resolver}`);
 
+  const staleFund = await clearRetiredRecord(platform as never, pass.resolver, pass.name);
+  if (staleFund) console.log(`cleared  the old record on ${pass.name} in ${staleFund}`);
+
   const standing = await readPass(hre.provider as never, investors, INVESTOR_LABEL);
   console.log('\napproval pass, read back from chain:');
   console.log(`  wallet                 ${standing.wallet}`);
@@ -152,7 +165,7 @@ async function main(): Promise<void> {
     registry: registry.registry,
     businesses,
     investors,
-    business: { name: page.name, resolver: page.resolver },
+    business: { name: page.name, resolver: page.resolver, wallet: companyPass.wallet },
     reviewer,
     ratingRecord: RATING_RECORD,
     investor: {
