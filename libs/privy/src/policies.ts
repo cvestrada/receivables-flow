@@ -227,3 +227,64 @@ export function buildAllocationRequest(allocation: {
     data: '0x',
   });
 }
+
+/** The note counts in millionths of a note, so a whole note is 1,000,000 of them. */
+export const NOTE_DECIMALS = 6;
+
+/**
+ * The first four bytes of `mint(address,uint256)`, which is how the note tells one
+ * call from another.
+ *
+ * Written out rather than computed, because computing it means loading a chain
+ * library into the half of this package a browser also loads. The issuance test
+ * computes it from the deployed interface and fails if this ever stops matching.
+ */
+export const MINT_SELECTOR = '0x40c10f19';
+
+/**
+ * How many notes a face value issues, in the units the note itself counts in.
+ *
+ * One note per dollar, so the notes an investor buys read straight off as dollars
+ * of the invoice.
+ */
+export function notesForFaceValue(faceValueUsd: number): bigint {
+  return BigInt(faceValueUsd) * 10n ** BigInt(NOTE_DECIMALS);
+}
+
+/** One argument as the note reads it: 32 bytes, the value pushed to the right-hand end. */
+function word(value: bigint): string {
+  return value.toString(16).padStart(64, '0');
+}
+
+/**
+ * The issuance of one invoice's notes, as the request two directors will each sign.
+ *
+ * The call is assembled by hand so that this file stays loadable in a browser — a
+ * chain library here would pull node-only code into both portals. What is being
+ * assembled is fixed by the note's own interface, not by us.
+ *
+ * Nothing in here varies between calls — no nonce, no timestamp, no clock. Two
+ * directors approving at different hours must sign identical bytes, because Privy
+ * counts signatures per request rather than per intent. A single varying field
+ * would make the two approvals count as one approval each of two different
+ * issuances, and the issuance would be refused for a reason indistinguishable from
+ * the quorum working correctly.
+ */
+export function buildIssuanceRequest(issuance: {
+  appId: string;
+  walletId: string;
+  /** The note being issued — the contract the call is addressed to. */
+  note: string;
+  /** The account the notes are issued to. */
+  to: string;
+  faceValueUsd: number;
+}): SignableRequest {
+  const recipient = word(BigInt(issuance.to));
+  const notes = word(notesForFaceValue(issuance.faceValueUsd));
+
+  return request(issuance.appId, issuance.walletId, {
+    to: issuance.note,
+    value: '0x0',
+    data: `${MINT_SELECTOR}${recipient}${notes}`,
+  });
+}

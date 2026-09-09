@@ -31,13 +31,13 @@ async function openSection(page: Page, url: string, label: string) {
   }).toPass({ timeout: 30_000 });
 }
 
-test.describe('Ironline Freight — one approval does not sell the invoice', () => {
+test.describe('Ironline Freight — one approval does not issue the receivable', () => {
   test('the Approvals section counts approvals rather than describing them', async ({ page }) => {
     await openSection(page, BUSINESS, 'Approvals');
 
-    const panel = page.getByRole('region', { name: 'Sell this invoice' });
+    const panel = page.getByRole('region', { name: 'Issue this receivable' });
     await expect(panel).toContainText('INV-2026-0417');
-    await expect(panel).toContainText('$47,500');
+    await expect(panel).toContainText('$50,000');
     await expect(panel).toContainText('0 of 2 approved');
     await expect(panel).toContainText('Nobody has approved yet.');
   });
@@ -47,11 +47,29 @@ test.describe('Ironline Freight — one approval does not sell the invoice', () 
 
     await page.getByRole('button', { name: 'Send to the company account' }).click();
 
-    const panel = page.getByRole('region', { name: 'Sell this invoice' });
+    const panel = page.getByRole('region', { name: 'Issue this receivable' });
     await expect(panel).toContainText(PROVISIONED ? 'Refused by Privy.' : 'not open yet', {
       timeout: 20_000,
     });
-    await expect(panel).not.toContainText('Sold.');
+    await expect(panel).not.toContainText('Issued.');
+  });
+
+  /*
+   * The answer has to be unmissable, not merely present. A strip below the fold is
+   * something a room watching a demo does not see, so the account's answer is put
+   * over the page and this asserts it arrived there.
+   */
+  test('the answer arrives as a dialog nobody can scroll past', async ({ page }) => {
+    await openSection(page, BUSINESS, 'Approvals');
+
+    await page.getByRole('button', { name: 'Send to the company account' }).click();
+
+    const answer = page.getByRole('dialog', { name: 'What the company account answered' });
+    await expect(answer).toBeVisible({ timeout: 20_000 });
+    await expect(answer).toContainText('Not issued');
+
+    await answer.getByRole('button', { name: 'Close' }).click();
+    await expect(answer).toBeHidden();
   });
 
   test('the portal no longer describes an office manager with a $10,000 limit', async ({ page }) => {
@@ -68,11 +86,10 @@ test.describe('Woodgrove Capital — the mandate refuses on screen', () => {
 
     await page.getByRole('button', { name: /Allocate \$150,000/ }).click();
 
-    const panel = page.getByRole('region', { name: 'Allocate into RCV-0001' });
-    await expect(panel).toContainText(PROVISIONED ? 'Will not sign.' : 'not open yet', {
-      timeout: 20_000,
-    });
-    await expect(panel).not.toContainText('Signed and sent.');
+    const answer = page.getByRole('dialog', { name: "What the fund's account answered" });
+    await expect(answer).toBeVisible({ timeout: 20_000 });
+    await expect(answer).toContainText('Will not sign');
+    await expect(answer).not.toContainText('Signed and sent');
   });
 
   test('an allocation into an unrated invoice will not sign', async ({ page }) => {
@@ -80,11 +97,10 @@ test.describe('Woodgrove Capital — the mandate refuses on screen', () => {
 
     await page.getByRole('button', { name: 'Allocate into an unrated invoice' }).click();
 
-    const panel = page.getByRole('region', { name: 'Allocate into RCV-0001' });
-    await expect(panel).toContainText(PROVISIONED ? 'Will not sign.' : 'not open yet', {
-      timeout: 20_000,
-    });
-    await expect(panel).not.toContainText('Signed and sent.');
+    const answer = page.getByRole('dialog', { name: "What the fund's account answered" });
+    await expect(answer).toBeVisible({ timeout: 20_000 });
+    await expect(answer).toContainText('Will not sign');
+    await expect(answer).not.toContainText('Signed and sent');
   });
 
   test('an allocation within the mandate is signed and sent', async ({ page }) => {
@@ -93,7 +109,7 @@ test.describe('Woodgrove Capital — the mandate refuses on screen', () => {
 
     await page.getByRole('button', { name: /Allocate \$47,500/ }).click();
 
-    const panel = page.getByRole('region', { name: 'Allocate into RCV-0001' });
-    await expect(panel).toContainText('Signed and sent.', { timeout: 30_000 });
+    const answer = page.getByRole('dialog', { name: "What the fund's account answered" });
+    await expect(answer).toContainText('Signed and sent', { timeout: 30_000 });
   });
 });
