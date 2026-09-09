@@ -28,7 +28,7 @@ export function PrivyPortal(props: PortalProps) {
    * shows where the sale stands and can still send it — it just cannot add an
    * approval. That is the honest state, and it is the one the walkthrough runs in.
    */
-  if (!APP_ID) return <Portal {...props} live={{ approvals: <Approvals /> }} />;
+  if (!APP_ID) return <Portal {...props} live={{ ...props.live, approvals: <Approvals /> }} />;
 
   return (
     <PrivyProvider
@@ -71,7 +71,7 @@ function Gate(props: PortalProps) {
     );
   }
 
-  return <Portal {...props} account={<AccountMenu />} live={{ approvals: <SigningApprovals /> }} />;
+  return <Portal {...props} account={<AccountMenu />} live={{ ...props.live, approvals: <SigningApprovals /> }} />;
 }
 
 /**
