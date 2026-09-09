@@ -6,6 +6,7 @@ import { deploySystemWithNewBlr } from '@hashgraph/asset-tokenization-contracts/
 import { IAllowance__factory, IBalanceTracker__factory } from '@hashgraph/asset-tokenization-contracts';
 import { MockUsdc__factory, ReceivableDvp__factory } from '../typechain-types';
 import type { MockUsdc, ReceivableDvp } from '../typechain-types';
+import { installScheduleService } from './schedule-service';
 import {
   approvalOf,
   deployEnsKycList,
@@ -192,13 +193,16 @@ describe('EnsKycList', () => {
       await mintTo(platform, token, businessAddress, Number(UNITS));
 
       await IAllowance__factory.connect(token, business).approve(await dvp.getAddress(), UNITS);
+
+      /* Settling books the repayment, which needs something answering as the schedule service. */
+      await installScheduleService(platform);
     });
 
     /** Puts the whole invoice on offer and returns its id. */
     async function openOffer(): Promise<bigint> {
-      const usdcAddress = await usdc.getAddress();
-      const id = await dvp.connect(business).offer.staticCall(token, UNITS, usdcAddress, PRICE);
-      await dvp.connect(business).offer(token, UNITS, usdcAddress, PRICE);
+      const terms = [token, UNITS, await usdc.getAddress(), PRICE, ACME_INVOICE.maturityDays] as const;
+      const id = await dvp.connect(business).offer.staticCall(...terms);
+      await dvp.connect(business).offer(...terms);
       return id;
     }
 
