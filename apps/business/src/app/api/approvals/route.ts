@@ -1,10 +1,12 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { NextResponse } from 'next/server';
+import { INVOICE } from '@rf/shared/invoice';
 import {
+  issuanceToApprove,
+  noteAddress,
   openedAccounts,
   recordApproval,
-  saleToApprove,
-  sendSale,
+  sendApproved,
   type Approval,
   type CountedApprovals,
 } from '@rf/privy/accounts';
@@ -12,9 +14,10 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const INVOICE = 'INV-2026-0417';
-const AMOUNT = '$47,500';
 const STORE = '.approvals.json';
+
+/** What the invoice is worth, written the way a person reads it. */
+const FACE_VALUE = `$${INVOICE.faceValueUsd.toLocaleString('en-US')}`;
 
 /*
  * Where the first approval waits for the second.
@@ -26,14 +29,14 @@ const STORE = '.approvals.json';
  * which memory would not.
  */
 function held(): CountedApprovals {
-  const sale = saleToApprove(INVOICE);
+  const issuance = issuanceToApprove();
   try {
     const stored = JSON.parse(readFileSync(STORE, 'utf8')) as CountedApprovals;
-    if (JSON.stringify(stored.sale) === JSON.stringify(sale)) return stored;
+    if (JSON.stringify(stored.sale) === JSON.stringify(issuance)) return stored;
   } catch {
-    /* Nothing held yet, or held against a sale that has since changed. */
+    /* Nothing held yet, or held against an issuance that has since changed. */
   }
-  return { sale, approvals: [], required: 2, ready: false };
+  return { sale: issuance, approvals: [], required: 2, ready: false };
 }
 
 function keep(record: CountedApprovals): CountedApprovals {
@@ -41,13 +44,16 @@ function keep(record: CountedApprovals): CountedApprovals {
   return record;
 }
 
-/** What the portal shows: the sale on offer, and who has approved it so far. */
+/** What the portal shows: the issuance on offer, and who has approved it so far. */
 function view(record: CountedApprovals) {
   return {
-    invoice: INVOICE,
-    amount: AMOUNT,
-    buyer: openedAccounts().fund.address,
-    sale: record.sale,
+    invoice: INVOICE.reference,
+    customer: INVOICE.customer,
+    amount: FACE_VALUE,
+    note: INVOICE.noteTicker,
+    noteAddress: noteAddress(),
+    issuedTo: openedAccounts().company.address,
+    request: record.sale,
     approvals: record.approvals.map(({ userId, name }) => ({ userId, name })),
     required: record.required,
     ready: record.ready,
@@ -64,8 +70,10 @@ function view(record: CountedApprovals) {
  */
 function unopened(reason: string) {
   return {
-    invoice: INVOICE,
-    amount: AMOUNT,
+    invoice: INVOICE.reference,
+    customer: INVOICE.customer,
+    amount: FACE_VALUE,
+    note: INVOICE.noteTicker,
     approvals: [],
     required: 2,
     ready: false,
@@ -101,7 +109,7 @@ export async function POST(request: Request) {
    */
   try {
     const record = held();
-    const sent = await sendSale(record.sale, record.approvals);
+    const sent = await sendApproved(record.sale, record.approvals);
     return NextResponse.json({ ...view(record), hash: sent.hash });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
