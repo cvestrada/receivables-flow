@@ -1,5 +1,6 @@
 import type { EligibilityPass, Holding } from '@rf/shared';
 import type { PassView } from '@/lib/ens/pass';
+import type { ScoreView } from '@/lib/ens/score';
 import type { Block, Cell, NavItem, Stage } from './portal.types';
 
 /*
@@ -41,9 +42,11 @@ function passBlock(pass: PassView): Block {
     note:'Read live from ENS on Sepolia. The pass lapses on its own and can be withdrawn at any time. It is <b>useless to anyone Woodgrove hands it to</b>.'};
 }
 
+const SCORE_FLOOR = 60;
+
 const MANDATE: Block = {t:'kv',h:'Fund mandate',rows:[
   ['Maximum per position','$100,000',''],
-  ['Minimum credit tier','B',''],
+  ['Minimum credit score',`${SCORE_FLOOR} of 100`,''],
   ['Maximum maturity','90 days','']],
   note:'These are the fund’s own rules, enforced at signing. An allocation that breaks them <b>will not sign at all</b>.'};
 
@@ -85,7 +88,7 @@ function log4(pass: PassView): Block {
     note:'The secondary buyer was checked exactly the same way as the first. Resale does not open a side door.'};
 }
 
-export function buildStages(pass: PassView): Stage[] {
+export function buildStages(pass: PassView, score: ScoreView): Stage[] {
   const PASS = passBlock(pass);
   const LOG3 = log3(pass);
   const LOG4 = log4(pass);
@@ -98,9 +101,9 @@ export function buildStages(pass: PassView): Stage[] {
       ['Realised return','$0','dim','since inception']]},
     {t:'feed',h:'Activity',items:[
       ['Day 0',`Eligibility pass issued to <b>${pass.name}</b> — expires ${pass.expiresOn}`,'ok'],
-      ['Day 0','Mandate written in — $100,000 cap, tier B floor, 90-day maximum','']]}],
+      ['Day 0',`Mandate written in — $100,000 cap, ${SCORE_FLOOR} of 100 score floor, 90-day maximum`,'']]}],
   market:[{t:'empty',h:'Marketplace',title:'No offers match your mandate',
-    text:'Receivables appear here once a verified business at tier B or above issues one.'}],
+    text:`Receivables appear here once a verified business scoring ${SCORE_FLOOR} of 100 or better issues one.`}],
   portfolio:[{t:'empty',h:'Portfolio',title:'No positions held',
     text:'Funded receivables appear here with their maturity date and expected payout.'}],
   compliance:[PASS,MANDATE]}},
@@ -113,13 +116,13 @@ export function buildStages(pass: PassView): Stage[] {
       ['Realised return','$0','dim','since inception']]},
     {t:'feed',h:'Activity',items:[
       ['Day 0',`Eligibility pass issued to <b>${pass.name}</b> — expires ${pass.expiresOn}`,'ok'],
-      ['Day 0','Mandate written in — $100,000 cap, tier B floor, 90-day maximum','']]},
+      ['Day 0',`Mandate written in — $100,000 cap, ${SCORE_FLOOR} of 100 score floor, 90-day maximum`,'']]},
     {t:'kv',h:'Nothing changed here',rows:[
       ['Offers visible to the fund','0',''],
       ['Positions held','0','']],
       note:'Ironline’s directors are approving the sale on their own side right now. The fund <b>cannot see any of it</b>, and should not — it only ever sees a receivable once it exists.'}],
   market:[{t:'empty',h:'Marketplace',title:'No offers match your mandate',
-    text:'Receivables appear here once a verified business at tier B or above issues one.'}],
+    text:`Receivables appear here once a verified business scoring ${SCORE_FLOOR} of 100 or better issues one.`}],
   portfolio:[{t:'empty',h:'Portfolio',title:'No positions held',
     text:'Funded receivables appear here with their maturity date and expected payout.'}],
   compliance:[PASS,MANDATE]}},
@@ -131,12 +134,12 @@ export function buildStages(pass: PassView): Stage[] {
       ['Deployed','$0','dim','no positions'],
       ['Realised return','$0','dim','since inception']]},
     {t:'feed',h:'Activity',items:[
-      ['Day 1','<b>RCV-0001</b> listed — Ironline Freight, tier B, $47,500 for $50,000','hot'],
+      ['Day 1',`<b>RCV-0001</b> listed — Ironline Freight, credit score ${score.label}, $47,500 for $50,000`,'hot'],
       ['Day 0',`Eligibility pass issued — expires ${pass.expiresOn}`,'ok']]}],
   market:[
-    {t:'table',h:'Offered to this fund',head:['Receivable','Issuer','Tier','Pay','Collect','Matures','Mandate'],
-      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight','B',{v:'$47,500',cls:'strong'},'$50,000','2026-11-04',{chip:'Within mandate',tone:'ok'}]],
-      note:'<b>5.3% on cost</b> over 58 days, secured on an invoice from a rated freight broker. Inside the $100,000 cap and above the tier B floor.'}],
+    {t:'table',h:'Offered to this fund',head:['Receivable','Issuer','Credit score','Pay','Collect','Matures','Mandate'],
+      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight',score.label,{v:'$47,500',cls:'strong'},'$50,000','2026-11-04',{chip:'Within mandate',tone:'ok'}]],
+      note:`<b>5.3% on cost</b> over 58 days. Ironline’s <b>${score.label}</b> is not a grade anyone assigned — it is the share of its matured invoices that were repaid, ${score.live ? 'read from ENS on Sepolia' : 'computed from the counts on its public profile'} and recomputable by anyone. Inside the $100,000 cap and above the ${SCORE_FLOOR} of 100 floor.`}],
   portfolio:[{t:'empty',h:'Portfolio',title:'No positions held',
     text:'Fund RCV-0001 and it appears here.'}],
   compliance:[PASS,MANDATE]}},
@@ -150,7 +153,7 @@ export function buildStages(pass: PassView): Stage[] {
     {t:'feed',h:'Activity',items:[
       ['11:26','Funded RCV-0001 — <b>$47,500</b> paid to Ironline Freight','ok'],
       ['11:26','Transfer accepted — eligibility pass checked at the moment of purchase','ok'],
-      ['Day 1','RCV-0001 listed — Ironline Freight, tier B','hot']]}],
+      ['Day 1',`RCV-0001 listed — Ironline Freight, credit score ${score.label}`,'hot']]}],
   market:[{t:'empty',h:'Marketplace',title:'No open offers',
     text:'RCV-0001 has been funded. New receivables appear here as businesses issue them.'}],
   portfolio:[
