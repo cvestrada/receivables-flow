@@ -6,8 +6,6 @@ import { ethers } from 'ethers';
 
 import {
   ABI,
-  RATING_RECORD,
-  appointReviewer,
   clearRetiredRecord,
   encodeName,
   givePage,
@@ -17,6 +15,7 @@ import {
   retireName,
   readPass,
   readRecord,
+  readScore,
   writeRecords,
 } from '../src/ens';
 
@@ -52,7 +51,7 @@ const COUNTS = {
  *
  * The refusals are the point of the demo, and a refusal costs nothing to prove: simulating the
  * call from that address returns the same revert the real transaction would. It also means the
- * business and the reviewer do not need funded accounts just to be turned away.
+ * business does not need a funded account just to be turned away.
  */
 async function attempt(
   resolver: string,
@@ -78,9 +77,9 @@ async function attempt(
 /**
  * A stand-in address that is the same on every run.
  *
- * The reviewer and the business are real parties with their own keys in production. Until
- * those exist, deriving them from a fixed label keeps a re-run byte-identical — a random
- * address would make the script look like it had changed something when it had not.
+ * The business and the fund are real parties with their own keys in production. Until those
+ * exist, deriving them from a fixed label keeps a re-run byte-identical — a random address
+ * would make the script look like it had changed something when it had not.
  */
 function placeholder(role: string, platform: string): string {
   return ethers.getAddress(ethers.dataSlice(ethers.id(`${role}:${platform}`), 12));
@@ -89,7 +88,6 @@ function placeholder(role: string, platform: string): string {
 async function main(): Promise<void> {
   const [platform] = await hre.getSigners();
   const platformAddress = await platform.getAddress();
-  const reviewer = process.env.REVIEWER_ADDRESS ?? placeholder('reviewer', platformAddress);
   const business = process.env.BUSINESS_ADDRESS ?? placeholder('business', platformAddress);
   const investor = process.env.INVESTOR_ADDRESS ?? placeholder('investor', platformAddress);
 
@@ -123,19 +121,21 @@ async function main(): Promise<void> {
   if (stale) console.log(`cleared  the old record on ${page.name} in ${stale}`);
 
   await writeRecords(platform as never, page.resolver, page.name, COUNTS);
-  await appointReviewer(platform as never, page.resolver, page.name, reviewer);
-  console.log(`reviewer ${reviewer} appointed on ${RATING_RECORD}`);
 
   console.log('\nrecord, read back from chain:');
   for (const key of Object.keys(COUNTS)) {
     console.log(`  ${key.padEnd(22)} ${await readRecord(hre.provider as never, page.resolver, page.name, key)}`);
   }
 
+  // Derived here from the counts above, not fetched. Nobody wrote this number down, and the
+  // line that produces it is the whole of the formula.
+  const score = await readScore(hre.provider as never, businesses, BUSINESS_LABEL);
+  console.log(`  credit score           ${score ?? 'unrated'} of 100`);
+
   console.log('\nwho may write what:');
   const checks: [string, string, string, string][] = [
-    ['reviewer writes the rating', reviewer, RATING_RECORD, 'B'],
-    ['reviewer writes another field', reviewer, 'description', 'hijacked'],
-    ['business writes its own rating', business, RATING_RECORD, 'AAA'],
+    ['business writes its own count', business, 'rf.invoices.repaid', '99'],
+    ['business writes another field', business, 'description', 'hijacked'],
   ];
   for (const [label, from, key, value] of checks) {
     console.log(`  ${label.padEnd(32)} ${await attempt(page.resolver, from, page.name, key, value)}`);
@@ -166,8 +166,6 @@ async function main(): Promise<void> {
     businesses,
     investors,
     business: { name: page.name, resolver: page.resolver, wallet: companyPass.wallet },
-    reviewer,
-    ratingRecord: RATING_RECORD,
     investor: {
       name: pass.name,
       resolver: pass.resolver,
