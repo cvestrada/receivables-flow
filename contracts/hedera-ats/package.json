@@ -12,6 +12,12 @@
     "test": "hardhat test",
     "mirror:kyc": "hardhat run scripts/mirror-kyc.ts --network hederaTestnet"
   },
+  "main": "./src/pricing.ts",
+  "types": "./src/pricing.ts",
+  "exports": {
+    ".": "./src/pricing.ts",
+    "./pricing": "./src/pricing.ts"
+  },
   "dependencies": {
     "@rf/shared": "*"
   },
