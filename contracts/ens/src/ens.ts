@@ -55,9 +55,9 @@ export const REGISTRY_ROLES =
  * What the platform holds on the record store — deliberately not the text-write role.
  *
  * The platform takes `setText`'s *admin* role, which lets it hand out write access per
- * record, and grants itself only the three counts. Withholding the blanket write role is what
- * makes "only the reviewer sets the rating" a property of the chain rather than a promise:
- * the platform has no role that would let it write that field.
+ * record, and grants itself only the three counts. Withholding the blanket write role keeps
+ * the grant list on a page short enough to read: every field anyone can write is one the
+ * platform had to name, so a record nobody granted is a record nobody can touch.
  */
 export const RESOLVER_ROLES =
   ROLES.setAddr |
@@ -69,19 +69,15 @@ export const RESOLVER_ROLES =
 /**
  * What a business profile publishes.
  *
- * Three raw counts and nothing derived. A pre-computed grade would make the platform the
- * author of an opinion a funder has no reason to weight above its own underwriting; three
- * numbers let anyone compute their own.
+ * Three raw counts and nothing derived. A stored grade would make the platform the author
+ * of an opinion a funder has no reason to weight above its own underwriting; three numbers
+ * and a published formula let every reader arrive at the same score without us.
  */
 export const PROFILE_RECORDS = [
   'rf.invoices.financed',
   'rf.invoices.repaid',
   'rf.invoices.defaulted',
-  'credit.rating',
 ] as const;
-
-/** The one record the platform never writes — see `appointReviewer`. */
-export const RATING_RECORD = 'credit.rating';
 
 /**
  * The record naming the wallet whose KYC has passed.
@@ -156,7 +152,8 @@ export function encodeName(name: string): string {
  *
  * `grantSetterRoles` does not take a name and a key — it takes the setter call the grantee is
  * being allowed to make, and derives the permission target from it. Handing it a call for a
- * different key produces a different target, which is the whole basis of the reviewer role.
+ * different key produces a different target, which is what keeps a grant to one field from
+ * spilling onto the rest of a company's page.
  */
 export function buildSetterBlob(name: string, key: string): string {
   return new ethers.Interface(ABI.resolver).encodeFunctionData('setText', [
@@ -377,10 +374,9 @@ export interface Page {
  * page exists to publish.
  *
  * Each company gets its own record store rather than sharing the platform's. A grant on this
- * contract is keyed by the record name alone, so a reviewer appointed for `credit.rating` on a
- * shared store would hold that grant over every company on it. The store is the boundary the
- * contract actually enforces, so one company per store is what "this reviewer rates Ironline"
- * has to mean.
+ * contract is keyed by the record name alone, so a grant on `rf.invoices.repaid` in a shared
+ * store would carry over every company on it. The store is the boundary the contract actually
+ * enforces, so one company per store is what "these are Ironline's counts" has to mean.
  */
 export async function givePage(
   signer: Signer,
@@ -428,11 +424,11 @@ export async function givePage(
 }
 
 /**
- * Give the platform write access to every record on a page except the rating.
+ * Give the platform write access to every record a page publishes.
  *
- * The rating is conspicuously absent: it is the reviewer's field, and the platform holds no
- * role that would let it be written here. Each grant is checked first, so calling this on a
- * page that already has them is free.
+ * Only the counts and the KYC wallet — there is no score field to grant, because the score is
+ * computed by whoever is reading rather than written by whoever is trusted. Each grant is
+ * checked first, so calling this on a page that already has them is free.
  */
 async function grantWritable(
   signer: Signer,
@@ -441,7 +437,6 @@ async function grantWritable(
   platform: string,
 ): Promise<void> {
   for (const key of [...PROFILE_RECORDS, KYC_WALLET_RECORD, RETIRED_WALLET_RECORD]) {
-    if (key === RATING_RECORD) continue;
     await grantSetter(signer, resolverAddress, name, key, platform);
   }
 }
@@ -478,9 +473,6 @@ export async function writeRecords(
   const encoded = encodeName(name);
 
   for (const [key, value] of Object.entries(records)) {
-    if (key === RATING_RECORD) {
-      throw new Error('the rating is the reviewer\'s field — the platform does not write it');
-    }
     await (await resolver.setText(encoded, key, value)).wait();
   }
 }
@@ -508,35 +500,71 @@ export async function readRecord(
   return TEXT_GETTER.decodeFunctionResult('text', answer)[0] as string;
 }
 
-/**
- * Give one address write access to one field and nothing else.
- *
- * The permission target is derived by the deployed resolver from the setter blob rather than
- * recomputed here. Recomputing it would mean this package's idea of the target and the
- * contract's could drift apart, and the grant would silently land on the wrong record.
- */
-export async function appointReviewer(
-  signer: Signer,
-  resolverAddress: string,
-  name: string,
-  reviewer: string,
-  key: string = RATING_RECORD,
-): Promise<void> {
-  const resolver = new ethers.Contract(resolverAddress, ABI.resolver, signer);
-  await (await resolver.grantSetterRoles(buildSetterBlob(name, key), reviewer)).wait();
+/** What a business's page says about its invoices: how many it took, settled, and missed. */
+export interface Counts {
+  financed: number;
+  repaid: number;
+  defaulted: number;
 }
 
-/** Take the rating back from a reviewer who is no longer appointed. */
-export async function revokeReviewer(
-  signer: Signer,
-  resolverAddress: string,
-  name: string,
-  reviewer: string,
-  key: string = RATING_RECORD,
-): Promise<void> {
-  const resolver = new ethers.Contract(resolverAddress, ABI.resolver, signer);
-  const [, resource] = await resolver.decodeSetter(buildSetterBlob(name, key));
-  await (await resolver.revokeRoles(resource, ROLES.setText, reviewer)).wait();
+/**
+ * The published formula. The whole of it.
+ *
+ * A business's score is the share of its matured invoices that were repaid, stated out of 100.
+ * Nobody chose a weighting, nobody drew a band, and no key anywhere writes the answer down —
+ * two funders who disagree about a company can each run this line and get the same number.
+ *
+ * `financed` is not an input. An invoice nobody has had to pay yet is neither a repayment nor
+ * a miss, so financing more of them must not move a business up or down.
+ *
+ * A business with nothing matured is unrated rather than scored. Unrated means nobody knows
+ * yet; zero means everyone does, and collapsing the two would let the worst record on the
+ * platform hide behind the same answer as a newcomer's.
+ */
+export function creditScore({ repaid, defaulted }: Counts): number | undefined {
+  const matured = repaid + defaulted;
+  if (matured === 0) return undefined;
+
+  return Math.round((repaid * 100) / matured);
+}
+
+/**
+ * Work out a business's score from its public page, the way a stranger would.
+ *
+ * Takes a provider and the platform's registry and nothing else — no signer, and no call to
+ * Receivables Flow. The counts are read off the page and the sum is done here, so there is no
+ * point in this path where the answer is something we handed out.
+ */
+export async function readScore(
+  provider: ethers.Provider,
+  { registry: registryAddress, baseName }: RegistryRef,
+  label: string,
+): Promise<number | undefined> {
+  const registry = new ethers.Contract(registryAddress, ABI.registry, provider);
+  const name = `${label}.${baseName}`;
+
+  // A company with no page is in the same position as one with no matured invoices: there is
+  // nothing to score, which is a different answer from scoring it badly.
+  const resolver = await registry.getResolver(label).catch(() => ethers.ZeroAddress);
+  if (resolver === ethers.ZeroAddress) return undefined;
+
+  const [financed, repaid, defaulted] = await Promise.all([
+    readRecord(provider, resolver, name, 'rf.invoices.financed').catch(() => ''),
+    readRecord(provider, resolver, name, 'rf.invoices.repaid').catch(() => ''),
+    readRecord(provider, resolver, name, 'rf.invoices.defaulted').catch(() => ''),
+  ]);
+
+  return creditScore({
+    financed: readCount(financed),
+    repaid: readCount(repaid),
+    defaulted: readCount(defaulted),
+  });
+}
+
+/** A record that was never written reads as none, so a blank page comes back unrated. */
+function readCount(value: string): number {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 export interface Pass {
