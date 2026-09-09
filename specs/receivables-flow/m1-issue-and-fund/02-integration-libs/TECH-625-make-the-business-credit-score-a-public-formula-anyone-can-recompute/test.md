@@ -5,10 +5,12 @@
 **Files:**
 - `contracts/ens/test/unit/score.test.ts` (new)
 - `contracts/ens/test/integration/registry.test.ts` (edited)
+- `apps/e2e/tests/score.spec.ts` (new)
 
 **Run:**
 - `cd contracts/ens && npm run test:unit`
 - `cd contracts/ens && npm run test:int`
+- `cd apps/e2e && ../../node_modules/.bin/playwright test score.spec.ts --trace on`
 
 ---
 
@@ -25,7 +27,10 @@
 | 7 | Core Logic — unrated is not a score of 0 | [unit] | a business that defaulted on everything scores 0, which is not unrated |
 | 8 | Publish the score as a pure function of the three counts | [integration] | the score read back off a live page matches the counts written to it |
 | 9 | Delete the stored rating and the reviewer who wrote it | [integration] | a business page carries no rating record for anyone to write |
-| 10 | Delete the stored rating and the reviewer who wrote it | [integration] | nobody can be granted write access to a rating on a business page |
+| 10 | Delete the stored rating and the reviewer who wrote it | [integration] | a stranger cannot write the counts either |
+| 11 | Put the number in front of the fund | [e2e] | the fund reads a credit score out of 100 on the offer itself |
+| 12 | Prove it on screen, through the browser | [e2e] | no letter grade survives anywhere on the market screen |
+| 13 | Put the number in front of the fund | [e2e] | the mandate floor the fund enforces is a number too |
 
 ---
 
@@ -49,4 +54,12 @@
 
 - **rating record**
   - [unhappy-path] a business page carries no rating record for anyone to write
-  - [unhappy-path] nobody can be granted write access to a rating on a business page
+  - [unhappy-path] the business is refused writing the counts its own score is built from
+  - [unhappy-path] a stranger is refused writing the counts too
+
+**investor portal** — what the fund sees, driven through the browser
+
+- **the offer**
+  - [happy-path] the fund reads a credit score out of 100 on the offer itself
+  - [happy-path] the mandate floor the fund enforces is a number too
+  - [unhappy-path] no letter grade survives anywhere on the market screen

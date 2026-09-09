@@ -20,7 +20,8 @@ The profile already publishes how many invoices a business financed, repaid, and
 defaulted on. The score is defined as the share of matured invoices that were repaid,
 stated out of 100, and a business with nothing matured yet is unrated rather than
 scored. The stored grade and the reviewer who wrote it are removed outright, so there is
-no writable score record left to capture.
+no writable score record left to capture. A fund looking at an offer sees that number on
+the offer itself, in place of the letter grade the screen used to show.
 
 **Zone 1 check:**
 Underwriting. Pricing a receivable today requires trusting a rating whose author cannot be
@@ -54,6 +55,8 @@ flowchart TD
 - The same three counts always produce the same score, whoever computes it — no signer, no key, no privileged read.
 - `financed` is published as context and is never an input to the score, because an invoice still outstanding has neither been paid nor missed.
 - No address holds a role that writes a score, because there is no score record to write.
+- The fund's offer table shows the computed score, never a letter grade — a letter would need band cutoffs somebody chose.
+- The score on screen falls back to computing from the counts the portal already holds when the chain cannot be reached, so the screen is never blank and never stale in silence.
 
 ---
 
@@ -67,6 +70,11 @@ contracts/ens/
   test/integration/registry.test.ts # reviewer cases removed; score derived from records read back off-chain
 tools/proof/src/engine/seed/
   business.seed.ts                  # journey step no longer claims a reviewer sets the rating
+apps/investor/src/
+  lib/ens/score.ts                  # reads the issuer's counts off ENS and derives the score, falling back to the counts on hand
+  data/investor.data.ts             # offer table and mandate carry the number instead of tier B
+apps/e2e/tests/
+  score.spec.ts                     # a fund sees the computed score on the offer, not a grade
 ```
 
 ---
@@ -132,3 +140,29 @@ Verify:
 cd contracts/ens && npm run typecheck && cd ../../tools/proof && npm run typecheck
 ```
 → both exit 0
+
+**[x] Put the number in front of the fund**
+
+Implement: Add `apps/investor/src/lib/ens/score.ts`, which reads the issuer's counts off ENS
+and derives the score the way `lib/ens/pass.ts` reads the pass, falling back to computing from
+the counts the portal already holds when there is no deployment or the chain cannot be
+reached. Change `apps/investor/src/data/investor.data.ts` so the offer table's `Tier` column and
+the fund's mandate floor carry that number instead of `B`.
+
+Verify:
+```
+cd apps/investor && npm run typecheck && grep -c "tier B\|'Tier'\|'B'" src/data/investor.data.ts
+```
+→ typecheck exits 0 and the count is `0`
+
+**[x] Prove it on screen, through the browser**
+
+Implement: Add `apps/e2e/tests/score.spec.ts` driving the investor portal to the offer and
+asserting the fund reads a computed score out of 100 on it, and that no letter grade appears
+anywhere on the market screen.
+
+Verify:
+```
+cd apps/e2e && ../../node_modules/.bin/playwright test score.spec.ts --trace on
+```
+→ exits 0 with the new tests passing and a trace retained for each
