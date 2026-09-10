@@ -1,6 +1,8 @@
 import { PrivyPortal } from '@/components/privy';
 import { BookedRepayment, Quote } from '@/components/quote';
+import { Repay } from '@/components/repay';
 import { DEFAULTED, NAV, STAGES } from '@/data/business.data';
+import { owedAtMaturity } from '@/lib/hedera-ats/repay';
 
 /*
  * Rendered per request, not at build time. The price on this page is only worth showing
@@ -9,7 +11,9 @@ import { DEFAULTED, NAV, STAGES } from '@/data/business.data';
  */
 export const dynamic = 'force-dynamic';
 
-export default function Page() {
+export default async function Page() {
+  const owed = await owedAtMaturity();
+
   return (
     <PrivyPortal
       brand="Ironline Freight"
@@ -27,6 +31,7 @@ export default function Page() {
           <>
             <Quote />
             <BookedRepayment />
+            <Repay view={owed} />
           </>
         ),
       }}
