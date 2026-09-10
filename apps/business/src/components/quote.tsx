@@ -26,7 +26,7 @@ function Step({ label, value, note }: { label: string; value: string; note?: str
  */
 export async function Quote() {
   const { record, faceValueUsd, maturityDays, annualRatePct, discountUsd, proceedsUsd } = await quote();
-  const matured = record.repaid + record.defaulted;
+  const matured = record.ontime + record.late + record.defaulted;
 
   return (
     <section className="desk overflow-hidden border-[var(--accent)]" data-testid="quote">
@@ -40,16 +40,16 @@ export async function Quote() {
       <div className="divide-y">
         <Step
           label="Repayment record"
-          note={`${record.financed} financed · ${record.repaid} repaid · ${record.defaulted} missed`}
+          note={`${record.financed} financed · ${record.ontime} on time · ${record.late} late · ${record.defaulted} missed`}
           value={
             record.score === null
               ? 'unrated'
-              : `${record.repaid} of ${matured} matured invoices paid`
+              : `${record.ontime} of ${matured} matured invoices paid on time`
           }
         />
         <Step
           label="Credit score"
-          note="repaid ÷ matured, out of 100"
+          note="on time counts 100, late counts 50, over everything matured"
           value={record.score === null ? 'unrated — priced at the bottom' : `${record.score} / 100`}
         />
         <Step label="Rate this record earns" note="a year, on a 360-day year" value={`${annualRatePct.toFixed(2)}%`} />
