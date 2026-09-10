@@ -16,7 +16,8 @@
   "types": "./src/pricing.ts",
   "exports": {
     ".": "./src/pricing.ts",
-    "./pricing": "./src/pricing.ts"
+    "./pricing": "./src/pricing.ts",
+    "./distribution": "./src/distribution.ts"
   },
   "dependencies": {
     "@rf/shared": "*"
