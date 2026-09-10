@@ -98,6 +98,31 @@ export const KYC_WALLET_RECORD = 'rf.kyc.wallet';
 /** What the record was called before it said KYC. Cleared on sight so no name carries both. */
 export const RETIRED_WALLET_RECORD = 'rf.pass.wallet';
 
+/**
+ * The payment behind the latest ending on a business's page.
+ *
+ * A count on its own is an assertion: it says an invoice was paid and offers nothing to check
+ * that against. Naming the transfer that ended the invoice turns the count into an index of
+ * something that happened on a public network, which anybody can go and look at without asking
+ * us anything. It is deliberately not part of the score — a reader who distrusts the count can
+ * follow this record instead of arguing about the number.
+ */
+export const SETTLEMENT_RECORD = 'rf.invoices.settlement';
+
+/**
+ * Every record the platform is given write access to when a page is issued.
+ *
+ * Kept as one list because grants are topped up on each onboard run: a record that is not named
+ * here is a record no existing page can ever publish, however carefully the rest of the code
+ * writes to it.
+ */
+export const WRITABLE_RECORDS = [
+  ...PROFILE_RECORDS,
+  KYC_WALLET_RECORD,
+  RETIRED_WALLET_RECORD,
+  SETTLEMENT_RECORD,
+] as const;
+
 
 export const ABI = {
   registrar: [
@@ -442,7 +467,7 @@ async function grantWritable(
   name: string,
   platform: string,
 ): Promise<void> {
-  for (const key of [...PROFILE_RECORDS, KYC_WALLET_RECORD, RETIRED_WALLET_RECORD]) {
+  for (const key of WRITABLE_RECORDS) {
     await grantSetter(signer, resolverAddress, name, key, platform);
   }
 }
@@ -548,6 +573,53 @@ export function creditScore({ ontime, late, defaulted }: Counts): number | undef
   if (matured === 0) return undefined;
 
   return Math.round((ontime * 100 + late * LATE_WEIGHT) / matured);
+}
+
+/** How a matured invoice ended: the business paid it, or it never paid it. */
+export type Ending = 'repaid' | 'defaulted';
+
+/**
+ * What a business's page says once day 60 has ended.
+ *
+ * One invoice moves from outstanding to matured, and which way it went is the whole of the
+ * difference: paying adds to the invoices paid on time, not paying adds to the ones never paid.
+ * `financed` does not move, because the invoice was counted as financed on the day it was sold
+ * — counting it again at maturity would read as a business that raised money on it twice.
+ *
+ * Nothing here is idempotent, and it should not be: this answers what one more ending does to a
+ * record. Whether an ending has already happened is a question about day 60, which belongs to
+ * whoever is holding the record of it, not to a sum.
+ */
+export function applyOutcome(counts: Counts, ending: Ending): Counts {
+  return ending === 'repaid'
+    ? { ...counts, ontime: counts.ontime + 1 }
+    : { ...counts, defaulted: counts.defaulted + 1 };
+}
+
+/**
+ * The record a business is onboarded with.
+ *
+ * Six invoices matured — four paid on time, one paid late, one never paid — which scores 75.
+ * Deliberately not a clean sheet: a business onboarded at 100 has nowhere to go, so repaying
+ * $50,000 on time would leave its next invoice priced exactly where it was and the platform's
+ * central claim — that a public record earns a business cheaper money — would be true in the
+ * arithmetic and invisible on the screen. Starting mid-range is what lets both endings show.
+ */
+export const ONBOARD_COUNTS: Counts = { financed: 7, ontime: 4, late: 1, defaulted: 1 };
+
+/**
+ * A tally written the way a page publishes it.
+ *
+ * One place turns counts into records, so onboarding a business and recording an ending cannot
+ * drift into publishing different keys for the same fact.
+ */
+export function countRecords({ financed, ontime, late, defaulted }: Counts): Record<string, string> {
+  return {
+    'rf.invoices.financed': String(financed),
+    'rf.invoices.ontime': String(ontime),
+    'rf.invoices.late': String(late),
+    'rf.invoices.defaulted': String(defaulted),
+  };
 }
 
 /**

@@ -1,5 +1,9 @@
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { NextResponse } from 'next/server';
+import { INVOICE } from '@rf/shared/invoice';
+import { priceFor } from '@rf/contracts-hedera-ats/pricing';
+import { publish } from '@/lib/ens/outcome';
+import type { Record as Standing } from '@/lib/ens/score';
 import { owedAtMaturity, repay, type Payment } from '@/lib/hedera-ats/repay';
 
 export const runtime = 'nodejs';
@@ -18,6 +22,44 @@ const STORE = '.repayment.json';
 /** How day 60 ended: the obligation met, or not met. */
 export type Outcome = 'repaid' | 'defaulted';
 
+/** USDC's six decimals, which the pricing works in. */
+const USDC_DECIMALS = 1_000_000;
+
+/** A record on Ironline's page, and what the next invoice costs when priced against it. */
+export interface Standpoint {
+  record: Standing;
+  /** The annual rate that record earns, as a percentage. */
+  annualRatePct: number;
+  /** What the next invoice's buyer keeps at maturity, in dollars — the cost of selling it. */
+  discountUsd: number;
+}
+
+/** What day 60 did to Ironline's public record, and to the price of its next invoice. */
+export interface Consequence {
+  before: Standpoint;
+  after: Standpoint;
+  /** Whether the new record is on the page, or only worked out here. */
+  published: boolean;
+  reason?: string;
+}
+
+/**
+ * Price the next invoice against one record.
+ *
+ * The same published function the day-0 quote uses, run twice against two records — which is
+ * the only honest way to show that a price moved because a record moved, rather than because a
+ * second number was chosen to make a point.
+ */
+function pricedAgainst(record: Standing): Standpoint {
+  const quote = priceFor(INVOICE.faceValueUsd, INVOICE.maturityDays, record.score);
+
+  return {
+    record,
+    annualRatePct: quote.annualRateBps / 100,
+    discountUsd: Number(quote.discount) / USDC_DECIMALS,
+  };
+}
+
 /** What Ironline's screen gets back from one attempt to end day 60. */
 export interface RepaymentAnswer {
   outcome: Outcome;
@@ -32,6 +74,8 @@ export interface RepaymentAnswer {
   reason?: string;
   /** True when this outcome was already recorded and is being reported rather than repeated. */
   already: boolean;
+  /** What the ending did to Ironline's public record, and to its next invoice. */
+  consequence?: Consequence;
 }
 
 function recorded(): RepaymentAnswer | null {
@@ -48,13 +92,33 @@ function keep(answer: RepaymentAnswer): RepaymentAnswer {
 }
 
 /**
+ * Add the ending to Ironline's public record and price the next invoice off it.
+ *
+ * The order matters: the record is written first and read back, and only then is the next
+ * invoice priced — a price quoted from the record we meant to write would be a claim about the
+ * page rather than a reading of it.
+ */
+async function consequenceOf(outcome: Outcome, hash?: string): Promise<Consequence> {
+  const written = await publish(outcome, hash);
+
+  return {
+    before: pricedAgainst(written.before),
+    after: pricedAgainst(written.after),
+    published: written.published,
+    reason: written.reason,
+  };
+}
+
+/**
  * Ends day 60 one way or the other, and records which.
  *
  * Repaying divides the face value across whoever the receivable says holds it and pays each one.
  * Not repaying marks it defaulted and states the same shares as losses — the holders lose in
  * exactly the proportions they would have been paid in, which is the point of showing it.
  *
- * An outcome already recorded is reported back rather than repeated. Day 60 happens once.
+ * An outcome already recorded is reported back rather than repeated — including what it did to
+ * Ironline's public record, which is written down with it. Day 60 happens once, and a record
+ * that could be added to twice would be a record a business could inflate by pressing a button.
  */
 export async function POST(request: Request) {
   const { outcome } = (await request.json()) as { outcome?: Outcome };
@@ -73,6 +137,7 @@ export async function POST(request: Request) {
         live: view.live,
         settled: false,
         already: false,
+        consequence: await consequenceOf('defaulted'),
       }),
     );
   }
@@ -88,6 +153,7 @@ export async function POST(request: Request) {
       settled: paid.settled,
       reason: paid.reason,
       already: false,
+      consequence: await consequenceOf('repaid', paid.holders[0]?.hash),
     }),
   );
 }

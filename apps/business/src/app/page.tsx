@@ -2,6 +2,7 @@ import { PrivyPortal } from '@/components/privy';
 import { BookedRepayment, Quote } from '@/components/quote';
 import { Repay } from '@/components/repay';
 import { DEFAULTED, NAV, STAGES } from '@/data/business.data';
+import { quote } from '@/lib/hedera-ats/quote';
 import { owedAtMaturity } from '@/lib/hedera-ats/repay';
 
 /*
@@ -12,7 +13,7 @@ import { owedAtMaturity } from '@/lib/hedera-ats/repay';
 export const dynamic = 'force-dynamic';
 
 export default async function Page() {
-  const owed = await owedAtMaturity();
+  const [owed, today] = await Promise.all([owedAtMaturity(), quote()]);
 
   return (
     <PrivyPortal
@@ -31,7 +32,9 @@ export default async function Page() {
           <>
             <Quote />
             <BookedRepayment />
-            <Repay view={owed} />
+            {/* Priced here as well as in the quote above, because day 60 has to be able to
+                say what the invoice cost before it happened. */}
+            <Repay view={owed} today={today} />
           </>
         ),
       }}

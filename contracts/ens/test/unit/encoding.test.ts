@@ -1,7 +1,18 @@
 import { expect } from 'chai';
 import { ethers } from 'ethers';
 
-import { PROFILE_RECORDS, buildSetterBlob, decidePass, encodeName } from '../../src/ens';
+import {
+  ONBOARD_COUNTS,
+  PROFILE_RECORDS,
+  SETTLEMENT_RECORD,
+  WRITABLE_RECORDS,
+  applyOutcome,
+  buildSetterBlob,
+  countRecords,
+  creditScore,
+  decidePass,
+  encodeName,
+} from '../../src/ens';
 
 describe('encoding', () => {
   describe('encodeName', () => {
@@ -58,6 +69,79 @@ describe('encoding', () => {
         'rf.invoices.late',
         'rf.invoices.defaulted',
       ]);
+    });
+  });
+
+  describe('applyOutcome', () => {
+    it('adds one invoice paid on time, and a business that scored 75 now scores 79', () => {
+      const after = applyOutcome(ONBOARD_COUNTS, 'repaid');
+
+      expect(creditScore(ONBOARD_COUNTS)).to.equal(75);
+      expect(after.ontime).to.equal(ONBOARD_COUNTS.ontime + 1);
+      expect(creditScore(after)).to.equal(79);
+    });
+
+    it('adds one invoice never paid, and a business that scored 75 now scores 64', () => {
+      const after = applyOutcome(ONBOARD_COUNTS, 'defaulted');
+
+      expect(after.defaulted).to.equal(ONBOARD_COUNTS.defaulted + 1);
+      expect(creditScore(after)).to.equal(64);
+    });
+
+    it('leaves how many invoices the business has sold alone, whichever way day 60 ends', () => {
+      // The invoice was counted as financed when it was sold. Counting it again at maturity
+      // would say the business raised money twice on one invoice.
+      for (const ending of ['repaid', 'defaulted'] as const) {
+        expect(applyOutcome(ONBOARD_COUNTS, ending).financed).to.equal(ONBOARD_COUNTS.financed);
+      }
+    });
+
+    it('scores a business for the first time on its first ending', () => {
+      const newcomer = { financed: 1, ontime: 0, late: 0, defaulted: 0 };
+
+      // Unrated is not a score of nought — it is the absence of one. The first invoice to
+      // mature is what turns a business that nobody has lent to into one with a record.
+      expect(creditScore(newcomer)).to.equal(undefined);
+      expect(creditScore(applyOutcome(newcomer, 'repaid'))).to.equal(100);
+    });
+
+    it('moves the record again each time it is applied', () => {
+      // Whether an ending has already been recorded is the caller's question, not this
+      // function's — it answers what one more ending does, and nothing here is idempotent.
+      const twice = applyOutcome(applyOutcome(ONBOARD_COUNTS, 'repaid'), 'repaid');
+
+      expect(twice.ontime).to.equal(ONBOARD_COUNTS.ontime + 2);
+    });
+  });
+
+  describe('ONBOARD_COUNTS', () => {
+    it('scores 75 — neither perfect nor unrated, so an ending can move it either way', () => {
+      // A business onboarded at 100 has nowhere to go: repaying leaves the price exactly
+      // where it was, and the whole claim of a public record is that paying is worth
+      // something. Starting mid-range is what makes both directions visible.
+      expect(creditScore(ONBOARD_COUNTS)).to.equal(75);
+    });
+
+    it('names every count the page publishes', () => {
+      // A page seeded with three of its four counts reads as a business with a missing
+      // record rather than one with a record of nought.
+      expect(Object.keys(countRecords(ONBOARD_COUNTS))).to.deep.equal([...PROFILE_RECORDS]);
+    });
+  });
+
+  describe('SETTLEMENT_RECORD', () => {
+    it('is a record the platform is granted, so a page issued before it existed gets it', () => {
+      // Grants are topped up on every onboard run. A record left off this list would be
+      // published by no page that already exists — only by pages issued after today.
+      expect(WRITABLE_RECORDS).to.include(SETTLEMENT_RECORD);
+    });
+
+    it('scopes its write permission to itself and not to the counts beside it', () => {
+      const name = 'ironline.receivablesflow.eth';
+
+      expect(buildSetterBlob(name, SETTLEMENT_RECORD)).to.not.equal(
+        buildSetterBlob(name, 'rf.invoices.ontime'),
+      );
     });
   });
 
