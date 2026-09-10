@@ -160,8 +160,8 @@ export const STAGES: Stage[] = [
       ['Repayment record','7 of 7','pos','settled on time']]},
     {t:'feed',h:'Activity',items:[
       ['Day 60','Public record updated — credit tier <b>B → B+</b>','ok'],
-      ['Day 60','Holders paid automatically — nobody claimed anything','ok'],
-      ['Day 60','Northwind Brokerage paid <b>$50,000</b>','ok']]},
+      ['Day 60','Both holders paid their share automatically — nobody claimed anything','ok'],
+      ['Day 60','Repaid <b>$50,000</b> at maturity — the obligation Ironline carried under recourse','ok']]},
     {t:'kv',h:'Public record — ironline.receivables.eth',rows:[
       ['Invoices settled on time','7 of 7','ok'],
       ['Credit tier','B → B+','ok'],
@@ -179,22 +179,22 @@ export const STAGES: Stage[] = [
 export const DEFAULTED: Stage = { day:'Day 60', label:'Defaulted', counts:{invoices:1,receivables:0,approvals:0}, sections:{
   overview:[
     {t:'tiles',items:[
-      ['Cash available','$47,500','pos','kept — the sale was final'],
+      ['Cash available','$47,500','pos','kept — but $50,000 was owed back'],
       ['Settled at maturity','$0','neg','no payment received'],
       ['Repayment record','7 of 8','neg','one missed']]},
     {t:'feed',h:'Activity',items:[
       ['Day 60','Public record updated — credit tier <b>B → C</b>','bad'],
       ['Day 60','RCV-0001 marked <b>defaulted</b> — the holders absorb the loss','bad'],
-      ['Day 60','Northwind Brokerage did not pay','bad']]},
+      ['Day 60','Ironline did not repay the <b>$50,000</b> owed at maturity','bad']]},
     {t:'kv',h:'Public record — ironline.receivables.eth',flag:true,rows:[
       ['Invoices settled on time','7 of 8','bad'],
       ['Credit tier','B → C','bad'],
       ['Expected discount, next sale','5.0% → 8.5%','bad']],
-      note:'Ironline keeps the $47,500 — the sale was final and the loss is the holders’. What Ironline loses is <b>the price of its next one</b>.'}],
+      note:'The sale was made <b>with recourse</b>: the $50,000 was Ironline’s to repay at maturity whether or not Northwind Brokerage had paid Ironline. It did not, so the holders absorb the loss — and Ironline carries the default on the record its next invoice is priced against.'}],
   invoices:[
     {t:'table',h:'Outstanding invoices',head:['Invoice','Customer','Amount','Due','Terms','Status'],
       rows:[[{v:'INV-2026-0417',cls:'id'},'Northwind Brokerage',{v:'$50,000',cls:'strong'},'2026-11-04','60 days',{chip:'Unpaid',tone:'bad'}]],
-      note:'Recovery from Northwind is now a collections matter, and it does not change what the holders lost.'}],
+      note:'Chasing Northwind is now a collections matter, and it does not change what Ironline owed or what the holders lost.'}],
   receivables:[
     {t:'table',h:'Receivables',head:['Receivable','Face','Sold for','Holders','Outcome','Status'],
       rows:[[{v:'RCV-0001',cls:'id'},{v:'$50,000',cls:'strong'},'$47,500','2',{v:'$0 paid',cls:'bad'},{chip:'Defaulted',tone:'bad'}]]}],
