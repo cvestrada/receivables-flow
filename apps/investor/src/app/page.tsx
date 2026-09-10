@@ -1,8 +1,10 @@
 import { Allocate } from '@/components/allocate';
 import { PrivyPortal } from '@/components/privy';
+import { Resell } from '@/components/resell';
 import { NAV, buildDefaulted, buildStages } from '@/data/investor.data';
 import { investorPass } from '@/lib/ens/pass';
 import { issuerScore } from '@/lib/ens/score';
+import { resale } from '@/lib/hedera-ats/resale';
 
 /*
  * Rendered per request rather than at build time. The pass is a live fact with a date on it,
@@ -12,7 +14,7 @@ import { issuerScore } from '@/lib/ens/score';
 export const dynamic = 'force-dynamic';
 
 export default async function Page() {
-  const [pass, score] = await Promise.all([investorPass(), issuerScore()]);
+  const [pass, score, split] = await Promise.all([investorPass(), issuerScore(), resale()]);
 
   return (
     <PrivyPortal
@@ -20,9 +22,9 @@ export default async function Page() {
       ens={pass.name}
       signer="A. Whitfield · Portfolio Manager"
       nav={NAV}
-      stages={buildStages(pass, score)}
-      defaulted={buildDefaulted(pass)}
-      live={{ compliance: <Allocate /> }}
+      stages={buildStages(pass, score, split)}
+      defaulted={buildDefaulted(pass, split)}
+      live={{ compliance: <Allocate />, portfolio: <Resell view={split} /> }}
     />
   );
 }

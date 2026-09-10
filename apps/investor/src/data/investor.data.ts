@@ -1,6 +1,7 @@
 import type { EligibilityPass, Holding } from '@rf/shared';
 import type { PassView } from '@/lib/ens/pass';
 import type { ScoreView } from '@/lib/ens/score';
+import type { HolderView, ResaleView } from '@/lib/hedera-ats/resale';
 import type { Block, Cell, NavItem, Stage } from './portal.types';
 
 /*
@@ -55,6 +56,33 @@ function short(wallet: string): string {
   return wallet.startsWith('0x') ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : wallet;
 }
 
+/** Money as the portal states it — whole dollars, grouped. */
+function money(usd: number): string {
+  return `$${Math.round(usd).toLocaleString('en-US')}`;
+}
+
+/** A share to two places, so a position that is nearly half does not read as exactly half. */
+function share(pct: number): string {
+  return `${pct.toFixed(2)}%`;
+}
+
+/** The same share said the way a trading desk says it — hundredths of a percent. */
+function bps(pct: number): string {
+  return `${Math.round(pct * 100)} bps`;
+}
+
+/**
+ * Where the day-20 figures came from, said on the screen that shows them.
+ *
+ * A split the portal could not refresh is still worth showing, but a fund has to be able to
+ * tell it apart from one that is current — otherwise the panel makes the same claim either way.
+ */
+function source(split: ResaleView): string {
+  return split.live
+    ? 'Read from the receivable on Hedera testnet — units held, share and cash back are the chain’s figures, not ours.'
+    : 'Not live — the balances on hand, shown because the Hedera endpoint could not be reached. Nothing here was typed into the page.';
+}
+
 /*
  * Woodgrove's row in the transfer log carries the same wallet and the same date as the pass
  * above it, both taken from the registry. A log that quoted a different date would be claiming
@@ -78,20 +106,43 @@ function log3(pass: PassView): Block {
     note:'The check runs <b>inside the transfer</b>, against the pass as it stands at that instant — not against a list someone approved last week. An unapproved buyer is turned away even going around this portal.'};
 }
 
-function log4(pass: PassView): Block {
+/*
+ * The buyer's row is the chain's own answer about the resale: a party appears here because the
+ * receivable's balances say it holds part of it, not because a row was written for it.
+ */
+function buyerRow(buyer: HolderView): Cell[] {
+  return [
+    {v:short(buyer.wallet),cls:'id'},
+    buyer.name,
+    {chip:'Accepted',tone:'ok'},
+    {v:`Holds ${share(buyer.sharePct)} of the receivable`,cls:'ok'},
+  ];
+}
+
+function log4(pass: PassView, split: ResaleView): Block {
+  const buyer = split.holders[1];
   return {t:'table',h:'Transfer log — checked at the moment of purchase',flag:true,
     head:['Wallet','Party','Result','Reason'],
     rows:[
-      [{v:'0x3F88…C102',cls:'id'},'Harbour Lane Partners',{chip:'Accepted',tone:'ok'},{v:'Pass valid to 2027-03-31',cls:'ok'}],
+      ...(buyer ? [buyerRow(buyer)] : []),
       woodgroveRow(pass),
       [{v:'0xB0D3…14FF',cls:'id'},{v:'Unidentified wallet',cls:'dim'},{chip:'Refused',tone:'bad'},{v:'No eligibility pass',cls:'bad'}]],
     note:'The secondary buyer was checked exactly the same way as the first. Resale does not open a side door.'};
 }
 
-export function buildStages(pass: PassView, score: ScoreView): Stage[] {
+export function buildStages(pass: PassView, score: ScoreView, split: ResaleView): Stage[] {
   const PASS = passBlock(pass);
   const LOG3 = log3(pass);
-  const LOG4 = log4(pass);
+  const LOG4 = log4(pass, split);
+
+  /*
+   * Who holds what after the day-20 sale, as the receivable's balances report it. The fund is
+   * always the first holder; the second is whoever bought in, and there may not be one yet.
+   */
+  const held = split.holders[0];
+  const buyer = split.holders[1];
+  const soldAway = buyer ? bps(buyer.sharePct) : bps(0);
+  const cashBack = money(split.cashReturnedUsd);
   return [
 { day:'Day 0', label:'Invoice raised', counts:{market:0,portfolio:0}, sections:{
   overview:[
@@ -169,19 +220,20 @@ export function buildStages(pass: PassView, score: ScoreView): Stage[] {
       ['Deployed','$23,350','','half the position'],
       ['Owed at maturity','$25,000','','on 2026-11-04']]},
     {t:'feed',h:'Activity',items:[
-      ['Day 20','Sold <b>5000 bps</b> to Harbour Lane Partners for <b>$24,150</b>','ok'],
+      ['Day 20',`Sold <b>${soldAway}</b> to ${buyer?.name ?? 'a second approved investor'} for <b>${cashBack}</b>`,'ok'],
       ['Day 20','Buyer checked at the moment of transfer — accepted','ok'],
       ['11:26','Funded RCV-0001 — $47,500 paid to Ironline Freight','ok']]},
     {t:'kv',h:'Why sell half',rows:[
-      ['Cash back','$24,150',''],
+      ['Cash back',cashBack,''],
       ['Days early','40',''],
       ['Still at risk','$23,350','']],
-      note:'Exiting early is the thing ordinary factoring cannot do. Being able to means the discount demanded on day 2 can be <b>smaller in the first place</b>.'}],
+      note:`Exiting early is the thing ordinary factoring cannot do. Being able to means the discount demanded on day 2 can be <b>smaller in the first place</b>. ${source(split)}`}],
   market:[{t:'empty',h:'Marketplace',title:'No open offers',
     text:'New receivables appear here as businesses issue them.'}],
   portfolio:[
     {t:'table',h:'Positions held',head:['Receivable','Issuer','Held','Cost','At maturity','Matures','Status'],
-      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight','50.00%',{v:'$23,350',cls:'strong'},'$25,000','2026-11-04',{chip:'Funded',tone:'ok'}]]}],
+      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight',share(held?.sharePct ?? 0),{v:'$23,350',cls:'strong'},'$25,000','2026-11-04',{chip:'Funded',tone:'ok'}]],
+      note:source(split)}],
   compliance:[LOG4,PASS]}},
 
 { day:'Day 60', label:'Settled', counts:{market:0,portfolio:0}, sections:{
@@ -196,21 +248,24 @@ export function buildStages(pass: PassView, score: ScoreView): Stage[] {
       ['Day 60','Northwind Brokerage paid Ironline Freight’s invoice in full','ok']]},
     {t:'kv',h:'How the return was made',rows:[
       ['Paid on day 2','−$47,500',''],
-      ['Recovered on day 20','$24,150','ok'],
+      ['Recovered on day 20',cashBack,'ok'],
       ['Paid at maturity','$25,000','ok'],
       ['Net','$1,650','ok']]}],
   market:[{t:'empty',h:'Marketplace',title:'No open offers',
     text:'New receivables appear here as businesses issue them.'}],
   portfolio:[
     {t:'table',h:'Positions held',head:['Receivable','Issuer','Held','Cost','Received','Settled','Status'],
-      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight','50.00%','$23,350',{v:'$25,000',cls:'ok'},'2026-11-04',{chip:'Redeemed',tone:'ok'}]]}],
+      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight',share(held?.sharePct ?? 0),'$23,350',{v:'$25,000',cls:'ok'},'2026-11-04',{chip:'Redeemed',tone:'ok'}]]}],
   compliance:[LOG4,PASS]}}
   ];
 }
 
-export function buildDefaulted(pass: PassView): Stage {
+export function buildDefaulted(pass: PassView, split: ResaleView): Stage {
   const PASS = passBlock(pass);
-  const LOG4 = log4(pass);
+  const LOG4 = log4(pass, split);
+  const held = split.holders[0];
+  const buyer = split.holders[1];
+  const cashBack = money(split.cashReturnedUsd);
   return { day:'Day 60', label:'Defaulted', counts:{market:0,portfolio:0}, sections:{
   overview:[
     {t:'tiles',items:[
@@ -220,18 +275,18 @@ export function buildDefaulted(pass: PassView): Stage {
     {t:'feed',h:'Activity',items:[
       ['Day 60','RCV-0001 marked <b>defaulted</b> — the loss is the fund’s','bad'],
       ['Day 60','Northwind Brokerage did not pay','bad'],
-      ['Day 20','Sold 5000 bps to Harbour Lane Partners for $24,150','ok']]},
+      ['Day 20',`Sold ${buyer ? bps(buyer.sharePct) : bps(0)} to ${buyer?.name ?? 'a second approved investor'} for ${cashBack}`,'ok']]},
     {t:'kv',h:'How the loss landed',flag:true,rows:[
       ['Paid on day 2','−$47,500',''],
-      ['Recovered on day 20','$24,150','ok'],
+      ['Recovered on day 20',cashBack,'ok'],
       ['Paid at maturity','$0','bad'],
       ['Net','−$23,350','bad']],
-      note:'Selling half on day 20 is the only reason this is <b>−$23,350</b> and not −$47,500. Harbour Lane, who bought in later and held to maturity, is down $24,150. Liquidity was worth something.'}],
+      note:`Selling half on day 20 is the only reason this is <b>−$23,350</b> and not −$47,500. ${buyer?.name ?? 'The second investor'}, who bought in later and held to maturity, is down ${cashBack}. Liquidity was worth something.`}],
   market:[{t:'empty',h:'Marketplace',title:'No open offers',
     text:'New receivables appear here as businesses issue them.'}],
   portfolio:[
     {t:'table',h:'Positions held',head:['Receivable','Issuer','Held','Cost','Received','Settled','Status'],
-      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight','50.00%','$23,350',{v:'$0',cls:'bad'},{v:'—',cls:'dim'},{chip:'Defaulted',tone:'bad'}]],
+      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight',share(held?.sharePct ?? 0),'$23,350',{v:'$0',cls:'bad'},{v:'—',cls:'dim'},{chip:'Defaulted',tone:'bad'}]],
       note:'This is what buying a receivable actually means. A demo that only shows the happy ending is not showing it.'}],
   compliance:[LOG4,PASS]}};
 }
