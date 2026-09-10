@@ -148,7 +148,7 @@ export async function openAccounts(): Promise<OpenedAccounts> {
 
   const fund = await privy<{ id: string; address: string }>('/wallets', {
     chain_type: 'ethereum',
-    owner_id: env('PRIVY_AUTHORIZATION_KEY_ID'),
+    owner_id: env('PRIVY_FUND_AUTHORIZATION_KEY_ID'),
     policy_ids: [policy.id],
   });
 
