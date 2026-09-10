@@ -33,7 +33,7 @@ const RPC_URL = process.env.SEPOLIA_RPC_URL ?? 'https://sepolia.gateway.tenderly
  * the signer it produces never crosses back.
  */
 function platform() {
-  const key = process.env.SEPOLIA_PRIVATE_KEY;
+  const key = process.env.SEPOLIA_PLATFORM_PRIVATE_KEY;
   if (!key) return undefined;
 
   const provider = new JsonRpcProvider(RPC_URL);
@@ -48,7 +48,7 @@ async function decide(
   if (!registry) return { ok: false, problem: 'Nothing has been onboarded on this network yet.' };
 
   const signer = platform();
-  if (!signer) return { ok: false, problem: 'No platform key configured — set SEPOLIA_PRIVATE_KEY.' };
+  if (!signer) return { ok: false, problem: 'No platform key configured — set SEPOLIA_PLATFORM_PRIVATE_KEY.' };
 
   try {
     const hash = await write(signer, registry);

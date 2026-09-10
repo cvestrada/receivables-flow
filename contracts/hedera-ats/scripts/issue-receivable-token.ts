@@ -39,7 +39,7 @@ const NOTE: Invoice = {
  * screen to one only two directors can issue.
  */
 function ironlineAccount(): string {
-  const override = process.env.IRONLINE_ADDRESS;
+  const override = process.env.HEDERA_IRONLINE_WALLET_ADDRESS;
   if (override) return override;
 
   for (let dir = __dirname; ; dir = dirname(dir)) {
@@ -74,8 +74,8 @@ async function main(): Promise<void> {
   }
 
   const ats = {
-    factory: process.env.ATS_FACTORY_ID ?? DEFAULT_FACTORY,
-    resolver: process.env.ATS_RESOLVER_ID ?? DEFAULT_RESOLVER,
+    factory: process.env.HEDERA_ATS_FACTORY_ADDRESS ?? DEFAULT_FACTORY,
+    resolver: process.env.HEDERA_ATS_RESOLVER_ADDRESS ?? DEFAULT_RESOLVER,
   };
 
   /*

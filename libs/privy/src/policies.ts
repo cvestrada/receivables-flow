@@ -139,7 +139,7 @@ export function buildFundPolicy(ratedListId: string): Policy {
 }
 
 /** Hedera testnet through its EVM interface. Both accounts sign for this chain only. */
-export const HEDERA_CAIP2 = process.env.HEDERA_CAIP2 ?? 'eip155:296';
+export const HEDERA_TESTNET_CAIP2_CHAIN_ID = process.env.HEDERA_TESTNET_CAIP2_CHAIN_ID ?? 'eip155:296';
 
 /**
  * A request to Privy, in the exact form the signature is taken over.
@@ -172,7 +172,7 @@ function request(
     method: 'POST',
     headers: { 'privy-app-id': appId },
     body: {
-      caip2: HEDERA_CAIP2,
+      caip2: HEDERA_TESTNET_CAIP2_CHAIN_ID,
       method: 'eth_sendTransaction',
       chain_type: 'ethereum',
       params: { transaction },

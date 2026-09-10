@@ -42,13 +42,13 @@ const WHOLE_UNITS = INVOICE.faceValueUsd;
  */
 const SELLER = {
   name: 'Woodgrove Capital',
-  wallet: process.env.WOODGROVE_ADDRESS ?? '0xE1e76C63fb819B35cDC09dbb3D03B3d85eeaE2D8',
+  wallet: process.env.HEDERA_WOODGROVE_WALLET_ADDRESS ?? '0xE1e76C63fb819B35cDC09dbb3D03B3d85eeaE2D8',
 };
 
 /** The second approved investor, the one the fund sells half of its position to. */
 export const SECOND_INVESTOR = {
   name: 'Bridgeline Partners',
-  wallet: process.env.BRIDGELINE_ADDRESS ?? '0x3F8890000000000000000000000000000000C102',
+  wallet: process.env.HEDERA_BRIDGELINE_WALLET_ADDRESS ?? '0x3F8890000000000000000000000000000000C102',
 };
 
 /**
@@ -59,7 +59,7 @@ export const SECOND_INVESTOR = {
  * for a caller that has no quote to hand, and it is the same formula's answer for a spotless
  * record, so an unpriced screen and a priced one cannot show two different sales.
  */
-const CASH_BACK_USD = Number(process.env.RESALE_PRICE_USD ?? 24_167);
+const CASH_BACK_USD = Number(process.env.DEMO_RESALE_PRICE_USD ?? 24_167);
 
 /**
  * The balances the screen falls back to when Hedera cannot be reached.
@@ -73,13 +73,13 @@ const KNOWN_BALANCES = {
   buyer: { ...SECOND_INVESTOR, units: WHOLE_UNITS / 2 },
 };
 
-const RPC_URL = process.env.HEDERA_RPC_URL ?? 'https://testnet.hashio.io/api';
+const RPC_URL = process.env.HEDERA_TESTNET_RPC_URL ?? 'https://testnet.hashio.io/api';
 
 const RECEIVABLE_TOKEN =
-  process.env.HEDERA_RECEIVABLE_TOKEN ?? '0x6871D6F903C3a2977f89c079B87DA9bBb8ed2960';
+  process.env.HEDERA_RECEIVABLE_TOKEN_ADDRESS ?? '0x6871D6F903C3a2977f89c079B87DA9bBb8ed2960';
 
 const SETTLEMENT =
-  process.env.HEDERA_RECEIVABLE_DVP ?? '0x46900157F8137F4545F8F1237549cafaBAaF7Cb9';
+  process.env.HEDERA_RECEIVABLE_DVP_ADDRESS ?? '0x46900157F8137F4545F8F1237549cafaBAaF7Cb9';
 
 /** Only the calls this file makes. The receivable is an ATS security; these are ERC-20's share of it. */
 const SECURITY_ABI = [
@@ -224,8 +224,8 @@ export interface Sale {
  */
 function keyFor(buyer: string): string | undefined {
   return buyer.toLowerCase() === SECOND_INVESTOR.wallet.toLowerCase()
-    ? process.env.HEDERA_RESALE_BUYER_KEY
-    : process.env.HEDERA_UNAPPROVED_BUYER_KEY;
+    ? process.env.HEDERA_BRIDGELINE_PRIVATE_KEY
+    : process.env.HEDERA_UNAPPROVED_BUYER_PRIVATE_KEY;
 }
 
 /**
@@ -240,13 +240,13 @@ function keyFor(buyer: string): string | undefined {
  * @returns The settling transaction, and what was paid for what
  */
 export async function sellHalf(buyer: string, units: number, priceUsd: number = CASH_BACK_USD): Promise<Sale> {
-  const sellerKey = process.env.HEDERA_OPERATOR_KEY;
+  const sellerKey = process.env.HEDERA_OPERATOR_PRIVATE_KEY;
   const buyerKey = keyFor(buyer);
-  const usdc = process.env.HEDERA_USDC;
+  const usdc = process.env.HEDERA_USDC_TOKEN_ADDRESS;
 
   if (!sellerKey || !buyerKey || !usdc) {
     throw new Error(
-      'The accounts this sale needs on Hedera are not open yet — set HEDERA_OPERATOR_KEY, the buyer key and HEDERA_USDC in the repository .env',
+      'The accounts this sale needs on Hedera are not open yet — set HEDERA_OPERATOR_PRIVATE_KEY, the buyer key and HEDERA_USDC_TOKEN_ADDRESS in the repository .env',
     );
   }
 

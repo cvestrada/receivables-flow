@@ -59,13 +59,13 @@ async function privy<T>(path: string, body: unknown): Promise<T> {
  * account made here, so the group is built over the same three people either way.
  */
 async function directors(): Promise<Director[]> {
-  const emails = env('PRIVY_DIRECTOR_EMAILS')
+  const emails = env('PRIVY_BUSINESS_DIRECTOR_EMAILS')
     .split(',')
     .map((email) => email.trim())
     .filter(Boolean);
 
   if (emails.length !== 3) {
-    throw new Error(`PRIVY_DIRECTOR_EMAILS must name three directors, found ${emails.length}`);
+    throw new Error(`PRIVY_BUSINESS_DIRECTOR_EMAILS must name three directors, found ${emails.length}`);
   }
 
   const found: Director[] = [];

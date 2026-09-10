@@ -11,7 +11,7 @@ import { join } from 'node:path';
  */
 loadEnv({ path: join(__dirname, '..', '..', '.env') });
 
-const privateKey = process.env.HEDERA_OPERATOR_KEY;
+const privateKey = process.env.HEDERA_OPERATOR_PRIVATE_KEY;
 
 /*
  * One network per package, deliberately. This package issues and settles the receivable token.

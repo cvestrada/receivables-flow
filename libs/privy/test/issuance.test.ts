@@ -106,7 +106,7 @@ describe('the issuance the portal offers', () => {
         created: [],
       }),
     );
-    process.env.PRIVY_ACCOUNTS_PATH = path;
+    process.env.PRIVY_ACCOUNTS_JSON_PATH = path;
     process.env.PRIVY_APP_ID = 'app-1';
   });
 

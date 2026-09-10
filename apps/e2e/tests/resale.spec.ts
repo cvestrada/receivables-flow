@@ -8,7 +8,7 @@ const INVESTOR = 'http://127.0.0.1:3201';
  * reason the sale could not happen; with them, that reason has to be the receivable turning
  * the buyer away. Same click, same wiring — only the wording of the answer is conditional.
  */
-const PROVISIONED = Boolean(process.env.HEDERA_OPERATOR_KEY);
+const PROVISIONED = Boolean(process.env.HEDERA_OPERATOR_PRIVATE_KEY);
 
 /*
  * Walk the fund to its own positions, and keep pressing until the section opens.

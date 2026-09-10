@@ -49,13 +49,13 @@ const USDC_DECIMALS = 1_000_000;
 /** The fund that funded the whole receivable on day 2 and kept half of it. */
 const WOODGROVE = {
   name: 'Woodgrove Capital',
-  wallet: process.env.WOODGROVE_ADDRESS ?? '0xE1e76C63fb819B35cDC09dbb3D03B3d85eeaE2D8',
+  wallet: process.env.HEDERA_WOODGROVE_WALLET_ADDRESS ?? '0xE1e76C63fb819B35cDC09dbb3D03B3d85eeaE2D8',
 };
 
 /** The second approved investor, which bought the other half on day 20. */
 const BRIDGELINE = {
   name: 'Bridgeline Partners',
-  wallet: process.env.BRIDGELINE_ADDRESS ?? '0x3F8890000000000000000000000000000000C102',
+  wallet: process.env.HEDERA_BRIDGELINE_WALLET_ADDRESS ?? '0x3F8890000000000000000000000000000000C102',
 };
 
 /**
@@ -70,10 +70,10 @@ const KNOWN_BALANCES: Holding[] = [
   { ...BRIDGELINE, units: FACE_VALUE_USD / 2 },
 ];
 
-const RPC_URL = process.env.HEDERA_RPC_URL ?? 'https://testnet.hashio.io/api';
+const RPC_URL = process.env.HEDERA_TESTNET_RPC_URL ?? 'https://testnet.hashio.io/api';
 
 const RECEIVABLE_TOKEN =
-  process.env.HEDERA_RECEIVABLE_TOKEN ?? '0x6871D6F903C3a2977f89c079B87DA9bBb8ed2960';
+  process.env.HEDERA_RECEIVABLE_TOKEN_ADDRESS ?? '0x6871D6F903C3a2977f89c079B87DA9bBb8ed2960';
 
 /** Only the calls this file makes. The receivable is an ATS security; this is ERC-20's share of it. */
 const SECURITY_ABI = ['function balanceOf(address) view returns (uint256)'];
@@ -171,15 +171,15 @@ export async function owedAtMaturity(): Promise<RepaymentView> {
  */
 export async function repay(): Promise<RepaymentView & { settled: boolean; reason?: string }> {
   const view = await owedAtMaturity();
-  const payerKey = process.env.HEDERA_ISSUER_KEY ?? process.env.HEDERA_OPERATOR_KEY;
-  const usdc = process.env.HEDERA_USDC;
+  const payerKey = process.env.HEDERA_ISSUER_PRIVATE_KEY ?? process.env.HEDERA_OPERATOR_PRIVATE_KEY;
+  const usdc = process.env.HEDERA_USDC_TOKEN_ADDRESS;
 
   if (!payerKey || !usdc) {
     return {
       ...view,
       settled: false,
       reason:
-        'The account this repayment pays from is not open yet — set HEDERA_ISSUER_KEY and HEDERA_USDC in the repository .env. Nothing was transferred.',
+        'The account this repayment pays from is not open yet — set HEDERA_ISSUER_PRIVATE_KEY and HEDERA_USDC_TOKEN_ADDRESS in the repository .env. Nothing was transferred.',
     };
   }
 

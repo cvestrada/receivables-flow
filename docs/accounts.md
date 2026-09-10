@@ -32,11 +32,11 @@ fund's constraint is the mandate it agreed with its investors, not a colleague s
 
 ### Business portal — Approvals
 
-1. Sign in as `business-anna@…`. The panel names the invoice and the amount, and reads **0 of 2**.
+1. Sign in as `biz-anna@…`. The panel names the invoice and the amount, and reads **0 of 2**.
 2. Press **Approve**. Anna signs the sale in her own browser and the panel reads **1 of 2**.
 3. Press **Send to the company account** now. **Privy refuses** — one approval is not two, and the
    refusal comes from the account, not from the portal. *(Refusal one.)*
-4. Sign in as `business-tom@…` and press **Approve**. The panel reads **2 of 2**.
+4. Sign in as `biz-tom@…` and press **Approve**. The panel reads **2 of 2**.
 5. Press **Send** again. The same request, now carrying two signatures, goes through.
 
 Step 3 is the point. The portal offers that button deliberately so the refusal can be produced on

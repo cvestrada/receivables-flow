@@ -17,7 +17,7 @@ import { openAccounts } from '../src/provision';
  * wrote a mock that refuses. So each group stands down without its credentials
  * rather than substituting a fake and reporting a pass.
  */
-const FUND_LIVE = Boolean(process.env.PRIVY_APP_SECRET && process.env.PRIVY_AUTHORIZATION_KEY);
+const FUND_LIVE = Boolean(process.env.PRIVY_APP_SECRET && process.env.PRIVY_AUTHORIZATION_PRIVATE_KEY);
 
 /*
  * A director approves in their browser, with a key only they hold. Reaching that
@@ -26,7 +26,7 @@ const FUND_LIVE = Boolean(process.env.PRIVY_APP_SECRET && process.env.PRIVY_AUTH
  * refusal is the one checked by hand in the portal — which is where the issue asks
  * for it anyway.
  */
-const DIRECTOR_TOKENS = (process.env.PRIVY_DIRECTOR_ACCESS_TOKENS ?? '')
+const DIRECTOR_TOKENS = (process.env.PRIVY_BUSINESS_DIRECTOR_ACCESS_TOKENS ?? '')
   .split(',')
   .map((token) => token.trim())
   .filter(Boolean);
@@ -61,7 +61,7 @@ function refusedByRule(error: unknown): string {
  * transaction was accepted and this has to say the supply changed.
  */
 async function noteSupply(): Promise<bigint> {
-  const rpc = process.env.HEDERA_RPC_URL ?? 'https://testnet.hashio.io/api';
+  const rpc = process.env.HEDERA_TESTNET_RPC_URL ?? 'https://testnet.hashio.io/api';
   const response = await fetch(rpc, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

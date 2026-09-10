@@ -258,16 +258,16 @@
     {
       "id": "business-step-delegate-credit-tier",
       "goalId": "business-goal-credit-tier-onchain",
-      "trigger": "a rating a company writes about itself is worth nothing",
-      "action": "Hands the credit rating on that profile to an independent reviewer to set",
-      "outcome": "Ironline Freight can never raise its own rating, and the reviewer can change nothing else",
+      "trigger": "a rating anyone can write by hand is worth nothing",
+      "action": "Publishes the raw counts and lets every reader compute the score from a published formula",
+      "outcome": "Ironline Freight can never raise its own score, and nor can we — there is no score record to write",
       "status": "proposed",
       "order": 2,
       "sponsor": "ensv2",
-      "whyStack": "They own the profile; someone independent sets the rating.",
+      "whyStack": "They own the profile; the score is arithmetic over what the chain already saw.",
       "requirement": "ENSv2 features should be central to the product, not a cosmetic add-on",
       "extraPoints": "Enhanced Access Control — a role scoped to one text record",
-      "whyWins": "On camera: the business tries to raise its own rating and is refused."
+      "whyWins": "On camera: the business tries to edit the counts behind its score and is refused."
     },
     {
       "id": "business-step-quorum-approval",

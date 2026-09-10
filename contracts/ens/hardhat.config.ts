@@ -11,10 +11,10 @@ import { join } from 'node:path';
  */
 loadEnv({ path: join(__dirname, '..', '..', '.env') });
 
-const privateKey = process.env.SEPOLIA_PRIVATE_KEY;
+const privateKey = process.env.SEPOLIA_PLATFORM_PRIVATE_KEY;
 const sepoliaRpcUrl = process.env.SEPOLIA_RPC_URL ?? 'https://ethereum-sepolia-rpc.publicnode.com';
-const shouldFork = process.env.ENS_FORK === '1';
-const forkBlock = process.env.ENS_FORK_BLOCK ? Number(process.env.ENS_FORK_BLOCK) : undefined;
+const shouldFork = process.env.ENS_FORK_ENABLED === '1';
+const forkBlock = process.env.ENS_FORK_BLOCK_NUMBER ? Number(process.env.ENS_FORK_BLOCK_NUMBER) : undefined;
 
 /*
  * Forking needs an endpoint that still serves state for the block it forked at. Most free
@@ -42,7 +42,7 @@ const config: HardhatUserConfig = {
      *
      * The block is left unpinned by default. Public RPCs keep only recent state, so a pinned
      * block works until it is pruned and then breaks for everyone but the machine that cached
-     * it. Set ENS_FORK_BLOCK against an archive node when a byte-identical replay matters.
+     * it. Set ENS_FORK_BLOCK_NUMBER against an archive node when a byte-identical replay matters.
      */
     hardhat: shouldFork
       ? {

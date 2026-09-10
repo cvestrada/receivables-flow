@@ -115,7 +115,7 @@ describe('the request the fund signs', () => {
 
 describe('naming a director', () => {
   it('names the person, not the mailbox', () => {
-    expect(nameFromEmail('business-anna@galuaselou.resend.app')).toBe('Anna');
+    expect(nameFromEmail('biz-anna@galuaselou.resend.app')).toBe('Anna');
     expect(nameFromEmail('investor-woodgrove@galuaselou.resend.app')).toBe('Woodgrove');
     expect(nameFromEmail('grace@ironline.test')).toBe('Grace');
   });

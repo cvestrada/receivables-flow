@@ -31,7 +31,7 @@ export { nameFromEmail } from './policies';
  * arrives, not when the app is built, and there is nothing here to trace.
  */
 function accountsPath(): string {
-  const override = process.env.PRIVY_ACCOUNTS_PATH;
+  const override = process.env.PRIVY_ACCOUNTS_JSON_PATH;
   if (override) return override;
 
   for (let dir = process.cwd(); ; dir = dirname(dir)) {
@@ -50,7 +50,7 @@ function accountsPath(): string {
  * against a freshly issued note needs no edit to a recorded file.
  */
 export function noteAddress(): string {
-  const override = process.env.RECEIVABLE_TOKEN_ADDRESS;
+  const override = process.env.HEDERA_RECEIVABLE_TOKEN_ADDRESS;
   if (override) return override;
 
   for (let dir = process.cwd(); ; dir = dirname(dir)) {
@@ -235,8 +235,8 @@ export function allocate(allocation: { invoice: string; usd: number }): Promise<
   const invoice =
     allocation.invoice === 'company' ? accounts.company.address : allocation.invoice;
 
-  const key = process.env.PRIVY_AUTHORIZATION_KEY;
-  if (!key) throw new Error('PRIVY_AUTHORIZATION_KEY is not set');
+  const key = process.env.PRIVY_AUTHORIZATION_PRIVATE_KEY;
+  if (!key) throw new Error('PRIVY_AUTHORIZATION_PRIVATE_KEY is not set');
 
   return send(
     buildAllocationRequest({
@@ -252,7 +252,7 @@ export function allocate(allocation: { invoice: string; usd: number }): Promise<
 /** What each account currently holds, in the chain's smallest unit. */
 export async function balances(): Promise<{ company: bigint; fund: bigint }> {
   const accounts = openedAccounts();
-  const rpc = process.env.HEDERA_RPC_URL ?? 'https://testnet.hashio.io/api';
+  const rpc = process.env.HEDERA_TESTNET_RPC_URL ?? 'https://testnet.hashio.io/api';
 
   async function held(address: string): Promise<bigint> {
     const response = await fetch(rpc, {
