@@ -6,7 +6,9 @@ import { ethers } from 'ethers';
 
 import {
   ABI,
+  ONBOARD_COUNTS,
   clearRetiredRecord,
+  countRecords,
   encodeName,
   givePage,
   issuePass,
@@ -39,13 +41,14 @@ const INVESTOR_LABEL = 'woodgrove';
  */
 const PASS_SECONDS = 90 * 24 * 60 * 60;
 
-/** What Ironline Freight has done so far, as four numbers anyone can recompute from. */
-const COUNTS = {
-  'rf.invoices.financed': '6',
-  'rf.invoices.ontime': '6',
-  'rf.invoices.late': '0',
-  'rf.invoices.defaulted': '0',
-};
+/*
+ * What Ironline Freight has done so far, as four numbers anyone can recompute from.
+ *
+ * Taken from the package rather than written here, because day 60 has to be able to move this
+ * record and a second copy of the starting figures in a script is a second thing to disagree
+ * with. The number the demo opens on is the number the unit suite asserts.
+ */
+const COUNTS = countRecords(ONBOARD_COUNTS);
 
 /**
  * Ask whether an address would be allowed to write a record, without spending anything.

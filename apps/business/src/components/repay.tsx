@@ -2,7 +2,23 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import type { Quote } from '@/lib/hedera-ats/quote';
 import type { Payment, RepaymentView } from '@/lib/hedera-ats/repay';
+
+/** One record on Ironline's page, and what the next invoice costs when priced against it. */
+interface Standpoint {
+  record: { financed: number; ontime: number; late: number; defaulted: number; score: number | null };
+  annualRatePct: number;
+  discountUsd: number;
+}
+
+/** What the ending did to the public record, and to the price of the next invoice. */
+interface Consequence {
+  before: Standpoint;
+  after: Standpoint;
+  published: boolean;
+  reason?: string;
+}
 
 /** How day 60 ended, as the route reports it back. */
 interface Answer {
@@ -13,6 +29,7 @@ interface Answer {
   settled: boolean;
   reason?: string;
   already: boolean;
+  consequence?: Consequence;
 }
 
 function money(usd: number): string {
@@ -21,6 +38,16 @@ function money(usd: number): string {
 
 function share(pct: number): string {
   return `${pct.toFixed(2)}%`;
+}
+
+/** A score as the page states it, or the honest answer when nothing has matured. */
+function score(value: number | null): string {
+  return value === null ? 'unrated' : `${value} of 100`;
+}
+
+/** How a record reads in words, so nobody has to work out what four numbers mean. */
+function tally(record: Standpoint['record']): string {
+  return `${record.financed} sold · ${record.ontime} paid on time · ${record.late} paid late · ${record.defaulted} never paid`;
 }
 
 function short(wallet: string): string {
@@ -51,7 +78,7 @@ function headline(answer: Answer): string {
  * The unhappy ending is a button rather than a footnote, because a demo that can only show the
  * happy one is not showing what buying a receivable means.
  */
-export function Repay({ view }: { view: RepaymentView }) {
+export function Repay({ view, today }: { view: RepaymentView; today: Quote }) {
   const [answer, setAnswer] = useState<Answer | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -81,6 +108,27 @@ export function Repay({ view }: { view: RepaymentView }) {
 
   const holders = answer?.holders ?? view.holders;
   const repaid = answer?.outcome === 'repaid';
+
+  /*
+   * What the record said before the ending comes from the quote this page was rendered with
+   * until an ending has been pressed, and from the ending itself afterwards — the route reads
+   * the page immediately before writing to it, which is the only reading that can be compared
+   * with what it says after.
+   */
+  const consequence = answer?.consequence;
+  const before: Standpoint = consequence?.before ?? {
+    record: today.record,
+    annualRatePct: today.annualRatePct,
+    discountUsd: today.discountUsd,
+  };
+  const after = consequence?.after;
+  const movement = !after
+    ? ''
+    : after.discountUsd < before.discountUsd
+      ? 'The next invoice costs less to sell than it did this morning'
+      : after.discountUsd > before.discountUsd
+        ? 'The next invoice costs more to sell than it did this morning'
+        : 'The next invoice costs the same as it did this morning';
 
   return (
     <section
@@ -182,6 +230,83 @@ export function Repay({ view }: { view: RepaymentView }) {
           {view.live
             ? 'Shares read from the receivable on Hedera testnet — the units held are the chain’s figures, not ours.'
             : 'Not live — the balances on hand, shown because the Hedera endpoint could not be reached. Nothing here was typed into the page.'}
+        </p>
+      </div>
+
+      <div data-testid="outcome-record" className="border-t px-5 py-4">
+        <div className="eyebrow mb-2">What this does to Ironline’s public record</div>
+
+        <table className="w-full text-[14px]">
+          <thead>
+            <tr className="text-left text-[var(--muted)]">
+              <th className="pb-1.5 font-medium">On ironline.business.receivablesflow.eth</th>
+              <th className="pb-1.5 text-right font-medium">Before day 60</th>
+              <th className="pb-1.5 text-right font-medium">After</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="border-t">
+              <td className="py-1.5 text-[var(--ink)]">Invoices</td>
+              <td className="py-1.5 text-right text-[var(--muted)]">{tally(before.record)}</td>
+              <td className="py-1.5 text-right text-[var(--ink)]">
+                {after ? tally(after.record) : '—'}
+              </td>
+            </tr>
+            <tr className="border-t">
+              <td className="py-1.5 text-[var(--ink)]">Credit score</td>
+              <td
+                data-testid="outcome-score-before"
+                className="py-1.5 text-right tabular-nums text-[var(--muted)]"
+              >
+                {score(before.record.score)}
+              </td>
+              <td className="py-1.5 text-right tabular-nums text-[var(--ink)]">
+                {after ? (
+                  <span data-testid="outcome-score-after">{score(after.record.score)}</span>
+                ) : (
+                  '—'
+                )}
+              </td>
+            </tr>
+            <tr className="border-t">
+              <td className="py-1.5 text-[var(--ink)]">Rate the next invoice earns</td>
+              <td className="py-1.5 text-right tabular-nums text-[var(--muted)]">
+                {before.annualRatePct.toFixed(2)}%
+              </td>
+              <td className="py-1.5 text-right tabular-nums text-[var(--ink)]">
+                {after ? `${after.annualRatePct.toFixed(2)}%` : '—'}
+              </td>
+            </tr>
+            <tr className="border-t">
+              <td className="py-1.5 text-[var(--ink)]">Cost of selling the next invoice</td>
+              <td
+                data-testid="outcome-discount-before"
+                className="py-1.5 text-right tabular-nums text-[var(--muted)]"
+              >
+                {money(before.discountUsd)}
+              </td>
+              <td className="py-1.5 text-right tabular-nums text-[var(--ink)]">
+                {after ? (
+                  <span data-testid="outcome-discount-after">{money(after.discountUsd)}</span>
+                ) : (
+                  '—'
+                )}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/*
+          * Whether the world can see this yet, said beside it. A tally worked out here and a
+          * tally published on the page are different facts, and the second is the one that
+          * earns Ironline a cheaper invoice next time.
+          */}
+        <p data-testid="outcome-published" className="mt-2 text-[13px] text-[var(--muted)]">
+          {!after
+            ? 'Not published yet — day 60 has not ended. The record above is what any funder reads today.'
+            : consequence?.published
+              ? `Published to Ironline’s page on Sepolia. ${movement} — nobody at Receivables Flow chose that; it is the same formula run against one more invoice.`
+              : `Not published — ${consequence?.reason ?? 'the page could not be written to.'} ${movement} once it is.`}
         </p>
       </div>
 
