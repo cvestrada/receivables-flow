@@ -148,7 +148,7 @@ export const STAGES: Stage[] = [
       rows:[[{v:'RCV-0001',cls:'id'},{v:'$50,000',cls:'strong'},'$47,500','2','2026-11-04',{chip:'Funded',tone:'ok'}]]},
     {t:'kv',h:'Holders of record',rows:[
       ['Woodgrove Capital','5000 bps · 50.00%','m'],
-      ['Harbour Lane Partners','5000 bps · 50.00%','m']],
+      ['Bridgeline Partners','5000 bps · 50.00%','m']],
       note:'Ironline is unaffected by the resale. The <b>same $50,000</b> is owed on day 60 to whoever holds it that day.'}],
   approvals:[SIGNED,POLICY]}},
 
