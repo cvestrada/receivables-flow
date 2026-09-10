@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { JsonRpcProvider } from 'ethers';
 import { deploySystemWithNewBlr } from '@hashgraph/asset-tokenization-contracts/scripts';
 import { IAllowance__factory, IBalanceTracker__factory } from '@hashgraph/asset-tokenization-contracts';
-import { readRecord } from '@rf/contracts-ens';
+import { creditScore, readRecord } from '@rf/contracts-ens';
 import ensDeployed from '@rf/contracts-ens/deployed.json';
 import { MockScheduleService__factory, MockUsdc__factory, ReceivableDvp__factory } from '../typechain-types';
 import { approveHolder, isApprovedHolder, issueReceivableToken, mintTo } from '../src/receivable-token';
@@ -25,9 +25,9 @@ const day = (seconds: bigint) => new Date(Number(seconds) * 1000).toISOString().
  *
  * The profile lives on Sepolia while the sale happens on Hedera, so this reaches out to the
  * public record over its own connection — the same route a counterparty checking the business
- * for themselves would take. Nothing here is a grade anyone assigned: the score is the share
- * of matured invoices that were repaid, and a business with nothing matured yet comes back
- * unrated rather than scored.
+ * for themselves would take. Nothing here is a grade anyone assigned: the score is what its
+ * matured invoices earned under the published formula, and a business with nothing matured yet
+ * comes back unrated rather than scored.
  *
  * @returns The score out of 100, or null when no invoice has matured yet
  */
@@ -39,13 +39,14 @@ async function publishedScore(): Promise<number | null> {
   try {
     const count = async (key: string) =>
       Number(await readRecord(provider, business.resolver, business.name, key)) || 0;
-    const [repaid, defaulted] = await Promise.all([
-      count('rf.invoices.repaid'),
+    const [financed, ontime, late, defaulted] = await Promise.all([
+      count('rf.invoices.financed'),
+      count('rf.invoices.ontime'),
+      count('rf.invoices.late'),
       count('rf.invoices.defaulted'),
     ]);
 
-    const matured = repaid + defaulted;
-    return matured === 0 ? null : Math.round((repaid * 100) / matured);
+    return creditScore({ financed, ontime, late, defaulted }) ?? null;
   } finally {
     provider.destroy();
   }

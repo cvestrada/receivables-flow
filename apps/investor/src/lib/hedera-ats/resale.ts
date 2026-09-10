@@ -47,18 +47,19 @@ const SELLER = {
 
 /** The second approved investor, the one the fund sells half of its position to. */
 export const SECOND_INVESTOR = {
-  name: 'Harbour Lane Partners',
-  wallet: process.env.HARBOUR_LANE_ADDRESS ?? '0x3F8890000000000000000000000000000000C102',
+  name: 'Bridgeline Partners',
+  wallet: process.env.BRIDGELINE_ADDRESS ?? '0x3F8890000000000000000000000000000000C102',
 };
 
 /**
- * What the fund got back on day 20, in whole US dollars.
+ * What the fund gets back on day 20 when nothing can be priced.
  *
- * The offer's stated price, not a number worked out from anything. Pricing a resale off the
- * issuer's live rating is a separate piece of work; until it lands, a figure derived here would
- * look like a calculation while being a guess.
+ * The resale price is worked out from Ironline's live record and the days left on the invoice
+ * — see `resale-quote.ts`, which is what every caller here passes in. This is only the answer
+ * for a caller that has no quote to hand, and it is the same formula's answer for a spotless
+ * record, so an unpriced screen and a priced one cannot show two different sales.
  */
-const CASH_BACK_USD = Number(process.env.RESALE_PRICE_USD ?? 24_150);
+const CASH_BACK_USD = Number(process.env.RESALE_PRICE_USD ?? 24_167);
 
 /**
  * The balances the screen falls back to when Hedera cannot be reached.
@@ -166,7 +167,7 @@ async function withinBudget<T>(work: Promise<T>): Promise<T> {
  * balances add up to. That is the difference between a portal reporting an ownership change
  * and a portal describing one.
  */
-export async function resale(): Promise<ResaleView> {
+export async function resale(priceUsd: number = CASH_BACK_USD): Promise<ResaleView> {
   const provider = new JsonRpcProvider(RPC_URL);
 
   try {
@@ -187,7 +188,7 @@ export async function resale(): Promise<ResaleView> {
         { ...SELLER, units: Number(sellerUnits) },
         [{ ...SECOND_INVESTOR, units: Number(buyerUnits) }],
         WHOLE_UNITS,
-        CASH_BACK_USD,
+        priceUsd,
         true,
       );
     }
@@ -202,7 +203,7 @@ export async function resale(): Promise<ResaleView> {
     KNOWN_BALANCES.seller,
     [KNOWN_BALANCES.buyer],
     WHOLE_UNITS,
-    CASH_BACK_USD,
+    priceUsd,
     false,
   );
 }
@@ -238,7 +239,7 @@ function keyFor(buyer: string): string | undefined {
  * @param units - Units being offered, one per dollar of face value
  * @returns The settling transaction, and what was paid for what
  */
-export async function sellHalf(buyer: string, units: number): Promise<Sale> {
+export async function sellHalf(buyer: string, units: number, priceUsd: number = CASH_BACK_USD): Promise<Sale> {
   const sellerKey = process.env.HEDERA_OPERATOR_KEY;
   const buyerKey = keyFor(buyer);
   const usdc = process.env.HEDERA_USDC;
@@ -264,7 +265,7 @@ export async function sellHalf(buyer: string, units: number): Promise<Sale> {
     }
 
     const security = new Contract(RECEIVABLE_TOKEN, SECURITY_ABI, seller);
-    const price = BigInt(CASH_BACK_USD) * USDC_UNITS;
+    const price = BigInt(Math.round(priceUsd)) * USDC_UNITS;
 
     /*
      * How long the buyer's money is tied up is what is left of the invoice's life, read off the
@@ -295,7 +296,7 @@ export async function sellHalf(buyer: string, units: number): Promise<Sale> {
     const settled = await new Contract(SETTLEMENT, DVP_ABI, purchaser).settle(id);
     await settled.wait();
 
-    return { hash: settled.hash as string, units, priceUsd: CASH_BACK_USD };
+    return { hash: settled.hash as string, units, priceUsd };
   } finally {
     provider.destroy();
   }

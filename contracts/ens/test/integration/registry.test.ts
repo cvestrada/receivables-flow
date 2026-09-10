@@ -34,7 +34,8 @@ describe('registry', () => {
   const BASE_LABEL = `rf${Date.now().toString(36)}`;
   const COUNTS = {
     'rf.invoices.financed': '6',
-    'rf.invoices.repaid': '6',
+    'rf.invoices.ontime': '6',
+    'rf.invoices.late': '0',
     'rf.invoices.defaulted': '0',
   };
 
@@ -119,15 +120,15 @@ describe('registry', () => {
       // A score field would make the platform the author of an opinion; the counts are
       // observations anyone can recompute from.
       expect(await readRecord(hre.provider as never, resolver, name, 'rf.score')).to.equal('');
-      expect(PROFILE_RECORDS).to.have.lengthOf(3);
+      expect(PROFILE_RECORDS).to.have.lengthOf(4);
     });
 
     it('replaces a count rather than appending to it', async () => {
       const { platform, resolver, name } = await loadFixture(onboarded);
 
-      await writeRecords(platform as never, resolver, name, { 'rf.invoices.repaid': '7' });
+      await writeRecords(platform as never, resolver, name, { 'rf.invoices.ontime': '7' });
 
-      expect(await readRecord(hre.provider as never, resolver, name, 'rf.invoices.repaid')).to.equal('7');
+      expect(await readRecord(hre.provider as never, resolver, name, 'rf.invoices.ontime')).to.equal('7');
     });
   });
 
@@ -138,7 +139,7 @@ describe('registry', () => {
       // No signer in this path. The score is not something we hand out — it is something
       // a counterparty works out from the same public page anyone else can read.
       expect(await readScore(hre.provider as never, opened, 'ironline')).to.equal(
-        creditScore({ financed: 6, repaid: 6, defaulted: 0 }),
+        creditScore({ financed: 6, ontime: 6, late: 0, defaulted: 0 }),
       );
     });
 
@@ -150,7 +151,8 @@ describe('registry', () => {
       expect(await readRecord(hre.provider as never, resolver, name, 'credit.rating')).to.equal('');
       expect(PROFILE_RECORDS).to.deep.equal([
         'rf.invoices.financed',
-        'rf.invoices.repaid',
+        'rf.invoices.ontime',
+        'rf.invoices.late',
         'rf.invoices.defaulted',
       ]);
     });
@@ -161,7 +163,7 @@ describe('registry', () => {
       // With the grade gone, the counts are the only input left — so this refusal is now
       // the thing standing between a business and its own score.
       await expect(
-        asOutsider(resolver, business as never).setText(encodeName(name), 'rf.invoices.repaid', '99'),
+        asOutsider(resolver, business as never).setText(encodeName(name), 'rf.invoices.ontime', '99'),
       ).to.be.reverted;
     });
 

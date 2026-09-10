@@ -17,7 +17,7 @@ const WHOLE = 50_000;
 const PRICE = 24_150;
 
 const SELLER = { name: 'Woodgrove Capital', wallet: '0xE1e76C63fb819B35cDC09dbb3D03B3d85eeaE2D8' };
-const BUYER = { name: 'Harbour Lane Partners', wallet: '0x3F8890000000000000000000000000000000C102' };
+const BUYER = { name: 'Bridgeline Partners', wallet: '0x3F8890000000000000000000000000000000C102' };
 
 /** A wallet nobody has approved, which is what the receivable turns away. */
 const NO_PASS = `0x${'B0D3'.repeat(10)}`;

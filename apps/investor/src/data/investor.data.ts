@@ -45,6 +45,15 @@ function passBlock(pass: PassView): Block {
 
 const SCORE_FLOOR = 60;
 
+/** What the fund had to deploy before it funded anything. */
+const DRY_POWDER_USD = 250_000;
+
+/** What it paid Ironline Freight for the whole receivable on day 2. */
+const FUNDED_USD = 47_500;
+
+/** Face value of the half it keeps to maturity. */
+const HALF_FACE_USD = 25_000;
+
 const MANDATE: Block = {t:'kv',h:'Fund mandate',rows:[
   ['Maximum per position','$100,000',''],
   ['Minimum credit score',`${SCORE_FLOOR} of 100`,''],
@@ -143,6 +152,17 @@ export function buildStages(pass: PassView, score: ScoreView, split: ResaleView)
   const buyer = split.holders[1];
   const soldAway = buyer ? bps(buyer.sharePct) : bps(0);
   const cashBack = money(split.cashReturnedUsd);
+
+  /*
+   * Every figure that follows the resale is worked out from what the sale actually returned.
+   * The price is no longer written down here — it comes off Ironline's record and the days
+   * left on the invoice — so a tile carrying its own copy would disagree with the sale beside
+   * it the first time that record moved.
+   */
+  const atRisk = money(FUNDED_USD - split.cashReturnedUsd);
+  const dryPowderAfterSale = money(DRY_POWDER_USD - FUNDED_USD + split.cashReturnedUsd);
+  const dryPowderAtMaturity = money(DRY_POWDER_USD - FUNDED_USD + split.cashReturnedUsd + HALF_FACE_USD);
+  const realised = money(split.cashReturnedUsd + HALF_FACE_USD - FUNDED_USD);
   return [
 { day:'Day 0', label:'Invoice raised', counts:{market:0,portfolio:0}, sections:{
   overview:[
@@ -216,8 +236,8 @@ export function buildStages(pass: PassView, score: ScoreView, split: ResaleView)
 { day:'Day 20', label:'Half resold', counts:{market:0,portfolio:1}, sections:{
   overview:[
     {t:'tiles',items:[
-      ['Dry powder','$226,650','pos','cash back on day 20'],
-      ['Deployed','$23,350','','half the position'],
+      ['Dry powder',dryPowderAfterSale,'pos','cash back on day 20'],
+      ['Deployed',atRisk,'','half the position'],
       ['Owed at maturity','$25,000','','on 2026-11-04']]},
     {t:'feed',h:'Activity',items:[
       ['Day 20',`Sold <b>${soldAway}</b> to ${buyer?.name ?? 'a second approved investor'} for <b>${cashBack}</b>`,'ok'],
@@ -226,22 +246,22 @@ export function buildStages(pass: PassView, score: ScoreView, split: ResaleView)
     {t:'kv',h:'Why sell half',rows:[
       ['Cash back',cashBack,''],
       ['Days early','40',''],
-      ['Still at risk','$23,350','']],
+      ['Still at risk',atRisk,'']],
       note:`Exiting early is the thing ordinary factoring cannot do. Being able to means the discount demanded on day 2 can be <b>smaller in the first place</b>. ${source(split)}`}],
   market:[{t:'empty',h:'Marketplace',title:'No open offers',
     text:'New receivables appear here as businesses issue them.'}],
   portfolio:[
     {t:'table',h:'Positions held',head:['Receivable','Issuer','Held','Cost','At maturity','Matures','Status'],
-      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight',share(held?.sharePct ?? 0),{v:'$23,350',cls:'strong'},'$25,000','2026-11-04',{chip:'Funded',tone:'ok'}]],
+      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight',share(held?.sharePct ?? 0),{v:atRisk,cls:'strong'},'$25,000','2026-11-04',{chip:'Funded',tone:'ok'}]],
       note:source(split)}],
   compliance:[LOG4,PASS]}},
 
 { day:'Day 60', label:'Settled', counts:{market:0,portfolio:0}, sections:{
   overview:[
     {t:'tiles',items:[
-      ['Dry powder','$251,650','pos','position closed'],
+      ['Dry powder',dryPowderAtMaturity,'pos','position closed'],
       ['Deployed','$0','dim','nothing outstanding'],
-      ['Realised return','$1,650','pos','on $47,500 deployed']]},
+      ['Realised return',realised,'pos','on $47,500 deployed']]},
     {t:'feed',h:'Activity',items:[
       ['Day 60','Position closed. Nothing was claimed, signed, or pressed.','ok'],
       ['Day 60','Distribution received — <b>$25,000</b> for 5000 bps held','ok'],
@@ -250,12 +270,12 @@ export function buildStages(pass: PassView, score: ScoreView, split: ResaleView)
       ['Paid on day 2','−$47,500',''],
       ['Recovered on day 20',cashBack,'ok'],
       ['Paid at maturity','$25,000','ok'],
-      ['Net','$1,650','ok']]}],
+      ['Net',realised,'ok']]}],
   market:[{t:'empty',h:'Marketplace',title:'No open offers',
     text:'New receivables appear here as businesses issue them.'}],
   portfolio:[
     {t:'table',h:'Positions held',head:['Receivable','Issuer','Held','Cost','Received','Settled','Status'],
-      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight',share(held?.sharePct ?? 0),'$23,350',{v:'$25,000',cls:'ok'},'2026-11-04',{chip:'Redeemed',tone:'ok'}]]}],
+      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight',share(held?.sharePct ?? 0),atRisk,{v:'$25,000',cls:'ok'},'2026-11-04',{chip:'Redeemed',tone:'ok'}]]}],
   compliance:[LOG4,PASS]}}
   ];
 }
@@ -266,12 +286,23 @@ export function buildDefaulted(pass: PassView, split: ResaleView): Stage {
   const held = split.holders[0];
   const buyer = split.holders[1];
   const cashBack = money(split.cashReturnedUsd);
+
+  /*
+   * Every figure that follows the resale is worked out from what the sale actually returned.
+   * The price is no longer written down here — it comes off Ironline's record and the days
+   * left on the invoice — so a tile carrying its own copy would disagree with the sale beside
+   * it the first time that record moved.
+   */
+  const atRisk = money(FUNDED_USD - split.cashReturnedUsd);
+  const dryPowderAfterSale = money(DRY_POWDER_USD - FUNDED_USD + split.cashReturnedUsd);
+  const dryPowderAtMaturity = money(DRY_POWDER_USD - FUNDED_USD + split.cashReturnedUsd + HALF_FACE_USD);
+  const realised = money(split.cashReturnedUsd + HALF_FACE_USD - FUNDED_USD);
   return { day:'Day 60', label:'Defaulted', counts:{market:0,portfolio:0}, sections:{
   overview:[
     {t:'tiles',items:[
-      ['Dry powder','$226,650','','nothing recovered at maturity'],
+      ['Dry powder',dryPowderAfterSale,'','nothing recovered at maturity'],
       ['Deployed','$0','dim','position written off'],
-      ['Realised return','−$23,350','neg','on $47,500 deployed']]},
+      ['Realised return',`−${atRisk}`,'neg','on $47,500 deployed']]},
     {t:'feed',h:'Activity',items:[
       ['Day 60','RCV-0001 marked <b>defaulted</b> — the loss is the fund’s','bad'],
       ['Day 60','Northwind Brokerage did not pay','bad'],
@@ -280,13 +311,13 @@ export function buildDefaulted(pass: PassView, split: ResaleView): Stage {
       ['Paid on day 2','−$47,500',''],
       ['Recovered on day 20',cashBack,'ok'],
       ['Paid at maturity','$0','bad'],
-      ['Net','−$23,350','bad']],
-      note:`Selling half on day 20 is the only reason this is <b>−$23,350</b> and not −$47,500. ${buyer?.name ?? 'The second investor'}, who bought in later and held to maturity, is down ${cashBack}. Liquidity was worth something.`}],
+      ['Net',`−${atRisk}`,'bad']],
+      note:`Selling half on day 20 is the only reason this is <b>−${atRisk}</b> and not −$47,500. ${buyer?.name ?? 'The second investor'}, who bought in later and held to maturity, is down ${cashBack}. Liquidity was worth something.`}],
   market:[{t:'empty',h:'Marketplace',title:'No open offers',
     text:'New receivables appear here as businesses issue them.'}],
   portfolio:[
     {t:'table',h:'Positions held',head:['Receivable','Issuer','Held','Cost','Received','Settled','Status'],
-      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight',share(held?.sharePct ?? 0),'$23,350',{v:'$0',cls:'bad'},{v:'—',cls:'dim'},{chip:'Defaulted',tone:'bad'}]],
+      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight',share(held?.sharePct ?? 0),atRisk,{v:'$0',cls:'bad'},{v:'—',cls:'dim'},{chip:'Defaulted',tone:'bad'}]],
       note:'This is what buying a receivable actually means. A demo that only shows the happy ending is not showing it.'}],
   compliance:[LOG4,PASS]}};
 }

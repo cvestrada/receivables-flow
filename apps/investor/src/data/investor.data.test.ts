@@ -22,7 +22,7 @@ function split(overrides: { buyerName?: string; cashUsd?: number; live?: boolean
     { name: 'Woodgrove Capital', wallet: PASS.wallet, units: 30_000 },
     [
       {
-        name: overrides.buyerName ?? 'Harbour Lane Partners',
+        name: overrides.buyerName ?? 'Bridgeline Partners',
         wallet: '0x3F8890000000000000000000000000000000C102',
         units: 20_000,
       },
@@ -56,7 +56,7 @@ describe('buildStages', () => {
     const screen = dayTwenty(split({ buyerName: 'Kestrel Bridge Capital' }));
 
     expect(screen).toContain('Kestrel Bridge Capital');
-    expect(screen).not.toContain('Harbour Lane Partners');
+    expect(screen).not.toContain('Bridgeline Partners');
   });
 
   it('when the view is not live the day-20 figures still render, marked as not live', () => {

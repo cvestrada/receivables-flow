@@ -39,10 +39,11 @@ const INVESTOR_LABEL = process.env.ENS_INVESTOR_LABEL ?? 'woodgrove';
  */
 const PASS_SECONDS = 90 * 24 * 60 * 60;
 
-/** What Ironline Freight has done so far, as three numbers anyone can recompute from. */
+/** What Ironline Freight has done so far, as four numbers anyone can recompute from. */
 const COUNTS = {
   'rf.invoices.financed': '6',
-  'rf.invoices.repaid': '6',
+  'rf.invoices.ontime': '6',
+  'rf.invoices.late': '0',
   'rf.invoices.defaulted': '0',
 };
 
@@ -134,7 +135,7 @@ async function main(): Promise<void> {
 
   console.log('\nwho may write what:');
   const checks: [string, string, string, string][] = [
-    ['business writes its own count', business, 'rf.invoices.repaid', '99'],
+    ['business writes its own count', business, 'rf.invoices.ontime', '99'],
     ['business writes another field', business, 'description', 'hijacked'],
   ];
   for (const [label, from, key, value] of checks) {

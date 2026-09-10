@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { SECOND_INVESTOR, resale, sellHalf, type HolderView } from '@/lib/hedera-ats/resale';
+import { resaleQuote } from '@/lib/hedera-ats/resale-quote';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,7 +31,13 @@ export async function POST(request: Request) {
   const { buyer, units } = (await request.json()) as { buyer?: string; units?: number };
   const wallet = buyer ?? SECOND_INVESTOR.wallet;
 
-  const before = await resale();
+  /*
+   * The price is worked out before anything is offered, from Ironline's record as it stands
+   * on this request. A price fixed when the demo was written would go on being asked long
+   * after the record it was justified by had moved.
+   */
+  const { today } = await resaleQuote();
+  const before = await resale(today.priceUsd);
   const seller = before.holders[0];
   const offered = units ?? Math.floor(before.wholeUnits / 2);
 
@@ -50,8 +57,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const sale = await sellHalf(wallet, offered);
-    const after = await resale();
+    const sale = await sellHalf(wallet, offered, today.priceUsd);
+    const after = await resale(today.priceUsd);
 
     return NextResponse.json({
       buyer: wallet,
