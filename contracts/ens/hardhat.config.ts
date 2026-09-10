@@ -11,10 +11,9 @@ import { join } from 'node:path';
  */
 loadEnv({ path: join(__dirname, '..', '..', '.env') });
 
-const privateKey = process.env.SEPOLIA_PLATFORM_PRIVATE_KEY;
+const privateKey = process.env.SEPOLIA_PLATFORM_WALLET_PRIVATE_KEY;
 const sepoliaRpcUrl = process.env.SEPOLIA_RPC_URL ?? 'https://ethereum-sepolia-rpc.publicnode.com';
 const shouldFork = process.env.ENS_FORK_ENABLED === '1';
-const forkBlock = process.env.ENS_FORK_BLOCK_NUMBER ? Number(process.env.ENS_FORK_BLOCK_NUMBER) : undefined;
 
 /*
  * Forking needs an endpoint that still serves state for the block it forked at. Most free
@@ -22,7 +21,7 @@ const forkBlock = process.env.ENS_FORK_BLOCK_NUMBER ? Number(process.env.ENS_FOR
  * available` rather than as a connection error, so the fork endpoint is configured separately
  * from the one used to deploy.
  */
-const forkRpcUrl = process.env.ENS_FORK_RPC_URL ?? 'https://sepolia.gateway.tenderly.co';
+const forkRpcUrl = 'https://sepolia.gateway.tenderly.co';
 
 /*
  * One network per package, deliberately. This package holds who may trade and what they have done before.
@@ -48,7 +47,6 @@ const config: HardhatUserConfig = {
       ? {
           forking: {
             url: forkRpcUrl,
-            ...(forkBlock === undefined ? {} : { blockNumber: forkBlock }),
           },
         }
       : {},

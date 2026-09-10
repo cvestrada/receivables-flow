@@ -17,7 +17,7 @@ import { openAccounts } from '../src/provision';
  * wrote a mock that refuses. So each group stands down without its credentials
  * rather than substituting a fake and reporting a pass.
  */
-const FUND_LIVE = Boolean(process.env.PRIVY_APP_SECRET && process.env.PRIVY_AUTHORIZATION_PRIVATE_KEY);
+const FUND_LIVE = Boolean(process.env.PRIVY_APP_SECRET && process.env.PRIVY_FUND_AUTHORIZATION_KEY);
 
 /*
  * A director approves in their browser, with a key only they hold. Reaching that

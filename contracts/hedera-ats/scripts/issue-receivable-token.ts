@@ -39,9 +39,6 @@ const NOTE: Invoice = {
  * screen to one only two directors can issue.
  */
 function ironlineAccount(): string {
-  const override = process.env.HEDERA_IRONLINE_WALLET_ADDRESS;
-  if (override) return override;
-
   for (let dir = __dirname; ; dir = dirname(dir)) {
     const candidate = join(dir, 'libs', 'privy', 'accounts.json');
     if (existsSync(candidate)) {
@@ -73,10 +70,7 @@ async function main(): Promise<void> {
     throw new Error('No account configured — set the private key in .env');
   }
 
-  const ats = {
-    factory: process.env.HEDERA_ATS_FACTORY_ADDRESS ?? DEFAULT_FACTORY,
-    resolver: process.env.HEDERA_ATS_RESOLVER_ADDRESS ?? DEFAULT_RESOLVER,
-  };
+  const ats = { factory: DEFAULT_FACTORY, resolver: DEFAULT_RESOLVER };
 
   /*
    * Step 1 of the Core Logic diagram — create the note from the invoice record,

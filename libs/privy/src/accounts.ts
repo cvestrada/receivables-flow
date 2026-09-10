@@ -31,6 +31,7 @@ export { nameFromEmail } from './policies';
  * arrives, not when the app is built, and there is nothing here to trace.
  */
 function accountsPath(): string {
+  /* Set by libs/privy/test/issuance.test.ts to read a temporary file. Not a credential. */
   const override = process.env.PRIVY_ACCOUNTS_JSON_PATH;
   if (override) return override;
 
@@ -50,9 +51,6 @@ function accountsPath(): string {
  * against a freshly issued note needs no edit to a recorded file.
  */
 export function noteAddress(): string {
-  const override = process.env.HEDERA_RECEIVABLE_TOKEN_ADDRESS;
-  if (override) return override;
-
   for (let dir = process.cwd(); ; dir = dirname(dir)) {
     const candidate = join(dir, 'contracts', 'hedera-ats', 'deployed.json');
     if (existsSync(candidate)) {
@@ -235,8 +233,8 @@ export function allocate(allocation: { invoice: string; usd: number }): Promise<
   const invoice =
     allocation.invoice === 'company' ? accounts.company.address : allocation.invoice;
 
-  const key = process.env.PRIVY_AUTHORIZATION_PRIVATE_KEY;
-  if (!key) throw new Error('PRIVY_AUTHORIZATION_PRIVATE_KEY is not set');
+  const key = process.env.PRIVY_FUND_AUTHORIZATION_KEY;
+  if (!key) throw new Error('PRIVY_FUND_AUTHORIZATION_KEY is not set');
 
   return send(
     buildAllocationRequest({

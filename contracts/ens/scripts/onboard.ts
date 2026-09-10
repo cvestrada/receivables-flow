@@ -19,8 +19,8 @@ import {
   writeRecords,
 } from '../src/ens';
 
-const BASE_LABEL = process.env.ENS_PLATFORM_BASE_LABEL ?? 'receivablesflow';
-const BUSINESS_LABEL = process.env.ENS_BUSINESS_SUBNAME_LABEL ?? 'ironline';
+const BASE_LABEL = 'receivablesflow';
+const BUSINESS_LABEL = 'ironline';
 
 /*
  * The two sides of the market, each a registry of its own between the platform's name and the
@@ -29,7 +29,7 @@ const BUSINESS_LABEL = process.env.ENS_BUSINESS_SUBNAME_LABEL ?? 'ironline';
  */
 const BUSINESS_BRANCH = 'business';
 const INVESTOR_BRANCH = 'investor';
-const INVESTOR_LABEL = process.env.ENS_INVESTOR_SUBNAME_LABEL ?? 'woodgrove';
+const INVESTOR_LABEL = 'woodgrove';
 
 /**
  * How long Woodgrove's clearance lasts.
@@ -89,8 +89,8 @@ function placeholder(role: string, platform: string): string {
 async function main(): Promise<void> {
   const [platform] = await hre.getSigners();
   const platformAddress = await platform.getAddress();
-  const business = process.env.SEPOLIA_BUSINESS_WALLET_ADDRESS ?? placeholder('business', platformAddress);
-  const investor = process.env.SEPOLIA_INVESTOR_WALLET_ADDRESS ?? placeholder('investor', platformAddress);
+  const business = placeholder('business', platformAddress);
+  const investor = placeholder('investor', platformAddress);
 
   console.log(`platform ${platformAddress}`);
 
