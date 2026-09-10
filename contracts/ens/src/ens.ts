@@ -69,13 +69,19 @@ export const RESOLVER_ROLES =
 /**
  * What a business profile publishes.
  *
- * Three raw counts and nothing derived. A stored grade would make the platform the author
- * of an opinion a funder has no reason to weight above its own underwriting; three numbers
+ * Four raw counts and nothing derived. A stored grade would make the platform the author
+ * of an opinion a funder has no reason to weight above its own underwriting; four numbers
  * and a published formula let every reader arrive at the same score without us.
+ *
+ * Paid is split into on time and late because the two are different facts about a business
+ * and neither is a default. Which one an invoice was is not a judgement anybody makes: the
+ * redemption carries a consensus timestamp and the security carries its maturity date, so
+ * the answer is a comparison of two numbers already on the chain.
  */
 export const PROFILE_RECORDS = [
   'rf.invoices.financed',
-  'rf.invoices.repaid',
+  'rf.invoices.ontime',
+  'rf.invoices.late',
   'rf.invoices.defaulted',
 ] as const;
 
@@ -500,32 +506,87 @@ export async function readRecord(
   return TEXT_GETTER.decodeFunctionResult('text', answer)[0] as string;
 }
 
-/** What a business's page says about its invoices: how many it took, settled, and missed. */
+/** What a business's page says about its invoices: how many it took, and how each one ended. */
 export interface Counts {
   financed: number;
-  repaid: number;
+  /** Matured invoices paid on or before their maturity date. */
+  ontime: number;
+  /** Matured invoices paid, but after their maturity date. */
+  late: number;
+  /** Matured invoices nobody paid. */
   defaulted: number;
 }
 
 /**
+ * What a late payment is worth against an on-time one, out of 100.
+ *
+ * Half, because a business that pays late has done something materially different from both
+ * the one that paid on time and the one that never paid — an investor who was owed money on
+ * day 60 and received it on day 75 was not made whole on the terms it bought. Putting the
+ * number here rather than inside the sum is the point: it is the one judgement in the
+ * formula, so it is stated once, in the open, where anyone can disagree with it out loud.
+ */
+export const LATE_WEIGHT = 50;
+
+/**
  * The published formula. The whole of it.
  *
- * A business's score is the share of its matured invoices that were repaid, stated out of 100.
- * Nobody chose a weighting, nobody drew a band, and no key anywhere writes the answer down —
- * two funders who disagree about a company can each run this line and get the same number.
+ * A business's score is what its matured invoices earned, out of 100 each for the ones paid on
+ * time and `LATE_WEIGHT` for the ones paid late, averaged over everything that matured. Nobody
+ * drew a band and no key anywhere writes the answer down — two funders who disagree about a
+ * company can each run this line and get the same number.
  *
- * `financed` is not an input. An invoice nobody has had to pay yet is neither a repayment nor
- * a miss, so financing more of them must not move a business up or down.
+ * `financed` is not an input. An invoice nobody has had to pay yet is neither a payment nor a
+ * miss, so financing more of them must not move a business up or down.
  *
  * A business with nothing matured is unrated rather than scored. Unrated means nobody knows
  * yet; zero means everyone does, and collapsing the two would let the worst record on the
  * platform hide behind the same answer as a newcomer's.
  */
-export function creditScore({ repaid, defaulted }: Counts): number | undefined {
-  const matured = repaid + defaulted;
+export function creditScore({ ontime, late, defaulted }: Counts): number | undefined {
+  const matured = ontime + late + defaulted;
   if (matured === 0) return undefined;
 
-  return Math.round((repaid * 100) / matured);
+  return Math.round((ontime * 100 + late * LATE_WEIGHT) / matured);
+}
+
+/**
+ * The count a profile published before paying late was distinguishable from paying.
+ *
+ * Kept readable rather than dropped, because a business's record is the one thing on this
+ * platform that must survive our own changes of mind — a page written last month cannot be
+ * made unrated by a release note.
+ */
+export const LEGACY_PAID = 'rf.invoices.repaid';
+
+/** What a profile's raw text records say, before anything is counted. */
+export interface RawCounts {
+  financed: string;
+  ontime: string;
+  late: string;
+  defaulted: string;
+  /** The legacy count, present only on profiles written before the split. */
+  paid: string;
+}
+
+/**
+ * Read a profile's counts, whichever vocabulary it was written in.
+ *
+ * A profile carrying neither `ontime` nor `late` predates the distinction, and the only
+ * honest reading of its `repaid` count is that those invoices were paid — nobody recorded
+ * whether any of them were late, so inventing a late one would be worse than reading them
+ * all as on time. Once the profile is republished with the split, this stops applying: the
+ * new records win the moment either of them exists.
+ */
+export function splitPaid({ financed, ontime, late, defaulted, paid }: RawCounts): Counts {
+  const legacy = ontime === '' && late === '';
+
+  return {
+    financed: readCount(financed),
+    ontime: readCount(legacy ? paid : ontime),
+    late: legacy ? 0 : readCount(late),
+    defaulted: readCount(defaulted),
+  };
 }
 
 /**
@@ -548,17 +609,15 @@ export async function readScore(
   const resolver = await registry.getResolver(label).catch(() => ethers.ZeroAddress);
   if (resolver === ethers.ZeroAddress) return undefined;
 
-  const [financed, repaid, defaulted] = await Promise.all([
+  const [financed, ontime, late, defaulted, paid] = await Promise.all([
     readRecord(provider, resolver, name, 'rf.invoices.financed').catch(() => ''),
-    readRecord(provider, resolver, name, 'rf.invoices.repaid').catch(() => ''),
+    readRecord(provider, resolver, name, 'rf.invoices.ontime').catch(() => ''),
+    readRecord(provider, resolver, name, 'rf.invoices.late').catch(() => ''),
     readRecord(provider, resolver, name, 'rf.invoices.defaulted').catch(() => ''),
+    readRecord(provider, resolver, name, LEGACY_PAID).catch(() => ''),
   ]);
 
-  return creditScore({
-    financed: readCount(financed),
-    repaid: readCount(repaid),
-    defaulted: readCount(defaulted),
-  });
+  return creditScore(splitPaid({ financed, ontime, late, defaulted, paid }));
 }
 
 /** A record that was never written reads as none, so a blank page comes back unrated. */

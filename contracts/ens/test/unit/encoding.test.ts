@@ -28,33 +28,34 @@ describe('encoding', () => {
     const name = 'ironline.receivablesflow.eth';
 
     it('carries the field it scopes to', () => {
-      const blob = buildSetterBlob(name, 'rf.invoices.repaid');
+      const blob = buildSetterBlob(name, 'rf.invoices.ontime');
 
       // The key travels inside the blob as plain text, which is what lets the
       // resolver scope the grant to this field rather than to the whole name.
-      expect(blob).to.contain(ethers.hexlify(ethers.toUtf8Bytes('rf.invoices.repaid')).slice(2));
+      expect(blob).to.contain(ethers.hexlify(ethers.toUtf8Bytes('rf.invoices.ontime')).slice(2));
     });
 
     it('builds a different blob for a different field', () => {
-      expect(buildSetterBlob(name, 'rf.invoices.repaid')).to.not.equal(
+      expect(buildSetterBlob(name, 'rf.invoices.ontime')).to.not.equal(
         buildSetterBlob(name, 'description'),
       );
     });
 
     it('builds the same blob for the same field every time', () => {
-      expect(buildSetterBlob(name, 'rf.invoices.repaid')).to.equal(
-        buildSetterBlob(name, 'rf.invoices.repaid'),
+      expect(buildSetterBlob(name, 'rf.invoices.ontime')).to.equal(
+        buildSetterBlob(name, 'rf.invoices.ontime'),
       );
     });
   });
 
   describe('PROFILE_RECORDS', () => {
-    it('is exactly the three counts', () => {
+    it('is exactly the four counts', () => {
       // Counts are published raw so the score is recomputable; a pre-computed grade would
       // make the platform the author of an opinion a funder has no reason to weight.
       expect(PROFILE_RECORDS).to.deep.equal([
         'rf.invoices.financed',
-        'rf.invoices.repaid',
+        'rf.invoices.ontime',
+        'rf.invoices.late',
         'rf.invoices.defaulted',
       ]);
     });
