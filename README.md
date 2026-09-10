@@ -16,7 +16,7 @@
 | **Investor** | **Woodgrove Capital** — has capital to deploy and wants a short, secured return |
 | **Platform** | **Receivables Flow** — decides what can be listed, who can buy it, and what happens when the invoice comes due |
 
-Ironline Freight's customer is the one who actually owes the money. They never touch the platform, but their payment — or non-payment — is the event everything hinges on.
+Ironline Freight's customer is the one who owes the original invoice. They never touch the platform: the sale is made **with recourse**, so it is Ironline Freight that owes the $50,000 back at maturity, whether or not the customer has paid it.
 
 Four people sign in across the two portals: three directors on the business side, who must agree two-of-three before the company account will sell anything, and one portfolio manager on the investor side, whose fund account refuses outside its mandate without asking anyone. [**Who signs in, and what each account refuses**](docs/accounts.md) sets out the cast, the two controls, and how to produce both refusals on screen.
 
@@ -275,9 +275,15 @@ An institutional investor buys it at a 5% discount for $47,500. Ironline Freight
 
 On day 20 that investor wants liquidity back, so it sells half the position to a second investor rather than sitting locked until maturity.
 
-On day 60 the customer pays the invoice. The $50,000 is split between the two investors, and Ironline Freight's record gets a fresh on-time mark — which is what makes their *next* invoice cheaper to sell.
+On day 60 Ironline Freight repays the $50,000. The sale was made **with recourse**, so that obligation is Ironline Freight's whether or not its own customer has paid — which is also why the price was quoted against Ironline Freight's credit record rather than the customer's. The repayment is split between the two investors in proportion to what each holds, and Ironline Freight's record gets a fresh on-time mark — which is what makes their *next* invoice cheaper to sell.
 
-Had the customer not paid, the token would be marked defaulted, both investors would absorb the loss, and Ironline Freight's record would show the miss. The next buyer would demand a steeper discount.
+Had Ironline Freight not repaid, the token would be marked defaulted, both investors would absorb the loss in the same proportions, and Ironline Freight's record would show the miss. The next buyer would demand a steeper discount.
+
+### What this does not enforce
+
+Nothing on-chain compels Ironline Freight to repay. The receivable can divide a repayment across its holders the instant one arrives, and it can mark itself defaulted when none does — but it cannot reach into a bank account and take the money.
+
+Real factoring closes that gap with a recourse clause and a personal guarantee, which is paperwork rather than code, and with a notice of assignment telling the customer to pay the funder direct. Naming the boundary reads better than a demo that pretends it is not there: what this system makes trustworthy is the *division* — who is owed what, and whether they got it — not the willingness to pay in the first place.
 
 ---
 
@@ -290,7 +296,7 @@ Had the customer not paid, the token would be marked defaulted, both investors w
 | **The business's organization** | Privy organization wallets | Gives Ironline Freight a real company wallet with an approval policy, so listing an invoice takes a finance-team quorum rather than one key |
 | **The investor's wallet** | Privy | The investor funds and holds positions without managing an external wallet |
 | **Identity and eligibility** | ENSv2 permissioned records | Holds Ironline Freight's verified status, credit tier, and repayment history, and gates which investors may hold a receivable — checked by the contracts, not displayed as a label |
-| **Repayment signal** | Mock bank webhook | Stands in for the customer's payment, which is the event the maturity action responds to |
+| **Repayment signal** | Ironline Freight's own portal | Records the repayment at maturity — under recourse the obligation is the business's, so the business is the party that ends day 60 |
 
 ---
 
