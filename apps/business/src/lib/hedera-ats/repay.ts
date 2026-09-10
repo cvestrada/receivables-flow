@@ -171,7 +171,7 @@ export async function owedAtMaturity(): Promise<RepaymentView> {
  */
 export async function repay(): Promise<RepaymentView & { settled: boolean; reason?: string }> {
   const view = await owedAtMaturity();
-  const payerKey = process.env.HEDERA_ISSUER_PRIVATE_KEY ?? process.env.HEDERA_OPERATOR_PRIVATE_KEY;
+  const payerKey = process.env.HEDERA_OPERATOR_PRIVATE_KEY;
   const usdc = process.env.HEDERA_USDC_TOKEN_ADDRESS;
 
   if (!payerKey || !usdc) {
@@ -179,7 +179,7 @@ export async function repay(): Promise<RepaymentView & { settled: boolean; reaso
       ...view,
       settled: false,
       reason:
-        'The account this repayment pays from is not open yet — set HEDERA_ISSUER_PRIVATE_KEY and HEDERA_USDC_TOKEN_ADDRESS in the repository .env. Nothing was transferred.',
+        'The account this repayment pays from is not open yet — set HEDERA_OPERATOR_PRIVATE_KEY and HEDERA_USDC_TOKEN_ADDRESS in the repository .env. Nothing was transferred.',
     };
   }
 
