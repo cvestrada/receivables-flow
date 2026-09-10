@@ -9,7 +9,9 @@ import { join } from 'node:path';
  * directory that reads it. Bare `dotenv/config` would only find a file beside whichever
  * directory the process happened to start in, which is how the same key ended up in three.
  */
-loadEnv({ path: join(__dirname, '..', '..', '.env') });
+for (const file of ['.env.local', '.env']) {
+  loadEnv({ path: join(__dirname, '..', '..', file) });
+}
 
 const privateKey = process.env.HEDERA_OPERATOR_WALLET_PRIVATE_KEY;
 

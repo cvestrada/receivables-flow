@@ -4,10 +4,13 @@ import { join } from 'node:path';
 
 /*
  * HQ signs with the same Sepolia account the contracts package registers names from, and that
- * key lives in the one `.env` at the repository root. Next only looks beside the app itself,
- * so it is loaded here rather than copied into a second file.
+ * key lives at the repository root. Next only looks beside the app itself, so it is loaded here
+ * rather than copied into a second file. `.env.local` is read first so a machine's own values
+ * win over the shared file, which is what that name means everywhere else.
  */
-loadEnv({ path: join(process.cwd(), '..', '..', '.env') });
+for (const file of ['.env.local', '.env']) {
+  loadEnv({ path: join(process.cwd(), '..', '..', file) });
+}
 
 const nextConfig: NextConfig = {
   /*
