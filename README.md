@@ -279,6 +279,16 @@ On day 60 Ironline Freight repays the $50,000. The sale was made **with recourse
 
 Had Ironline Freight not repaid, the token would be marked defaulted, both investors would absorb the loss in the same proportions, and Ironline Freight's record would show the miss. The next buyer would demand a steeper discount.
 
+### What the money is
+
+The repayment settles in **mUSDC** — mock USDC this repository deploys on Hedera testnet, not Circle's own. Circle's testnet faucet gives $20 per address every two hours, so a $50,000 repayment can never be funded from it, and the only alternative was an invoice worth $20 — which makes the price, the credit score and the split beside it unbelievable. mUSDC carries Circle's six decimals, so no figure on any screen changed with the money, and anyone may deposit it, which is how Ironline Freight tops its account up to what it owes before paying:
+
+```
+npm run deploy:musdc -w @rf/contracts-hedera-ats
+```
+
+Circle's own USDC on Hedera testnet is token `0.0.429274` (`0x0000000000000000000000000000000000068CDA`), recorded in `.env.example` as the address to use on mainnet. Every transfer on day 60 is real and linked to HashScan from Ironline Freight's screen; what is a stand-in is the dollar, not the payment.
+
 ### What this does not enforce
 
 Nothing on-chain compels Ironline Freight to repay. The receivable can divide a repayment across its holders the instant one arrives, and it can mark itself defaulted when none does — but it cannot reach into a bank account and take the money.
