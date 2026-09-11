@@ -5,6 +5,7 @@
     "resolver": "0xBA2D5FC2083A0b8f164c50e65d782087fBA18E0a",
     "faceValueUsd": 50000,
     "maturityDate": 1794074696,
-    "receivableDvp": "0x46900157F8137F4545F8F1237549cafaBAaF7Cb9"
+    "receivableDvp": "0x46900157F8137F4545F8F1237549cafaBAaF7Cb9",
+    "testDollar": "0xf59776ACD240c85678a60Bd7Dd924C0c48c9528F"
   }
 }

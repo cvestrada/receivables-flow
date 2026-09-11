@@ -6,6 +6,7 @@
     "check:balance": "hardhat run scripts/check-balance.ts --network hederaTestnet",
     "issue": "hardhat run scripts/issue-receivable-token.ts --network hederaTestnet",
     "deploy:dvp": "hardhat run scripts/deploy-dvp.ts --network hederaTestnet",
+    "deploy:musdc": "hardhat run scripts/deploy-mock-usdc.ts --network hederaTestnet",
     "verify:dvp": "hardhat run scripts/verify-hashscan.ts --network hederaTestnet",
     "compile": "hardhat compile",
     "typecheck": "tsc --noEmit",
