@@ -2,6 +2,16 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 
 const BUSINESS = 'http://127.0.0.1:3200';
 
+/*
+ * Day 60 now moves money, and moving money takes as long as the network takes.
+ *
+ * Each ending mints what the payer is short, signs one transfer per holder and waits for each
+ * to confirm on Hedera, then writes the outcome onto Ironline's record on Sepolia — four
+ * round trips to two public networks, which do not fit in Playwright's default half minute.
+ * The wait is the point: what the panel reports is what confirmed, not what was requested.
+ */
+test.describe.configure({ timeout: 180_000 });
+
 /** What Ironline Freight owes at maturity, and what the division has to add up to. */
 const FACE_VALUE_USD = 50_000;
 
@@ -39,7 +49,7 @@ function holders(page: Page): Locator {
 
 async function press(page: Page, name: string) {
   await page.getByRole('button', { name, exact: true }).click();
-  await expect(page.getByTestId('repay-outcome')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('repay-outcome')).toBeVisible({ timeout: 150_000 });
 }
 
 /*
@@ -136,5 +146,48 @@ test.describe('Ironline Freight — repaying on day 60, and not repaying', () =>
 
     /* Not nought in a paid column — no paid column at all. Nothing was divided up to pay with. */
     await expect(page.getByTestId('repay-holder-paid')).toHaveCount(0);
+  });
+});
+
+/*
+ * What this suite is for: the money on day 60 is mock USDC this repository deploys, because
+ * Circle's faucet hands out twenty dollars every two hours and a $50,000 repayment can never be
+ * funded from it. So these read the paid column as a record of what actually landed — an amount
+ * with no transaction behind it is a claim, and the screen must not print one.
+ */
+test.describe('Ironline Freight — paid in mock USDC, not Circle’s', () => {
+  test('every holder paid shows the transaction that paid it', async ({ page }) => {
+    await openReceivables(page);
+    await press(page, 'Repay $50,000');
+
+    const paid = page.getByTestId('repay-holder-paid');
+    await expect(paid).toHaveCount(2);
+    await expect(page.getByTestId('repay-holder-hash')).toHaveCount(2);
+
+    for (const hash of await page.getByTestId('repay-holder-hash').all()) {
+      await expect(hash).toContainText(/^0x[0-9a-f]{4}…[0-9a-f]{4}$/i);
+    }
+  });
+
+  test('no holder is shown a paid amount without a transaction behind it', async ({ page }) => {
+    await openReceivables(page);
+    await press(page, 'Repay $50,000');
+
+    const paid = await page.getByTestId('repay-holder-paid').count();
+    const hashes = await page.getByTestId('repay-holder-hash').count();
+
+    expect(paid).toBe(hashes);
+
+    /* Nothing moved is a fine outcome, as long as the screen says so instead of showing amounts. */
+    if (paid === 0) await expect(page.getByTestId('repay-reason')).toBeVisible();
+  });
+
+  test('the panel names the money as mock USDC this repository deploys', async ({ page }) => {
+    await openReceivables(page);
+    await press(page, 'Repay $50,000');
+
+    const money = page.getByTestId('repay-money');
+    await expect(money).toContainText(/mock USDC/i);
+    await expect(money).toContainText(/not\s+Circle/i);
   });
 });

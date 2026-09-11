@@ -134,7 +134,7 @@ async function main(): Promise<void> {
   line('offer id', id.toString());
 
   step('2', 'A wallet nobody approved tries to buy it');
-  await usdc.mint(stranger.address, price);
+  await usdc.deposit(stranger.address, price);
   await usdc.connect(stranger).approve(dvpAddress, price);
   line('buyer', stranger.address);
   line('on approved list?', String(await isApprovedHolder(business, token, stranger.address)));
@@ -152,7 +152,7 @@ async function main(): Promise<void> {
 
   step('3', 'Woodgrove Capital, an approved investor, buys it');
   await approveHolder(business, token, investor.address);
-  await usdc.mint(investor.address, price);
+  await usdc.deposit(investor.address, price);
   await usdc.connect(investor).approve(dvpAddress, price);
   line('buyer', investor.address);
   line('on approved list?', String(await isApprovedHolder(business, token, investor.address)));

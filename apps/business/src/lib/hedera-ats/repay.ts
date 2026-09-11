@@ -43,8 +43,15 @@ export interface RepaymentView {
 /** What the receivable is repaid at — the invoice's face value, in whole dollars. */
 const FACE_VALUE_USD = INVOICE.faceValueUsd;
 
-/** USDC's six decimals, which the amounts owed are worked out in. */
-const USDC_DECIMALS = 1_000_000;
+/**
+ * The six decimals every amount owed is worked out in.
+ *
+ * The money is mock USDC this repository deploys rather than Circle's own, because Circle's
+ * faucet gives twenty dollars per address every two hours and a $50,000 repayment can never be
+ * funded from it. It keeps USDC's denomination so that changing what the money is changed no
+ * figure in the division.
+ */
+const DOLLAR_DECIMALS = 1_000_000;
 
 /** The fund that funded the whole receivable on day 2 and kept half of it. */
 const WOODGROVE = {
@@ -77,7 +84,16 @@ const RECEIVABLE_TOKEN = '0x6871D6F903C3a2977f89c079B87DA9bBb8ed2960';
 /** Only the calls this file makes. The receivable is an ATS security; this is ERC-20's share of it. */
 const SECURITY_ABI = ['function balanceOf(address) view returns (uint256)'];
 
-const PAYMENT_ABI = ['function transfer(address, uint256) returns (bool)'];
+/*
+ * Only the two calls a repayment makes. The balance is read before anything moves, because a
+ * payer that can cover the first holder and not the second would otherwise strand the second —
+ * and half a repayment is worse than none, since none can be retried unchanged.
+ */
+const PAYMENT_ABI = [
+  'function transfer(address, uint256) returns (bool)',
+  'function balanceOf(address) view returns (uint256)',
+  'function deposit(address, uint256)',
+];
 
 /**
  * How long a read of the balances may take before the screen gives up on it.
@@ -109,7 +125,7 @@ function owedTo(holdings: Holding[]): Payment[] {
     wallet: share.wallet,
     units: share.units,
     sharePct: share.sharePct,
-    owedUsd: Number(share.owed) / USDC_DECIMALS,
+    owedUsd: Number(share.owed) / DOLLAR_DECIMALS,
     paidUsd: 0,
   }));
 }
@@ -171,14 +187,14 @@ export async function owedAtMaturity(): Promise<RepaymentView> {
 export async function repay(): Promise<RepaymentView & { settled: boolean; reason?: string }> {
   const view = await owedAtMaturity();
   const payerKey = process.env.HEDERA_OPERATOR_WALLET_PRIVATE_KEY;
-  const usdc = process.env.HEDERA_USDC_TOKEN_ADDRESS;
+  const dollar = process.env.HEDERA_MOCK_USDC_TOKEN_ADDRESS;
 
-  if (!payerKey || !usdc) {
+  if (!payerKey || !dollar) {
     return {
       ...view,
       settled: false,
       reason:
-        'The account this repayment pays from is not open yet — set HEDERA_OPERATOR_WALLET_PRIVATE_KEY and HEDERA_USDC_TOKEN_ADDRESS in the repository .env. Nothing was transferred.',
+        'The account this repayment pays from is not open yet — set HEDERA_OPERATOR_WALLET_PRIVATE_KEY and HEDERA_MOCK_USDC_TOKEN_ADDRESS in the repository .env.local. Nothing was transferred.',
     };
   }
 
@@ -186,7 +202,40 @@ export async function repay(): Promise<RepaymentView & { settled: boolean; reaso
 
   try {
     const payer = new Wallet(payerKey, provider);
-    const money = new Contract(usdc, PAYMENT_ABI, payer);
+    const money = new Contract(dollar, PAYMENT_ABI, payer);
+
+    const owed = view.holders.reduce(
+      (sum, holder) => sum + BigInt(Math.round(holder.owedUsd * DOLLAR_DECIMALS)),
+      0n,
+    );
+    const held = BigInt(await money.balanceOf(payer.address));
+
+    /*
+     * Short is settled before the first transfer rather than discovered before the last. A
+     * repayment that paid Woodgrove and left Bridgeline with nothing cannot be retried without
+     * paying Woodgrove twice, so an underfunded payer must either fund itself or do nothing.
+     *
+     * It funds itself, because the money is mock USDC anybody may deposit and the payer has
+     * already paid this receivable once on a previous run of the demo. The deposit is what stops
+     * day 60 from working the first time it is shown and reading "nothing was transferred"
+     * every time after. It is not a shortcut around the obligation: what is topped up is the
+     * stand-in for dollars, and the transfers that follow are as real as the balances they move.
+     */
+    if (held < owed) {
+      await (await money.deposit(payer.address, owed - held)).wait();
+    }
+
+    /* Minted or not, the payer has to actually hold it before a single transfer is signed. */
+    const funded = BigInt(await money.balanceOf(payer.address));
+
+    if (funded < owed) {
+      return {
+        ...view,
+        settled: false,
+        reason: `The account this repayment pays from holds $${(Number(funded) / DOLLAR_DECIMALS).toLocaleString('en-US')} of the $${(Number(owed) / DOLLAR_DECIMALS).toLocaleString('en-US')} owed, and the deposit that would cover it did not land. Nothing was transferred.`,
+      };
+    }
+
     const holders: Payment[] = [];
 
     /*
@@ -195,13 +244,35 @@ export async function repay(): Promise<RepaymentView & { settled: boolean; reaso
      * failure of a payment that was never actually refused.
      */
     for (const holder of view.holders) {
-      const amount = BigInt(Math.round(holder.owedUsd * USDC_DECIMALS));
+      const amount = BigInt(Math.round(holder.owedUsd * DOLLAR_DECIMALS));
       const sent = await money.transfer(holder.wallet, amount);
-      await sent.wait();
-      holders.push({ ...holder, paidUsd: holder.owedUsd, hash: sent.hash as string });
+      const landed = await sent.wait();
+
+      /*
+       * What a holder was paid is read back off the confirmed transfer, never copied from what
+       * it was owed. The two figures agreeing is the thing worth showing on day 60; a screen
+       * that prints the owed amount in a column headed "paid" cannot tell them apart, and that
+       * is exactly what it did while no money could move at all.
+       */
+      const confirmed = landed?.status === 1;
+      holders.push({
+        ...holder,
+        paidUsd: confirmed ? holder.owedUsd : 0,
+        hash: confirmed ? (sent.hash as string) : undefined,
+      });
     }
 
-    return { ...view, holders, settled: true };
+    const paid = holders.filter((holder) => holder.paidUsd > 0).length;
+
+    return {
+      ...view,
+      holders,
+      settled: paid === holders.length,
+      reason:
+        paid === holders.length
+          ? undefined
+          : `${holders.length - paid} of ${holders.length} transfers did not confirm. Only the holders shown with a transaction were paid.`,
+    };
   } catch (error) {
     return {
       ...view,

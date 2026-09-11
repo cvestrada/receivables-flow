@@ -101,7 +101,7 @@ describe('ReceivableDvp', () => {
 
   /** Funds a buyer with USDC and authorises the payment leg. */
   async function fundBuyer(buyer: Signer, amount = PRICE): Promise<void> {
-    await usdc.mint(await buyer.getAddress(), amount);
+    await usdc.deposit(await buyer.getAddress(), amount);
     await usdc.connect(buyer).approve(await dvp.getAddress(), amount);
   }
 
