@@ -64,7 +64,10 @@ function short(wallet: string): string {
 function headline(answer: Answer): string {
   if (answer.outcome === 'defaulted') return 'RCV-0001 marked defaulted.';
   if (answer.already) return 'Already repaid — day 60 happens once.';
-  return answer.settled ? 'Repaid in full.' : 'Repayment divided, but nothing was transferred.';
+  if (answer.settled) return 'Repaid in full — every holder was paid.';
+  return answer.holders.some((holder) => holder.hash)
+    ? 'Partly repaid — only the holders with a transaction beside them were paid.'
+    : 'Repayment divided, but nothing was transferred.';
 }
 
 /**
@@ -208,12 +211,37 @@ export function Repay({ view, today }: { view: RepaymentView; today: Quote }) {
                   >
                     −{money(holder.owedUsd)}
                   </td>
-                ) : (
+                ) : !answer ? (
                   <td
-                    data-testid={answer ? 'repay-holder-paid' : 'repay-holder-owed'}
-                    className={`py-1.5 text-right tabular-nums ${answer ? 'text-[var(--pos)]' : 'text-[var(--muted)]'}`}
+                    data-testid="repay-holder-owed"
+                    className="py-1.5 text-right tabular-nums text-[var(--muted)]"
                   >
                     {money(holder.owedUsd)}
+                  </td>
+                ) : holder.hash ? (
+                  <td className="py-1.5 text-right tabular-nums text-[var(--pos)]">
+                    <span data-testid="repay-holder-paid">{money(holder.paidUsd)}</span>
+                    <a
+                      data-testid="repay-holder-hash"
+                      href={`https://hashscan.io/testnet/transaction/${holder.hash}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="ml-2 text-[12px] font-normal text-[var(--muted)] underline"
+                    >
+                      {short(holder.hash)}
+                    </a>
+                  </td>
+                ) : (
+                  /*
+                    * No transaction, so no amount. What a holder is owed and what reached it are
+                    * two different facts, and printing the first under a column headed "paid" is
+                    * the exact claim this panel used to make while no money could move at all.
+                    */
+                  <td
+                    data-testid="repay-holder-unpaid"
+                    className="py-1.5 text-right tabular-nums text-[var(--muted)]"
+                  >
+                    not paid
                   </td>
                 )}
               </tr>
@@ -226,6 +254,19 @@ export function Repay({ view, today }: { view: RepaymentView; today: Quote }) {
           * refresh is still worth showing, but a business has to be able to tell it apart from
           * one that is current.
           */}
+        {/*
+          * What the money is, said where the amounts are. Circle's USDC faucet gives twenty
+          * dollars per address every two hours, so a $50,000 repayment could never be funded
+          * with it — and a mock has to be named as one, or the screen is claiming settlement
+          * in a currency it never touched.
+          */}
+        <p data-testid="repay-money" className="mt-2 text-[13px] text-[var(--muted)]">
+          Paid in <b>mUSDC</b>, mock USDC this repository deploys on Hedera testnet — not
+          Circle’s own USDC, whose testnet faucet gives $20 per address every two hours and could
+          never fund a $50,000 repayment. Anyone may deposit it, so Ironline tops its account up
+          to what it owes before paying. Six decimals, so no figure above changed with the money.
+        </p>
+
         <p className="mt-2 text-[13px] text-[var(--muted)]">
           {view.live
             ? 'Shares read from the receivable on Hedera testnet — the units held are the chain’s figures, not ours.'
@@ -322,9 +363,6 @@ export function Repay({ view, today }: { view: RepaymentView; today: Quote }) {
             ? 'Nobody was paid. Each holder is out its own share of the $50,000 — the same proportion it would have been paid in.'
             : 'No holder claimed, signed, or pressed anything. The only party that acted is the one that owed.'}{' '}
           {answer.reason && <span data-testid="repay-reason">{answer.reason}</span>}
-          {answer.holders[0]?.hash && (
-            <span className="text-[var(--muted)]"> First transfer: {answer.holders[0].hash}</span>
-          )}
         </div>
       )}
     </section>

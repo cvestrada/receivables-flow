@@ -242,11 +242,11 @@ function keyFor(buyer: string): string | undefined {
 export async function sellHalf(buyer: string, units: number, priceUsd: number = CASH_BACK_USD): Promise<Sale> {
   const sellerKey = process.env.HEDERA_OPERATOR_WALLET_PRIVATE_KEY;
   const buyerKey = keyFor(buyer);
-  const usdc = process.env.HEDERA_USDC_TOKEN_ADDRESS;
+  const dollar = process.env.HEDERA_MOCK_USDC_TOKEN_ADDRESS;
 
-  if (!sellerKey || !buyerKey || !usdc) {
+  if (!sellerKey || !buyerKey || !dollar) {
     throw new Error(
-      'The accounts this sale needs on Hedera are not open yet — set HEDERA_OPERATOR_WALLET_PRIVATE_KEY, the buyer key and HEDERA_USDC_TOKEN_ADDRESS in the repository .env',
+      'The accounts this sale needs on Hedera are not open yet — set HEDERA_OPERATOR_WALLET_PRIVATE_KEY, the buyer key and HEDERA_MOCK_USDC_TOKEN_ADDRESS in the repository .env.local',
     );
   }
 
@@ -282,7 +282,7 @@ export async function sellHalf(buyer: string, units: number, priceUsd: number = 
     await (await security.approve(SETTLEMENT, units)).wait();
 
     const listing = new Contract(SETTLEMENT, DVP_ABI, seller);
-    const terms = [RECEIVABLE_TOKEN, units, usdc, price, daysLeft] as const;
+    const terms = [RECEIVABLE_TOKEN, units, dollar, price, daysLeft] as const;
     const id = await listing.offer.staticCall(...terms);
     await (await listing.offer(...terms)).wait();
 
@@ -291,7 +291,7 @@ export async function sellHalf(buyer: string, units: number, priceUsd: number = 
      * receivable decides at that instant whether the buyer may hold it. A refusal there takes
      * the payment back with it.
      */
-    await (await new Contract(usdc, PAYMENT_ABI, purchaser).approve(SETTLEMENT, price)).wait();
+    await (await new Contract(dollar, PAYMENT_ABI, purchaser).approve(SETTLEMENT, price)).wait();
 
     const settled = await new Contract(SETTLEMENT, DVP_ABI, purchaser).settle(id);
     await settled.wait();
