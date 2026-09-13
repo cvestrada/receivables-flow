@@ -4,12 +4,12 @@ Sell an unpaid invoice and get the cash today. A business tokenizes its invoice 
 
 ## Live demo
 
-| Portal | URL | Sign in as |
-|---|---|---|
-| Business — Ironline Freight | https://business-production-0df2.up.railway.app | `biz-tom@galuaselou.resend.app` |
-| Investor — Woodgrove Capital | https://investor-production-d938.up.railway.app | `inv-woodgrove@galuaselou.resend.app` |
+| Portal | URL |
+|---|---|
+| Business — Ironline Freight | https://business-production-0df2.up.railway.app |
+| Investor — Woodgrove Capital | https://investor-production-d938.up.railway.app |
 
-Privy emails a six-digit code to the address; the inbox is a Resend inbound domain, so any address on it works.
+Sign in with your own email address; Privy sends a six-digit code. On the business portal, whoever signs in is seated as one of Ironline's three directors.
 
 Press **Reset demo** (bottom of either sidebar) before a run — it forgets the invoice, rewrites the ENS record to its starting counts, and redeems the receivable so it can be minted again. About a minute.
 
