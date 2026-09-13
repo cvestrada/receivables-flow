@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { NextResponse } from 'next/server';
 import { INVOICE } from '@rf/shared/invoice';
 import {
@@ -14,7 +15,7 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const STORE = '.approvals.json';
+const STORE = join(process.env.DEMO_STATE_DIR ?? '.', '.approvals.json');
 
 /** What the invoice is worth, written the way a person reads it. */
 const FACE_VALUE = `$${INVOICE.faceValueUsd.toLocaleString('en-US')}`;
@@ -44,9 +45,26 @@ function keep(record: CountedApprovals): CountedApprovals {
   return record;
 }
 
+/**
+ * Whether the invoice has been submitted for financing.
+ *
+ * There is nothing to approve until a business has asked for something. The panel used to offer
+ * an issuance to approve before anyone had submitted an invoice, which put the company's
+ * signature on a request that did not exist.
+ */
+function submitted(): boolean {
+  try {
+    return (JSON.parse(readFileSync(join(process.env.DEMO_STATE_DIR ?? '.', '.submitted.json'), 'utf8')) as { submitted?: boolean })
+      .submitted === true;
+  } catch {
+    return false;
+  }
+}
+
 /** What the portal shows: the issuance on offer, and who has approved it so far. */
 function view(record: CountedApprovals) {
   return {
+    submitted: submitted(),
     invoice: INVOICE.reference,
     customer: INVOICE.customer,
     amount: FACE_VALUE,
@@ -110,7 +128,7 @@ export async function POST(request: Request) {
   try {
     const record = held();
     const sent = await sendApproved(record.sale, record.approvals);
-    return NextResponse.json({ ...view(record), hash: sent.hash });
+    return NextResponse.json({ ...view(record), hash: sent.hash, privy: sent.privy });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     try {
@@ -119,4 +137,22 @@ export async function POST(request: Request) {
       return NextResponse.json(unopened(reason));
     }
   }
+}
+
+/**
+ * Forget the approvals gathered so far, so the next run starts from nobody having signed.
+ *
+ * The demo is meant to be repeatable: a judge arriving after someone else has approved would
+ * otherwise find the first signature already in place and never see the refusal. Deleting the
+ * record changes nothing on any chain — it is a note of who has signed, not a thing anyone
+ * signed — which is why it is safe to offer.
+ */
+export async function DELETE() {
+  try {
+    unlinkSync(STORE);
+  } catch {
+    /* Nothing held yet, which is the state this asks for. */
+  }
+
+  return NextResponse.json(view(held()));
 }

@@ -50,6 +50,20 @@ function Panel({
 }
 
 function cell(c: Cell, i: number) {
+  if (typeof c === 'object' && 'href' in c) {
+    return (
+      <TableCell key={i} className="px-5 py-3">
+        <a
+          href={c.href}
+          target="_blank"
+          rel="noreferrer"
+          className="text-[15px] font-medium text-[var(--accent)] underline-offset-2 hover:underline"
+        >
+          {c.v} ↗
+        </a>
+      </TableCell>
+    );
+  }
   if (typeof c === 'object' && 'chip' in c) {
     return (
       <TableCell key={i} className="px-5 py-3">

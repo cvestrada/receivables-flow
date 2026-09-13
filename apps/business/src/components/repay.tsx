@@ -1,14 +1,23 @@
 'use client';
 
+import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
+import { describeRecord } from '@rf/contracts-ens';
+import deployed from '@rf/contracts-ens/deployed.json';
 import { Button } from '@/components/ui/button';
 import type { Quote } from '@/lib/hedera-ats/quote';
 import type { Payment, RepaymentView } from '@/lib/hedera-ats/repay';
 
+/** The name the record lives under, taken from what onboarding actually registered. */
+const ENS_NAME =
+  (deployed as { business?: { name: string } }).business?.name ??
+  'ironline.business.receivablesflow.eth';
+
 /** One record on Ironline's page, and what the next invoice costs when priced against it. */
 interface Standpoint {
   record: { financed: number; ontime: number; late: number; defaulted: number; score: number | null };
-  annualRatePct: number;
+  dailyRatePct: number;
+  feePct: number;
   discountUsd: number;
 }
 
@@ -47,7 +56,7 @@ function score(value: number | null): string {
 
 /** How a record reads in words, so nobody has to work out what four numbers mean. */
 function tally(record: Standpoint['record']): string {
-  return `${record.financed} sold · ${record.ontime} paid on time · ${record.late} paid late · ${record.defaulted} never paid`;
+  return describeRecord(record);
 }
 
 function short(wallet: string): string {
@@ -121,40 +130,41 @@ export function Repay({ view, today }: { view: RepaymentView; today: Quote }) {
   const consequence = answer?.consequence;
   const before: Standpoint = consequence?.before ?? {
     record: today.record,
-    annualRatePct: today.annualRatePct,
+    dailyRatePct: today.dailyRatePct,
+    feePct: today.feePct,
     discountUsd: today.discountUsd,
   };
   const after = consequence?.after;
   const movement = !after
     ? ''
     : after.discountUsd < before.discountUsd
-      ? 'The next invoice costs less to sell than it did this morning'
+      ? 'Your next invoice is cheaper'
       : after.discountUsd > before.discountUsd
-        ? 'The next invoice costs more to sell than it did this morning'
-        : 'The next invoice costs the same as it did this morning';
+        ? 'Your next invoice costs more'
+        : 'Your next invoice costs the same';
 
   return (
     <section
       aria-label="Repay RCV-0001 at maturity"
       className="overflow-hidden rounded-xl border bg-[var(--surface)]"
     >
-      <header className="border-b px-5 py-4">
-        <h2 className="text-[16px] font-semibold text-[var(--ink)]">Day 60 — RCV-0001 falls due</h2>
-        <p className="mt-0.5 text-[14px] text-[var(--muted)]">
-          The receivable was sold <b>with recourse</b>, so the obligation is Ironline’s at face
-          value — owed whether or not Northwind Brokerage has paid Ironline.
+      {/*
+        * Cut to the two facts a business needs before it presses anything: what is owed, and
+        * to how many. Recourse, proportionality and who Northwind is were three sentences a
+        * person had to read past to find the button.
+        */}
+      <header className="flex flex-wrap items-baseline justify-between gap-2 border-b px-5 py-4">
+        <h2 className="text-[16px] font-semibold text-[var(--ink)]">Day 60</h2>
+        <p data-testid="repay-owed" className="text-[14px] text-[var(--body)]">
+          <b className="text-[var(--ink)]">{money(view.owedUsd)}</b> owed ·{' '}
+          {holders.length === 1 ? '1 holder' : `${holders.length} holders`}
         </p>
       </header>
 
-      <p data-testid="repay-owed" className="border-b px-5 py-3 text-[14px] text-[var(--body)]">
-        <b>Owed at maturity:</b> {money(view.owedUsd)} — divided across{' '}
-        {holders.length === 1 ? 'the one holder' : `all ${holders.length} holders`} of RCV-0001, in
-        proportion to what each holds.
-      </p>
-
       <div className="flex flex-wrap gap-2.5 px-5 py-4">
         <Button onClick={() => end('repaid')} disabled={busy}>
-          Repay {money(view.owedUsd)}
+          {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+          {busy ? 'Paying each holder on Hedera…' : `Repay ${money(view.owedUsd)}`}
         </Button>
         <Button variant="outline" onClick={() => end('defaulted')} disabled={busy}>
           Do not repay
@@ -170,9 +180,7 @@ export function Repay({ view, today }: { view: RepaymentView; today: Quote }) {
       </div>
 
       <div className="border-t px-5 py-4">
-        <div className="eyebrow mb-2">
-          {repaid ? 'Who was paid what' : 'Who holds RCV-0001, and what each is owed'}
-        </div>
+        <div className="eyebrow mb-2">{repaid ? 'Paid' : 'Holders'}</div>
         <table data-testid="repay-holders" className="w-full text-[14px]">
           <thead>
             <tr className="text-left text-[var(--muted)]">
@@ -250,38 +258,24 @@ export function Repay({ view, today }: { view: RepaymentView; today: Quote }) {
         </table>
 
         {/*
-          * Where these figures came from, said beside them. A division the portal could not
-          * refresh is still worth showing, but a business has to be able to tell it apart from
-          * one that is current.
-          */}
-        {/*
-          * What the money is, said where the amounts are. Circle's USDC faucet gives twenty
-          * dollars per address every two hours, so a $50,000 repayment could never be funded
-          * with it — and a mock has to be named as one, or the screen is claiming settlement
-          * in a currency it never touched.
+          * The currency named, because a mock has to be, and whether the shares are live. One
+          * line: the reasons Circle's faucet cannot fund this belong in a comment, not on a
+          * screen a business is trying to pay from.
           */}
         <p data-testid="repay-money" className="mt-2 text-[13px] text-[var(--muted)]">
-          Paid in <b>mUSDC</b>, mock USDC this repository deploys on Hedera testnet — not
-          Circle’s own USDC, whose testnet faucet gives $20 per address every two hours and could
-          never fund a $50,000 repayment. Anyone may deposit it, so Ironline tops its account up
-          to what it owes before paying. Six decimals, so no figure above changed with the money.
-        </p>
-
-        <p className="mt-2 text-[13px] text-[var(--muted)]">
-          {view.live
-            ? 'Shares read from the receivable on Hedera testnet — the units held are the chain’s figures, not ours.'
-            : 'Not live — the balances on hand, shown because the Hedera endpoint could not be reached. Nothing here was typed into the page.'}
+          Paid in mock USDC (mUSDC) on Hedera testnet, not Circle’s USDC ·{' '}
+          {view.live ? 'shares read from the chain' : 'shares not live — Hedera could not be reached'}
         </p>
       </div>
 
       <div data-testid="outcome-record" className="border-t px-5 py-4">
-        <div className="eyebrow mb-2">What this does to Ironline’s public record</div>
+        <div className="eyebrow mb-2">Your record after day 60</div>
 
         <table className="w-full text-[14px]">
           <thead>
             <tr className="text-left text-[var(--muted)]">
-              <th className="pb-1.5 font-medium">On ironline.business.receivablesflow.eth</th>
-              <th className="pb-1.5 text-right font-medium">Before day 60</th>
+              <th className="pb-1.5 font-medium" />
+              <th className="pb-1.5 text-right font-medium">Before</th>
               <th className="pb-1.5 text-right font-medium">After</th>
             </tr>
           </thead>
@@ -310,16 +304,7 @@ export function Repay({ view, today }: { view: RepaymentView; today: Quote }) {
               </td>
             </tr>
             <tr className="border-t">
-              <td className="py-1.5 text-[var(--ink)]">Rate the next invoice earns</td>
-              <td className="py-1.5 text-right tabular-nums text-[var(--muted)]">
-                {before.annualRatePct.toFixed(2)}%
-              </td>
-              <td className="py-1.5 text-right tabular-nums text-[var(--ink)]">
-                {after ? `${after.annualRatePct.toFixed(2)}%` : '—'}
-              </td>
-            </tr>
-            <tr className="border-t">
-              <td className="py-1.5 text-[var(--ink)]">Cost of selling the next invoice</td>
+              <td className="py-1.5 text-[var(--ink)]">Next invoice costs</td>
               <td
                 data-testid="outcome-discount-before"
                 className="py-1.5 text-right tabular-nums text-[var(--muted)]"
@@ -344,11 +329,30 @@ export function Repay({ view, today }: { view: RepaymentView; today: Quote }) {
           */}
         <p data-testid="outcome-published" className="mt-2 text-[13px] text-[var(--muted)]">
           {!after
-            ? 'Not published yet — day 60 has not ended. The record above is what any funder reads today.'
+            ? 'Not published yet.'
             : consequence?.published
-              ? `Published to Ironline’s page on Sepolia. ${movement} — nobody at Receivables Flow chose that; it is the same formula run against one more invoice.`
-              : `Not published — ${consequence?.reason ?? 'the page could not be written to.'} ${movement} once it is.`}
+              ? `Published to ENS. ${movement}.`
+              : `Not published — ${consequence?.reason ?? 'the page could not be written to.'}`}
         </p>
+
+        {/*
+          * The record itself, one click away.
+          *
+          * "Published to Sepolia" is a claim about a place, and a claim about a place with no way
+          * to go there is worth nothing — the whole argument for putting the history on ENS is
+          * that the next funder reads it without asking us.
+          */}
+        {after && consequence?.published && (
+          <a
+            data-testid="outcome-record-link"
+            href={`https://hackathon-deployment-portal-app.ens-cf.workers.dev/${ENS_NAME}/records`}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 inline-block text-[13px] font-medium text-[var(--accent)] hover:underline"
+          >
+            Open on ENS ↗
+          </a>
+        )}
       </div>
 
       {answer && (
@@ -359,9 +363,6 @@ export function Repay({ view, today }: { view: RepaymentView; today: Quote }) {
           }`}
         >
           <b>{headline(answer)}</b>{' '}
-          {answer.outcome === 'defaulted'
-            ? 'Nobody was paid. Each holder is out its own share of the $50,000 — the same proportion it would have been paid in.'
-            : 'No holder claimed, signed, or pressed anything. The only party that acted is the one that owed.'}{' '}
           {answer.reason && <span data-testid="repay-reason">{answer.reason}</span>}
         </div>
       )}

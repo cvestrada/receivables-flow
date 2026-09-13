@@ -1,5 +1,5 @@
 import { INVOICE } from '@rf/shared/invoice';
-import { priceFor } from '@rf/contracts-hedera-ats/pricing';
+import { dailyRatePct, feePct, priceFor } from '@rf/contracts-hedera-ats/pricing';
 import { record, type Record } from '@/lib/ens/score';
 
 /** Everything the page needs to show what the invoice sells for, and why. */
@@ -10,8 +10,10 @@ export interface Quote {
   faceValueUsd: number;
   /** Days from the sale until the invoice is payable. */
   maturityDays: number;
-  /** The annual rate the record earned, as a percentage. */
-  annualRatePct: number;
+  /** The daily rate the record earned, as a percentage of face: 0.062 means 0.062% a day. */
+  dailyRatePct: number;
+  /** The whole fee over this invoice's term, as a percentage of face. */
+  feePct: number;
   /** What the investor keeps at maturity, in whole dollars and cents. */
   discountUsd: number;
   /** What the business receives today, in whole dollars and cents. */
@@ -36,7 +38,8 @@ export async function quote(): Promise<Quote> {
     record: standing,
     faceValueUsd: INVOICE.faceValueUsd,
     maturityDays: INVOICE.maturityDays,
-    annualRatePct: priced.annualRateBps / 100,
+    dailyRatePct: dailyRatePct(priced),
+    feePct: feePct(priced),
     discountUsd: Number(priced.discount) / USDC_DECIMALS,
     proceedsUsd: Number(priced.price) / USDC_DECIMALS,
   };

@@ -64,7 +64,23 @@ function next(before: Standing, ending: Ending): Standing {
  */
 export async function publish(ending: Ending, hash?: string): Promise<Written> {
   const before = await record();
-  const projected = next(before, ending);
+
+  /*
+   * Nothing outstanding means nothing to end. Said plainly and published nowhere: the page must
+   * not be made to say an invoice was repaid that it never said was sold.
+   */
+  let projected: Standing;
+  try {
+    projected = next(before, ending);
+  } catch (error) {
+    return {
+      before,
+      after: before,
+      published: false,
+      hash,
+      reason: error instanceof Error ? error.message : String(error),
+    };
+  }
 
   const { business } = deployed as Deployment;
   const key = process.env.SEPOLIA_PLATFORM_WALLET_PRIVATE_KEY;
@@ -102,6 +118,54 @@ export async function publish(ending: Ending, hash?: string): Promise<Written> {
       after: projected,
       published: false,
       hash,
+      reason: error instanceof Error ? error.message : String(error),
+    };
+  } finally {
+    provider.destroy();
+  }
+}
+
+/**
+ * Count the invoice as financed on Ironline Freight's page, the moment it is tokenized.
+ *
+ * `financed` is meant to move on the day the invoice is sold and `ontime` on the day it is
+ * repaid — that is what keeps the page a record and not a tally, and it is why day 60 does not
+ * touch `financed`. But nothing wrote the first half: the wizard minted the receivable and the
+ * page went on saying six financed while every repayment pushed paid-on-time past it, until the
+ * counts read six financed and eight matured, which is a record of an impossible business.
+ *
+ * Idempotence is the caller's: this is called once, from the request that records the mint,
+ * and that request records a mint once.
+ */
+export async function recordFinanced(): Promise<Written> {
+  const before = await record();
+  const projected = { ...before, financed: before.financed + 1 };
+
+  const { business } = deployed as Deployment;
+  const key = process.env.SEPOLIA_PLATFORM_WALLET_PRIVATE_KEY;
+
+  if (!business || !key) {
+    return {
+      before,
+      after: projected,
+      published: false,
+      reason: 'The platform key that writes to Ironline’s page is not open — set SEPOLIA_PLATFORM_WALLET_PRIVATE_KEY.',
+    };
+  }
+
+  const provider = new JsonRpcProvider(RPC_URL, SEPOLIA, { staticNetwork: true });
+
+  try {
+    const platform = new Wallet(key, provider);
+    /* The whole set, so `outstanding` moves with `financed` and the page still adds up. */
+    await writeRecords(platform as never, business.resolver, business.name, countRecords(projected));
+
+    return { before, after: await record(), published: true };
+  } catch (error) {
+    return {
+      before,
+      after: projected,
+      published: false,
       reason: error instanceof Error ? error.message : String(error),
     };
   } finally {
