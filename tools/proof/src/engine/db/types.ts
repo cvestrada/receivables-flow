@@ -93,10 +93,6 @@ export interface StepTable {
   status: Generated<StepStatus>;
   order: number;
   sponsor: Sponsor | null;
-  why_stack: string;
-  requirement: string;
-  extra_points: string | null;
-  why_wins: string;
   created_at: Generated<string>;
   updated_at: string | null;
   deleted_at: string | null;

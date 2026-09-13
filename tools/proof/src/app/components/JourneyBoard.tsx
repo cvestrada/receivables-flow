@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import type { StepStatus, TestResultStatus, Sponsor } from '../../types/journey.type.js';
 
 interface JourneyData {
@@ -16,10 +16,6 @@ interface JourneyData {
     status: StepStatus;
     order: number;
     sponsor: Sponsor | null;
-    whyStack: string;
-    requirement: string;
-    extraPoints: string | null;
-    whyWins: string;
   }>;
   concerns: Array<{ id: string; stepId: string; thought: string | null; painPoint: string | null; opportunity: string | null }>;
   capabilities: Array<{ id: string; goalId: string | null; name: string }>;
@@ -36,29 +32,12 @@ const COL_WIDTH = 200;
  *  proof tool's own Touchpoints/Thoughts/Feelings/Pain Points/Opportunities rows are a
  *  UX-research shape; this board is read by someone deciding whether a submission clears
  *  a prize bar, and those five rows had nothing to say to that reader. */
-const ROW_LABELS = [
-  'Phase',
-  'What They Can Do',
-  'Steps (How)',
-  'Why This Stack',
-  'Requirement Met',
-  'Extra Points',
-  'Why We Win',
-] as const;
-/** Phase and Milestones are section headers, sized to their own short text. Feelings is
- *  the wave chart, not a text card. Steps (How) stacks one card per step in a goal, each
- *  card carrying its own proof badge inline (see the Steps (How) row below). That row's
- *  own grid track is sized 'max-content', not a fixed px guess -- a card's own height
- *  isn't fixed either (min-h-28, not h-28: real action text can run to several lines,
- *  e.g. capital-cycle's own cross-app visibility steps), so only the browser, after
- *  laying out real text, actually knows how tall the tallest column gets. A fixed-height
- *  card with overflow-y-auto used to silently clip its own badge row off-screen the
- *  moment its action text alone filled the card -- found by the human directly on a real
- *  card that never showed its performedBy badge, not caught by any test, since nothing
- *  here is about correctness of the data, only whether it's visible. The four single-
- *  value per-goal info cards (Goal, Touchpoints, Thoughts, Pain Points, Opportunities)
- *  still share one fixed height, CARD_HEIGHT, since their own content is always short. */
-const CARD_HEIGHT = 90;
+/*
+ * Two rows. The goal row said the phase name back in a sentence — one goal per phase, stating
+ * what the phase already states — so it was a row of restatement between the reader and the
+ * steps. Its status badge moved onto the steps, which is where a gap actually lives.
+ */
+const ROW_LABELS = ['Phase', 'Steps'] as const;
 /** The step card's own Tailwind class below is min-h-28 (112px) with gap-1 (STEP_CARD_GAP,
  *  4px) between cards -- both still real Tailwind values, just no longer a ceiling: a card
  *  can grow taller than STEP_CARD_HEIGHT, and the grid row (sized 'max-content' below)
@@ -163,7 +142,6 @@ interface JourneyBoardProps {
  * partially-scrolled cells bleed through at the boundary.
  */
 export default function JourneyBoard({ actorId, journeySlug, scrollTargetId }: JourneyBoardProps) {
-  const navigate = useNavigate();
   const [data, setData] = useState<JourneyData | null>(null);
   const [error, setError] = useState<string | null>(null);
   /** Which step's footer (real code + real test, both) is open right now -- one at a
@@ -242,14 +220,6 @@ export default function JourneyBoard({ actorId, journeySlug, scrollTargetId }: J
             goal,
             steps,
             concerns,
-            /** A goal's steps can each clear a different bar, so these three rows join
-             *  every distinct value under the goal rather than showing only the last
-             *  step's -- collapsing them would silently drop a requirement a goal really
-             *  does cover. */
-            whyStack: [...new Set(steps.map((step) => step.whyStack).filter(Boolean))],
-            requirements: [...new Set(steps.map((step) => step.requirement).filter(Boolean))],
-            extraPoints: [...new Set(steps.map((step) => step.extraPoints).filter((v): v is string => Boolean(v)))],
-            whyWins: [...new Set(steps.map((step) => step.whyWins).filter(Boolean))],
             status: worstStep(steps)?.status ?? 'proposed',
             col,
             /** The goal's own ancestor slugs, carried alongside it so a click on this
@@ -321,7 +291,7 @@ export default function JourneyBoard({ actorId, journeySlug, scrollTargetId }: J
    *  action text wraps to, and only the browser knows the second part once real text is
    *  laid out. A goal with only one or two short steps just leaves blank space below its
    *  cards, same as a short Goal/Touchpoints card does today. */
-  const ROW_HEIGHTS: (number | 'max-content')[] = [48, CARD_HEIGHT, 'max-content', 'max-content', 'max-content', 'max-content', 'max-content'];
+  const ROW_HEIGHTS: (number | 'max-content')[] = [48, 'max-content'];
   const gridTemplateRows = ROW_HEIGHTS.map((h) => (typeof h === 'number' ? `${h}px` : h)).join(' ');
 
   /** The label rail is column 1 of the SAME grid as the content, not a grid of its own.
@@ -383,50 +353,14 @@ export default function JourneyBoard({ actorId, journeySlug, scrollTargetId }: J
               </div>
             ))}
 
-            {/* Goal (What) — dashed border + badge flags a proposed or partially_built step,
-                same treatment the capability drill-in already uses for inferred nodes. When a
-                goal has several steps, this reads as the worst of them, never the best.
-                Clicking it opens the full diagram page for that same worst step -- never a
-                better-looking step -- so the page it lands on always explains the gap the
-                badge just warned about, not a different, more finished one. */}
-            {board.allGoalCols.map((c) => {
-              const target = worstStep(c.steps);
-              const goalPath = `/proof/${actorId}/${journey!.slug}/${c.phaseSlug}/${c.milestoneSlug}/${c.goal.slug}`;
-              return (
-                <div
-                  key={c.goal.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => target && navigate(goalPath)}
-                  onKeyDown={(e) => {
-                    if (e.key !== 'Enter' && e.key !== ' ') return;
-                    e.preventDefault();
-                    if (target) navigate(goalPath);
-                  }}
-                  className={`self-stretch flex flex-col items-start bg-rose-50/60 rounded-md text-xs px-2 py-2 leading-snug overflow-y-auto cursor-pointer hover:bg-indigo-50 transition-colors ${
-                    STATUS_BORDER_CLASS[c.status]
-                  }`}
-                  style={{ gridColumn: c.col + 2, gridRow: 2 }}
-                  title="Open the real code diagram behind this goal"
-                >
-                  {STATUS_BADGE[c.status] && (
-                    <span className={`text-[9px] font-semibold uppercase tracking-wide mb-0.5 ${STATUS_BADGE[c.status]!.className}`}>
-                      {STATUS_BADGE[c.status]!.label}
-                    </span>
-                  )}
-                  {c.goal.statement}
-                </div>
-              );
-            })}
-
-            {/* Steps (How) — an ordered stack of step cards, one per real step this goal
+            {/* Steps — an ordered stack of step cards, one per real step this goal
                 takes, instead of the single hand-typed claim this row used to force. Each
                 card is plain "N. text" -- no special number UI -- and carries its own proof
                 badge, a plain status label, never a click target of its own. The whole card
                 is the one click target: it opens the footer below with both the real code
                 behind this step and the real test that proves it, side by side. */}
             {board.allGoalCols.map((c) => (
-              <div key={c.goal.id} className="self-stretch flex flex-col gap-1 overflow-y-auto" style={{ gridColumn: c.col + 2, gridRow: 3 }}>
+              <div key={c.goal.id} className="self-stretch flex flex-col gap-1 overflow-y-auto" style={{ gridColumn: c.col + 2, gridRow: 2 }}>
                 {c.steps.length === 0 && <span className="text-gray-300 text-xs px-2">—</span>}
                 {c.steps.map((step) => {
                   const result = board.latestTestResultByStepId.get(step.id);
@@ -451,6 +385,13 @@ export default function JourneyBoard({ actorId, journeySlug, scrollTargetId }: J
                         {step.order}. {step.action}
                       </div>
                       <div className="flex flex-wrap gap-1">
+                        {/* The status the goal row used to carry, now on the step it describes —
+                            a gap belongs to one step, never to the whole phase. */}
+                        {STATUS_BADGE[step.status] && (
+                          <span className={`self-start shrink-0 text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 ${STATUS_BADGE[step.status]!.className}`}>
+                            {STATUS_BADGE[step.status]!.label}
+                          </span>
+                        )}
                         <span className={`self-start shrink-0 text-[9px] font-medium px-1.5 py-0.5 rounded border ${badge ? badge.className : NOT_TESTED_CLASS}`}>
                           {badge ? badge.label : 'Not yet tested'}
                         </span>
@@ -466,69 +407,6 @@ export default function JourneyBoard({ actorId, journeySlug, scrollTargetId }: J
               </div>
             ))}
 
-            {/* Why This Stack — why this technology is right for this job, not just which
-                technology it is. The answer to "why not a row in your own database". */}
-            {board.allGoalCols.map((c) => (
-              <div
-                key={c.goal.id}
-                className="self-stretch flex flex-col gap-1 bg-slate-50 border border-slate-200 rounded-md text-xs px-2 py-2 leading-snug text-slate-700"
-                style={{ gridColumn: c.col + 2, gridRow: 4 }}
-              >
-                {c.whyStack.length > 0 ? (
-                  <ol className="list-decimal list-outside pl-4 space-y-1">
-                    {c.whyStack.map((w) => <li key={w}>{w}</li>)}
-                  </ol>
-                ) : <span className="text-slate-400">—</span>}
-              </div>
-            ))}
-
-            {/* Requirement Met — the stated qualification bar this goal's steps clear */}
-            {board.allGoalCols.map((c) => (
-              <div
-                key={c.goal.id}
-                className={`self-stretch flex flex-col gap-1 bg-rose-50/60 rounded-md text-xs px-2 py-2 leading-snug text-gray-700 ${
-                  STATUS_BORDER_CLASS[c.status]
-                }`}
-                style={{ gridColumn: c.col + 2, gridRow: 5 }}
-              >
-                {c.requirements.length > 0 ? (
-                  <ol className="list-decimal list-outside pl-4 space-y-1">
-                    {c.requirements.map((r) => <li key={r}>{r}</li>)}
-                  </ol>
-                ) : <span className="text-gray-400">—</span>}
-              </div>
-            ))}
-
-            {/* Extra Points — only where a listed bonus item is genuinely hit. An em-dash
-                here is a real answer: this step clears a mandatory bar and nothing more. */}
-            {board.allGoalCols.map((c) => (
-              <div
-                key={c.goal.id}
-                className="self-stretch flex flex-col gap-1 bg-emerald-50/70 border border-emerald-200 rounded-md text-xs px-2 py-2 leading-snug text-emerald-900"
-                style={{ gridColumn: c.col + 2, gridRow: 6 }}
-              >
-                {c.extraPoints.length > 0 ? (
-                  <ol className="list-decimal list-outside pl-4 space-y-1">
-                    {c.extraPoints.map((e) => <li key={e}>{e}</li>)}
-                  </ol>
-                ) : <span className="text-emerald-700/40">—</span>}
-              </div>
-            ))}
-
-            {/* Why We Win — the demo moment, or the thing most teams will not have */}
-            {board.allGoalCols.map((c) => (
-              <div
-                key={c.goal.id}
-                className="self-stretch flex flex-col gap-1 bg-amber-50/70 border border-amber-200 rounded-md text-xs px-2 py-2 leading-snug text-amber-950"
-                style={{ gridColumn: c.col + 2, gridRow: 7 }}
-              >
-                {c.whyWins.length > 0 ? (
-                  <ol className="list-decimal list-outside pl-4 space-y-1">
-                    {c.whyWins.map((w) => <li key={w}>{w}</li>)}
-                  </ol>
-                ) : <span className="text-amber-700/40">—</span>}
-              </div>
-            ))}
           </div>
       </div>
 

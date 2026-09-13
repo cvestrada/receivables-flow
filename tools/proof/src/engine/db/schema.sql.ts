@@ -87,18 +87,6 @@ CREATE TABLE IF NOT EXISTS step (
   -- performed_by (automated / staff-in-app / staff-outside-app): who presses the button
   -- is not what this board is tracking any more, which stack is being exercised is.
   sponsor      TEXT CHECK (sponsor IS NULL OR sponsor IN ('hedera-ats', 'hedera', 'privy', 'ensv2')),
-  -- Why this technology is the right tool for THIS job -- the answer to "why not just a
-  -- row in your own database". Naming the stack is not a justification; this column is.
-  why_stack    TEXT NOT NULL,
-  -- The stated qualification requirement this step clears, quoted close to the track's
-  -- own wording so a reader can match it against the brief without interpretation.
-  requirement  TEXT NOT NULL,
-  -- The listed "extra points" item this step hits, when it hits one. Null is the honest
-  -- value for a step that only clears a mandatory bar.
-  extra_points TEXT,
-  -- Why this beats a minimum submission -- the demo moment, or the thing most teams
-  -- will not have. This is the column that is actually about winning rather than passing.
-  why_wins     TEXT NOT NULL,
   created_at   TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at   TEXT,
   deleted_at   TEXT
