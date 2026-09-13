@@ -25,10 +25,10 @@ export interface DemoInvoice {
   noteTicker: string;
 }
 
-/** Ironline Freight's invoice to Northwind Brokerage — the receivable the demo issues and sells. */
+/** Ironline Freight's invoice to Northwind Supplies — the receivable the demo issues and sells. */
 export const INVOICE: DemoInvoice = {
   reference: 'INV-2026-0417',
-  customer: 'Northwind Brokerage',
+  customer: 'Northwind Supplies',
   faceValueUsd: 50_000,
   maturityDays: 60,
   noteName: 'Receivables Flow · Ironline Freight Note 2026-0417',
