@@ -17,6 +17,7 @@ import {
   buildSaleRequest,
   type SignableRequest,
 } from './policies';
+import { authorizationSignature } from './signing';
 
 export { nameFromEmail } from './policies';
 
@@ -78,7 +79,14 @@ export interface Director {
 }
 
 export interface OpenedAccounts {
-  company: { address: string; walletId: string; quorumId: string; directors: Director[] };
+  company: {
+    address: string;
+    walletId: string;
+    quorumId: string;
+    /** The nested seat on that quorum held by whoever is signed in. */
+    visitingSeatId?: string;
+    directors: Director[];
+  };
   fund: { address: string; walletId: string; policyId: string };
   ratedListId: string;
   /** What this run of provisioning created. Empty on every run after the first. */
@@ -109,6 +117,19 @@ export interface CountedApprovals {
 
 export interface Sent {
   hash: string;
+  /**
+   * What Privy actually answered, as it answered it.
+   *
+   * The screen shows this rather than a sentence of ours about it. "Privy counted two
+   * signatures and sent it" is our claim; a response body with a transaction hash, a status
+   * and a request id is Privy's, and it is the one a judge can read.
+   */
+  privy: {
+    status: number;
+    requestId?: string;
+    signatures: number;
+    body: unknown;
+  };
 }
 
 /**
@@ -129,6 +150,67 @@ export function recordApproval(record: ApprovalRecord, approval: Approval): Coun
     required: APPROVERS_REQUIRED,
     ready: approvals.length >= APPROVERS_REQUIRED,
   };
+}
+
+/**
+ * The keys this company signs with, as provisioning generated them.
+ *
+ * Beside accounts.json rather than inside it: both portals read the accounts, and these are
+ * private keys. Testnet demo keys, and still private keys.
+ */
+interface CompanyKeys {
+  system: { publicKey: string; privateKey: string };
+  seatHolder: { publicKey: string; privateKey: string };
+  visitingSeatId: string;
+}
+
+function companyKeys(): CompanyKeys {
+  const path = accountsPath().replace(/accounts\.json$/, 'keys.json');
+  if (!existsSync(path)) throw new Error('libs/privy/keys.json not found — run provisioning');
+
+  return JSON.parse(readFileSync(/* turbopackIgnore: true */ path, 'utf8')) as CompanyKeys;
+}
+
+/**
+ * Seat whoever just signed in as Ironline Freight's third director.
+ *
+ * The third seat on the company wallet is a quorum of one, and the key that holds it is the
+ * platform's — so the platform can hand the seat to a visitor without asking the other two
+ * seats for permission, which is what makes this demo something a stranger can actually do.
+ * The other two seats are untouched: a visitor becomes one signature of the two required, not
+ * the whole board.
+ *
+ * @param userId - The Privy user who just signed in
+ */
+export async function seatVisitingDirector(userId: string): Promise<void> {
+  const keys = companyKeys();
+  const path = `/key_quorums/${keys.visitingSeatId}`;
+  const body = {
+    public_keys: [keys.seatHolder.publicKey],
+    user_ids: [userId],
+    authorization_threshold: 1,
+  };
+
+  const response = await fetch(`https://api.privy.io/v1${path}`, {
+    method: 'PATCH',
+    headers: {
+      'privy-app-id': appId(),
+      Authorization: `Basic ${basicAuth()}`,
+      'Content-Type': 'application/json',
+      'privy-authorization-signature': authorizationSignature({
+        appId: appId(),
+        url: `https://api.privy.io/v1${path}`,
+        body,
+        key: keys.seatHolder.privateKey,
+        method: 'PATCH',
+      }),
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Privy refused the seat (${response.status}): ${await response.text()}`);
+  }
 }
 
 /** The accounts as `provision.ts` left them. */
@@ -173,7 +255,15 @@ async function send(req: SignableRequest, signatures: string[]): Promise<Sent> {
     throw new Error(`Privy refused (${response.status}): ${JSON.stringify(body.error ?? body)}`);
   }
 
-  return { hash: body.data?.hash ?? '' };
+  return {
+    hash: body.data?.hash ?? '',
+    privy: {
+      status: response.status,
+      requestId: response.headers.get('x-request-id') ?? undefined,
+      signatures: signatures.length,
+      body,
+    },
+  };
 }
 
 /** The sale currently on offer, as the request each director signs in their browser. */
@@ -208,17 +298,26 @@ export function issuanceToApprove(): SignableRequest {
 }
 
 /**
- * Send an approved request carrying the approvals collected so far.
+ * Send an approved request carrying the approvals collected so far, and the company's own.
  *
- * Deliberately willing to send too few. The portal offers that button so the
- * refusal can be produced on demand, and the refusal has to come from Privy
- * counting the signatures — not from us declining to ask.
+ * Two of the three seats on this wallet must sign. One of them is the company's finance
+ * system, which signs every financing it proposes — so what is actually being waited on is a
+ * director, which is the rule the demo is about. The system's signature is added here rather
+ * than collected from a screen because no person makes it.
+ *
+ * Deliberately willing to send too few. The portal offers that button so the refusal can be
+ * produced on demand, and the refusal has to come from Privy counting the signatures — not
+ * from us declining to ask.
  */
 export function sendApproved(request: SignableRequest, approvals: Approval[]): Promise<Sent> {
-  return send(
-    request,
-    approvals.map((approval) => approval.signature),
-  );
+  const system = authorizationSignature({
+    appId: appId(),
+    url: request.url,
+    body: request.body,
+    key: companyKeys().system.privateKey,
+  });
+
+  return send(request, [system, ...approvals.map((approval) => approval.signature)]);
 }
 
 /**
@@ -236,15 +335,22 @@ export function allocate(allocation: { invoice: string; usd: number }): Promise<
   const key = process.env.PRIVY_FUND_AUTHORIZATION_KEY;
   if (!key) throw new Error('PRIVY_FUND_AUTHORIZATION_KEY is not set');
 
-  return send(
-    buildAllocationRequest({
-      appId: appId(),
-      walletId: accounts.fund.walletId,
-      invoice,
-      usd: allocation.usd,
-    }),
-    [key],
-  );
+  const request = buildAllocationRequest({
+    appId: appId(),
+    walletId: accounts.fund.walletId,
+    invoice,
+    usd: allocation.usd,
+  });
+
+  /*
+   * The key signs the request; it is never the signature. Sending the key itself in the
+   * signature header is what this line used to do, and Privy refused every allocation with
+   * "no valid authorization signatures were provided" — a refusal that looked like the mandate
+   * working and was nothing of the kind.
+   */
+  return send(request, [
+    authorizationSignature({ appId: appId(), url: request.url, body: request.body, key }),
+  ]);
 }
 
 /** What each account currently holds, in the chain's smallest unit. */
