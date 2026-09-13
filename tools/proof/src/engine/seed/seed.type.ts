@@ -7,10 +7,10 @@ import { CATEGORIES } from './category.constant.js';
  * The seed contract every actor's own seed file writes against, plus the single writer
  * that puts a SeedResult into the database.
  *
- * Orbbit's own proof tool keeps these types and `insertSeed` inside business.seed.ts and
- * has the other actors import from it, which makes Business the accidental owner of a
- * shared contract. Split out here instead: `business.seed.ts` and `investor.seed.ts` are
- * peers, and neither imports the other.
+ * Orbbit's own proof tool keeps these types and `insertSeed` inside one actor's seed file
+ * and has the others import from it, which makes that actor the accidental owner of a
+ * shared contract. Split out here instead, so the contract stays where it belongs even
+ * though there is only one seed file writing against it today.
  */
 
 export interface SeedUser {
@@ -69,20 +69,11 @@ export interface SeedStep {
   status: StepStatus;
   /** a goal's steps run in this order */
   order: number;
-  /** whose stack does the work here — the badge on the step card */
-  sponsor: Sponsor;
-  /** why this technology is the right tool for THIS job — the answer to "why not just a
-   *  row in your own database". Naming the stack is not a justification; this field is. */
-  whyStack: string;
-  /** the stated qualification requirement this step clears, kept close to the track's own
-   *  wording so a reader can match it against the brief without interpreting anything */
-  requirement: string;
-  /** the listed "extra points" item this step hits. Omit it for a step that only clears a
-   *  mandatory bar — an empty value is the honest answer, not a gap to fill with padding. */
-  extraPoints?: string;
-  /** why this beats a minimum submission: the demo moment, or the thing most teams will
-   *  not have. The column that is about winning rather than passing. */
-  whyWins: string;
+  /** whose stack does the work here — the badge on the step card. Null where the step is
+   *  the platform's own work and no sponsor's technology does it, which is the honest
+   *  answer for uploading an invoice or showing a sum: a badge there would inflate a
+   *  count somebody is going to check. */
+  sponsor: Sponsor | null;
 }
 
 export interface SeedConcern {
@@ -195,7 +186,6 @@ export async function insertSeed(result: SeedResult): Promise<void> {
       await trx.insertInto('step').values({
         id: step.id, goal_id: step.goalId, trigger: step.trigger, action: step.action, outcome: step.outcome,
         status: step.status, order: step.order, sponsor: step.sponsor,
-        why_stack: step.whyStack, requirement: step.requirement, extra_points: step.extraPoints ?? null, why_wins: step.whyWins,
       }).onConflict((oc) => oc.doNothing()).execute();
     }
     for (const concern of result.concerns) {

@@ -12,7 +12,13 @@ const PASS: PassView = {
   cleared: true,
 };
 
-const SCORE: ScoreView = { issuer: 'ironline', label: '100 of 100', value: 100, live: true };
+const SCORE: ScoreView = {
+  issuer: 'ironline',
+  label: '100 of 100',
+  value: 100,
+  counts: { financed: 7, ontime: 7, late: 0, defaulted: 0 },
+  live: true,
+};
 
 const WHOLE = 50_000;
 

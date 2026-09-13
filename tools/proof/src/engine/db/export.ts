@@ -27,10 +27,6 @@ export interface JourneyStep {
   status: StepStatus;
   order: number;
   sponsor: Sponsor | null;
-  whyStack: string;
-  requirement: string;
-  extraPoints: string | null;
-  whyWins: string;
 }
 export interface JourneyConcern { id: string; stepId: string; thought: string | null; painPoint: string | null; opportunity: string | null }
 export interface JourneyCapability {
@@ -116,7 +112,7 @@ export async function exportJourneyData(dbPath?: string): Promise<JourneyData> {
     phases: phases.map((phase, i) => ({ ...phase, slug: phaseSlugs[i] })),
     milestones: milestones.map((milestone, i) => ({ ...milestone, slug: milestoneSlugs[i] })),
     goals: goals.map((goal, i) => ({ ...goal, slug: goalSlugs[i] })),
-    steps: await db.selectFrom('step').select(['id', 'goal_id as goalId', 'trigger', 'action', 'outcome', 'status', 'order', 'sponsor', 'why_stack as whyStack', 'requirement', 'extra_points as extraPoints', 'why_wins as whyWins']).execute(),
+    steps: await db.selectFrom('step').select(['id', 'goal_id as goalId', 'trigger', 'action', 'outcome', 'status', 'order', 'sponsor']).execute(),
     concerns: await db.selectFrom('concern').select(['id', 'step_id as stepId', 'thought', 'pain_point as painPoint', 'opportunity']).execute(),
     capabilities: await db.selectFrom('capability').select(['id', 'goal_id as goalId', 'name', 'pattern_name as patternName', 'activity_patterns as activityPatterns', 'logic_chains as logicChains', 'claimed_pattern_id as claimedPatternId', 'diagram']).execute(),
     nodes: await db.selectFrom('node').select(['id', 'capability_id as capabilityId', 'layer', 'kind', 'label', 'sublabel', 'path', 'method', 'status', 'order']).execute(),

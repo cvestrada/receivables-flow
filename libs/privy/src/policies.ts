@@ -42,14 +42,44 @@ export function usdToWeibar(usd: number): bigint {
  * rather than beside the accounts because a browser needs it and this file is the
  * half of the package that carries nothing a browser cannot have.
  */
+/**
+ * The people behind the demo mailboxes, by the first name their address carries.
+ *
+ * The directors on file are named in full on the signing policy, and a sidebar that said "Tom"
+ * under a policy that said "Tom Hill" read as two people. Anyone not on this list is named by
+ * their address the way they were before.
+ */
+const DIRECTORS: Record<string, string> = {
+  anna: 'Anna Reed',
+  tom: 'Tom Hill',
+  grace: 'Grace Ward',
+  woodgrove: 'A. Whitfield',
+};
+
 export function nameFromEmail(email: string): string {
-  const local = email.split('@')[0].replace(/^(business|investor)-/, '');
-  return local.charAt(0).toUpperCase() + local.slice(1);
+  // `biz-` as well as `business-`: the demo mailboxes are named biz-anna@…, and a portal
+  // that called her "Biz-anna" would be reading an address aloud rather than naming a person.
+  const local = email.split('@')[0].replace(/^(business|biz|investor|inv)-/, '');
+  return DIRECTORS[local.toLowerCase()] ?? local.charAt(0).toUpperCase() + local.slice(1);
+}
+
+/** Two letters for an avatar, from the person's name rather than the first two of an address. */
+export function initialsFor(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter((part) => /^[A-Za-z]/.test(part))
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join('');
 }
 
 export interface ApprovingGroup {
   display_name: string;
   user_ids: string[];
+  /** Authorization keys that hold a seat, base64 DER. The company's own system holds one. */
+  public_keys?: string[];
+  /** Nested quorums that hold a seat — one per seat, one level deep, as Privy allows. */
+  key_quorum_ids?: string[];
   authorization_threshold: number;
 }
 
@@ -75,16 +105,32 @@ export interface Policy {
 }
 
 /**
- * The group that owns Ironline Freight's account.
+ * The group that owns Ironline Freight's account: three seats, two of which must sign.
  *
- * Members are people with Privy dashboard logins rather than keys held by a
- * server, which is what makes the second approval a person deciding rather than
- * a process running.
+ * Seat one is a director with a login of her own. Seat two is the company's own finance
+ * system, which proposes a financing and signs it once — a company system acting is not the
+ * same as a person approving, which is the whole reason the threshold is two. Seat three is
+ * a nested quorum of one, held by whoever is signed in: that is what lets a stranger open the
+ * demo, take a director's seat, and be the signature that makes the sale happen.
+ *
+ * The seat is nested rather than flat because a nested quorum can be updated on its own — the
+ * platform can seat the next visitor without asking the other two seats for permission, which
+ * a flat member list would require.
+ *
+ * @param directorUserIds - Privy user ids of the directors who hold a seat outright
+ * @param systemKey - The company system's authorization key, base64 DER
+ * @param visitingSeatId - The nested quorum that whoever is signed in occupies
  */
-export function buildApprovingGroup(directorUserIds: string[]): ApprovingGroup {
+export function buildApprovingGroup(
+  directorUserIds: string[],
+  systemKey?: string,
+  visitingSeatId?: string,
+): ApprovingGroup {
   return {
     display_name: 'Ironline Freight directors',
     user_ids: directorUserIds,
+    ...(systemKey ? { public_keys: [systemKey] } : {}),
+    ...(visitingSeatId ? { key_quorum_ids: [visitingSeatId] } : {}),
     authorization_threshold: APPROVERS_REQUIRED,
   };
 }
@@ -157,9 +203,22 @@ export interface SignableRequest {
     caip2: string;
     method: 'eth_sendTransaction';
     chain_type: 'ethereum';
-    params: { transaction: { to: string; value: string; data: string } };
+    params: { transaction: { to: string; value: string; data: string; gas_limit: string } };
   };
 }
+
+/**
+ * What a call through this wallet is given to run in, stated rather than estimated.
+ *
+ * Hedera's JSON-RPC relay answers `eth_estimateGas` with about 115,000 for almost anything, and
+ * a mint that goes through ATS's resolver proxy into a facet needs far more. The transaction
+ * then runs out of gas, and Hedera reports running out exactly as it reports a revert — status
+ * 0, no logs, no reason — which arrives here as Privy refusing with CONTRACT_REVERT_EXECUTED.
+ *
+ * Stating it makes the signature cover it too: the gas is part of the request both directors
+ * sign, so nobody can raise it after the fact.
+ */
+const GAS_LIMIT = '0x1E8480';
 
 function request(
   appId: string,
@@ -175,7 +234,7 @@ function request(
       caip2: HEDERA_TESTNET_CAIP2_CHAIN_ID,
       method: 'eth_sendTransaction',
       chain_type: 'ethereum',
-      params: { transaction },
+      params: { transaction: { ...transaction, gas_limit: GAS_LIMIT } },
     },
   };
 }

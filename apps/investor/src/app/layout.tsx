@@ -11,7 +11,7 @@ import './globals.css';
 const tight = Inter_Tight({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-tight' });
 
 export const metadata: Metadata = {
-  title: 'Woodgrove Capital',
+  title: 'Woodgrove Capital · Investor',
   description: 'Fund a receivable and get paid at maturity.',
 };
 

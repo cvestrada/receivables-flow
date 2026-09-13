@@ -11,7 +11,7 @@ import './globals.css';
 const tight = Inter_Tight({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-tight' });
 
 export const metadata: Metadata = {
-  title: 'Ironline Freight',
+  title: 'Ironline Freight · Business',
   description: 'Sell an unpaid invoice and get the cash today.',
 };
 

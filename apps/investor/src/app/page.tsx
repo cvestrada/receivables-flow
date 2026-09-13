@@ -1,42 +1,6 @@
-import { Allocate } from '@/components/allocate';
-import { PrivyPortal } from '@/components/privy';
-import { Resell } from '@/components/resell';
-import { NAV, buildDefaulted, buildStages } from '@/data/investor.data';
-import { investorPass } from '@/lib/ens/pass';
-import { issuerScore } from '@/lib/ens/score';
-import { resale } from '@/lib/hedera-ats/resale';
-import { resaleQuote } from '@/lib/hedera-ats/resale-quote';
-import { ResalePrice } from '@/components/resale-price';
+import { redirect } from 'next/navigation';
 
-/*
- * Rendered per request rather than at build time. The pass is a live fact with a date on it,
- * and a page baked at build time would go on claiming the fund was cleared long after the
- * registry stopped saying so.
- */
-export const dynamic = 'force-dynamic';
-
-export default async function Page() {
-  const [pass, score] = await Promise.all([investorPass(), issuerScore()]);
-  const quote = await resaleQuote(score);
-  const split = await resale(quote.today.priceUsd);
-
-  return (
-    <PrivyPortal
-      brand="Woodgrove Capital"
-      ens={pass.name}
-      signer="A. Whitfield · Portfolio Manager"
-      nav={NAV}
-      stages={buildStages(pass, score, split)}
-      defaulted={buildDefaulted(pass, split)}
-      live={{
-        compliance: <Allocate />,
-        portfolio: (
-          <>
-            <ResalePrice quote={quote} />
-            <Resell view={split} />
-          </>
-        ),
-      }}
-    />
-  );
+/** The fund opens on what it is offered and what it holds — the only tab with actions on it. */
+export default function Home() {
+  redirect('/portfolio');
 }

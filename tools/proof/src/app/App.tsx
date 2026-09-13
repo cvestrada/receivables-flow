@@ -54,7 +54,7 @@ function Dashboard() {
             <div className="relative flex-1 min-w-0 min-h-0">
               <Routes>
                 <Route index element={<Navigate to="/proof" replace />} />
-                <Route path="/proof" element={<Navigate to="/proof/business" replace />} />
+                <Route path="/proof" element={<Navigate to="/proof/capital-flywheel" replace />} />
                 <Route
                   path="/proof/:user/*"
                   element={

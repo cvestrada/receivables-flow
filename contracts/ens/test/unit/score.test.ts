@@ -8,11 +8,11 @@ describe('creditScore', () => {
       expect(creditScore({ financed: 6, ontime: 6, late: 0, defaulted: 0 })).to.equal(100);
     });
 
-    it('scores a business that paid four of five matured invoices, one missed, at 80', () => {
+    it('scores a business that paid four of five matured invoices, one defaulted, at 80', () => {
       expect(creditScore({ financed: 5, ontime: 4, late: 0, defaulted: 1 })).to.equal(80);
     });
 
-    it('rounds two on time and one missed of three matured to 67', () => {
+    it('rounds two on time and one defaulted of three matured to 67', () => {
       expect(creditScore({ financed: 3, ontime: 2, late: 0, defaulted: 1 })).to.equal(67);
     });
 
@@ -21,10 +21,10 @@ describe('creditScore', () => {
       // paying, and it is not the same as paying. The score has to be able to say all three.
       const late = creditScore({ financed: 3, ontime: 2, late: 1, defaulted: 0 });
       const paid = creditScore({ financed: 3, ontime: 3, late: 0, defaulted: 0 });
-      const missed = creditScore({ financed: 3, ontime: 2, late: 0, defaulted: 1 });
+      const defaulted = creditScore({ financed: 3, ontime: 2, late: 0, defaulted: 1 });
 
       expect(late).to.be.lessThan(paid as number);
-      expect(late).to.be.greaterThan(missed as number);
+      expect(late).to.be.greaterThan(defaulted as number);
     });
 
     it('drops a spotless business to 93 when one invoice is paid late', () => {

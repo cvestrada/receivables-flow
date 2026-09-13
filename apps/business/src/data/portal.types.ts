@@ -6,9 +6,17 @@ export type KvRow = [label: string, value: string, tone?: string];
 export type FeedItem = [when: string, text: string, tone?: string];
 
 /**
- * One table cell: plain text, text carrying a tone, or a status chip.
+ * One table cell: plain text, text carrying a tone, a status chip, or a link out.
+ *
+ * The link is how a row points at the document behind it — an invoice a business submitted is
+ * a file somebody can open, and a row that only names it asks the reader to take our word for
+ * what it says.
  */
-export type Cell = string | { v: string; cls?: string } | { chip: string; tone?: string };
+export type Cell =
+  | string
+  | { v: string; cls?: string }
+  | { chip: string; tone?: string }
+  | { v: string; href: string };
 
 export interface TilesBlock {
   t: 'tiles';
@@ -53,7 +61,8 @@ export type Block = TilesBlock | TableBlock | KvBlock | FeedBlock | EmptyBlock;
 export interface NavItem {
   id: string;
   label: string;
-  sub: string;
+  /** The route this tab is, so it can be linked to, bookmarked and gone back from. */
+  href: string;
 }
 
 /**

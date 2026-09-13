@@ -162,12 +162,9 @@ grep -c "hashscan.io/testnet" README.md
 ```
 → prints `4` or more
 
-**[ ] Upstream contribution to ATS**
+**[~] Upstream contribution to ATS — dropped**
 
-Implement: Open a pull request against `hashgraph/asset-tokenization-studio` offering delivery-versus-payment settlement for an ATS security, and link it from this issue.
-
-Verify:
-```
-gh pr list --repo hashgraph/asset-tokenization-studio --author @me --json url --jq '.[0].url'
-```
-→ prints a pull request URL
+Not doing it. A pull request to `hashgraph/asset-tokenization-studio` gives the settlement step
+away and gives this project nothing back: the contract is already written, deployed and verified
+here, and the sale it settles is already on screen. Dropped 2026-09-11, by decision, not by
+oversight.

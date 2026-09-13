@@ -1,0 +1,10 @@
+# Railway service config for the investor portal. Point the service's "config path" at this file.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "docker/Dockerfile"
+buildArgs = { APP = "investor" }
+
+[deploy]
+healthcheckPath = "/"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"

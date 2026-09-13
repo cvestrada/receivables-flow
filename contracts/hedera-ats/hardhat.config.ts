@@ -31,6 +31,17 @@ const config: HardhatUserConfig = {
       url: process.env.HEDERA_TESTNET_RPC_URL ?? 'https://testnet.hashio.io/api',
       chainId: 296,
       accounts: privateKey ? [privateKey] : [],
+      /*
+       * State the gas rather than letting it be estimated.
+       *
+       * Hedera's JSON-RPC relay answers `eth_estimateGas` for a contract creation with about
+       * 115,000 whatever is being deployed, so ethers sent an ATS bond deployment with a
+       * fraction of the gas it needs. It ran out, and Hedera reports running out the same way it
+       * reports a revert: `status: 0`, no logs, no reason — which is why this looked for weeks
+       * like an intermittent contract failure. 15,000,000 is the network's own per-transaction
+       * ceiling, and unused gas is not charged.
+       */
+      gas: 15_000_000,
     },
   },
 };

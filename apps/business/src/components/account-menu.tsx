@@ -1,7 +1,7 @@
 'use client';
 
 import { usePrivy } from '@privy-io/react-auth';
-import { nameFromEmail } from '@rf/privy/policies';
+import { initialsFor, nameFromEmail } from '@rf/privy/policies';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -11,9 +11,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-/** First two letters of the address this director signs in with. */
 function initials(email: string | undefined): string {
-  return (email?.slice(0, 2) ?? '··').toUpperCase();
+  return email ? initialsFor(nameFromEmail(email)) : '··';
 }
 
 /** How the approval record refers to them. */
@@ -41,8 +40,8 @@ export function AccountMenu() {
           </AvatarFallback>
         </Avatar>
         <span className="min-w-0 leading-tight">
-          <span className="eyebrow block text-[12px]">Director</span>
           <span className="block truncate text-[14px] text-[var(--ink)]">{who(email)}</span>
+          <span className="eyebrow block text-[12px]">Director</span>
         </span>
       </DropdownMenuTrigger>
 
@@ -54,19 +53,7 @@ export function AccountMenu() {
 
         <DropdownMenuSeparator />
 
-        <div className="px-2 py-1.5">
-          <span className="block text-[14px] text-[var(--muted)]">Approves for</span>
-          <span className="block text-[14px] text-[var(--body)]">
-            Ironline Freight company account
-          </span>
-          <span className="mt-1 block text-[14px] text-[var(--muted)]">
-            Two of three directors must approve.
-          </span>
-        </div>
-
-        <DropdownMenuSeparator />
-
-        <DropdownMenuItem onSelect={() => logout()}>Sign out</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => void logout()}>Sign out</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

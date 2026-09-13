@@ -53,16 +53,17 @@
  * Full rationale and component anatomy: docs/design.md.
  */
 :root {
-  /* brand */
-  --accent:#635BFF; --accent-strong:#533AFD;
-  --accent-subtle:rgba(99,91,255,.08); --accent-surface:rgba(99,91,255,.05);
+  /* brand — Ironline's side of the market is orange. The two portals used one
+     indigo and were indistinguishable in a screenshot; see docs/design-business.md */
+  --accent:#D9641E; --accent-strong:#B24D14;
+  --accent-subtle:rgba(217,100,30,.08); --accent-surface:rgba(217,100,30,.05);
 
   /* ink */
   --ink:#0A2540; --ink-deep:#061B31; --body:#3C4F69;
   --muted:#64748D; --muted-light:#707F98;
 
   /* surface */
-  --surface:#FFFFFF; --surface-alt:#F8FAFD; --surface-tint:#E5EDF5;
+  --surface:#FFFFFF; --surface-alt:#FAFAFA; --surface-tint:#E5EDF5;
   --hairline:#E5EDF5; --hairline-active:#D3E0EC;
 
   /* state — settled, pending, failed */
@@ -104,8 +105,8 @@
  */
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    --accent:#8B85FF; --accent-strong:#A29BFF;
-    --accent-subtle:rgba(139,133,255,.14); --accent-surface:rgba(139,133,255,.07);
+    --accent:#F0873F; --accent-strong:#F5A469;
+    --accent-subtle:rgba(240,135,63,.14); --accent-surface:rgba(240,135,63,.07);
     --ink:#F2F6FB; --ink-deep:#FFFFFF; --body:#B4C2D4;
     --muted:#8695AB; --muted-light:#7A889D;
     --surface:#0E2138; --surface-alt:#09182A; --surface-tint:#16304C;
@@ -122,8 +123,8 @@
   }
 }
 .dark {
-  --accent:#8B85FF; --accent-strong:#A29BFF;
-  --accent-subtle:rgba(139,133,255,.14); --accent-surface:rgba(139,133,255,.07);
+  --accent:#F0873F; --accent-strong:#F5A469;
+  --accent-subtle:rgba(240,135,63,.14); --accent-surface:rgba(240,135,63,.07);
   --ink:#F2F6FB; --ink-deep:#FFFFFF; --body:#B4C2D4;
   --muted:#8695AB; --muted-light:#7A889D;
   --surface:#0E2138; --surface-alt:#09182A; --surface-tint:#16304C;
@@ -280,4 +281,20 @@
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important }
+}
+
+/*
+ * Anything that does something says so under the pointer.
+ *
+ * Buttons default to the arrow cursor in every browser, so each one that wanted a hand had to
+ * ask for it — and the ones that never asked read as decoration. One rule instead, with disabled
+ * controls excluded because a hand over a control that will not respond is a worse lie than an
+ * arrow over one that will.
+ */
+button:not(:disabled),
+summary,
+[role='button']:not([aria-disabled='true']),
+[role='tab'],
+[role='menuitem'] {
+  cursor: pointer;
 }

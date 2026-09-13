@@ -8,476 +8,314 @@
   ],
   "users": [
     {
-      "id": "business",
-      "name": "business",
+      "id": "capital-flywheel",
+      "name": "capital-flywheel",
       "categoryId": "receivables-flow",
       "order": 1
-    },
-    {
-      "id": "investor",
-      "name": "investor",
-      "categoryId": "receivables-flow",
-      "order": 2
     }
   ],
   "journeys": [
     {
-      "id": "business-journey-issue-and-settle",
-      "userId": "business",
-      "name": "Issue And Settle A Receivable",
-      "slug": "issue-and-settle-a-receivable",
-      "cadence": "repeating",
-      "order": 1
-    },
-    {
-      "id": "investor-journey-fund-and-exit",
-      "userId": "investor",
-      "name": "Fund And Exit A Receivable",
-      "slug": "fund-and-exit-a-receivable",
+      "id": "flywheel-journey",
+      "userId": "capital-flywheel",
+      "name": "Complete A Capital Cycle",
+      "slug": "capital-cycle",
       "cadence": "repeating",
       "order": 1
     }
   ],
   "phases": [
     {
-      "id": "business-phase-set-up",
-      "journeyId": "business-journey-issue-and-settle",
-      "name": "Set Up",
+      "id": "flywheel-phase-sign-in",
+      "journeyId": "flywheel-journey",
+      "name": "Sign In Both Sides",
       "order": 1,
-      "slug": "set-up"
+      "slug": "sign-in-both-sides"
     },
     {
-      "id": "business-phase-issue",
-      "journeyId": "business-journey-issue-and-settle",
-      "name": "Issue",
+      "id": "flywheel-phase-source",
+      "journeyId": "flywheel-journey",
+      "name": "Source Invoice",
       "order": 2,
-      "slug": "issue"
+      "slug": "source-invoice"
     },
     {
-      "id": "business-phase-settle",
-      "journeyId": "business-journey-issue-and-settle",
-      "name": "Settle",
+      "id": "flywheel-phase-fund",
+      "journeyId": "flywheel-journey",
+      "name": "Fund Invoice",
       "order": 3,
-      "slug": "settle"
+      "slug": "fund-invoice"
     },
     {
-      "id": "investor-phase-get-cleared",
-      "journeyId": "investor-journey-fund-and-exit",
-      "name": "Get Cleared",
-      "order": 1,
-      "slug": "get-cleared"
+      "id": "flywheel-phase-resell",
+      "journeyId": "flywheel-journey",
+      "name": "Sell Part To Another Investor",
+      "order": 4,
+      "slug": "sell-part-to-another-investor"
     },
     {
-      "id": "investor-phase-fund",
-      "journeyId": "investor-journey-fund-and-exit",
-      "name": "Fund",
-      "order": 2,
-      "slug": "fund"
+      "id": "flywheel-phase-collect",
+      "journeyId": "flywheel-journey",
+      "name": "Collect Repayment",
+      "order": 5,
+      "slug": "collect-repayment"
     },
     {
-      "id": "investor-phase-exit",
-      "journeyId": "investor-journey-fund-and-exit",
-      "name": "Exit",
-      "order": 3,
-      "slug": "exit"
+      "id": "flywheel-phase-reprice",
+      "journeyId": "flywheel-journey",
+      "name": "Reprice The Capital Cost",
+      "order": 6,
+      "slug": "reprice-the-capital-cost"
     }
   ],
   "milestones": [
     {
-      "id": "business-milestone-company-wallet",
-      "phaseId": "business-phase-set-up",
-      "name": "Open a company account and decide which employees can approve what",
+      "id": "flywheel-milestone-sign-in",
+      "phaseId": "flywheel-phase-sign-in",
+      "name": "Sign both sides in and read the record behind each name",
       "order": 1,
-      "slug": "open-a-company-account-and-decide-which-employees-can"
+      "slug": "sign-both-sides-in-and-read-the-record-behind-each-name"
     },
     {
-      "id": "business-milestone-issuer-identity",
-      "phaseId": "business-phase-set-up",
-      "name": "Get a public business profile with a credit rating buyers can check",
-      "order": 2,
-      "slug": "get-a-public-business-profile-with-a-credit-rating-buyers"
-    },
-    {
-      "id": "business-milestone-approve-and-issue",
-      "phaseId": "business-phase-issue",
-      "name": "Sell an unpaid invoice and get the cash today instead of in 60 days",
+      "id": "flywheel-milestone-source",
+      "phaseId": "flywheel-phase-source",
+      "name": "Submit an invoice, see what it costs, and have it tokenized",
       "order": 1,
-      "slug": "sell-an-unpaid-invoice-and-get-the-cash-today-instead-of-in"
+      "slug": "submit-an-invoice-see-what-it-costs-and-have-it-tokenized"
     },
     {
-      "id": "business-milestone-schedule-settlement",
-      "phaseId": "business-phase-issue",
-      "name": "Know the payout will happen on the due date without chasing anyone",
-      "order": 2,
-      "slug": "know-the-payout-will-happen-on-the-due-date-without-chasing"
-    },
-    {
-      "id": "business-milestone-maturity",
-      "phaseId": "business-phase-settle",
-      "name": "Build a track record that makes the next invoice cheaper to sell",
+      "id": "flywheel-milestone-fund",
+      "phaseId": "flywheel-phase-fund",
+      "name": "Fund the invoice: Privy approves the money, Hedera moves the asset",
       "order": 1,
-      "slug": "build-a-track-record-that-makes-the-next-invoice-cheaper-to"
+      "slug": "fund-the-invoice-privy-approves-the-money-hedera-moves-the"
     },
     {
-      "id": "investor-milestone-become-eligible",
-      "phaseId": "investor-phase-get-cleared",
-      "name": "Get approved to invest and set the fund's own limits on what it can buy",
+      "id": "flywheel-milestone-resell",
+      "phaseId": "flywheel-phase-resell",
+      "name": "Sell half to a second investor on day 20",
       "order": 1,
-      "slug": "get-approved-to-invest-and-set-the-funds-own-limits-on-what"
+      "slug": "sell-half-to-a-second-investor-on-day-20"
     },
     {
-      "id": "investor-milestone-buy",
-      "phaseId": "investor-phase-fund",
-      "name": "Buy an unpaid invoice at a discount",
+      "id": "flywheel-milestone-collect",
+      "phaseId": "flywheel-phase-collect",
+      "name": "Repay on day 60 and pay every holder its share",
       "order": 1,
-      "slug": "buy-an-unpaid-invoice-at-a-discount"
+      "slug": "repay-on-day-60-and-pay-every-holder-its-share"
     },
     {
-      "id": "investor-milestone-sell-early",
-      "phaseId": "investor-phase-exit",
-      "name": "Sell part of it early instead of waiting for the due date",
+      "id": "flywheel-milestone-reprice",
+      "phaseId": "flywheel-phase-reprice",
+      "name": "Let that outcome price the business's next invoice",
       "order": 1,
-      "slug": "sell-part-of-it-early-instead-of-waiting-for-the-due-date"
-    },
-    {
-      "id": "investor-milestone-collect",
-      "phaseId": "investor-phase-exit",
-      "name": "Get paid when the invoice is settled",
-      "order": 2,
-      "slug": "get-paid-when-the-invoice-is-settled"
+      "slug": "let-that-outcome-price-the-businesss-next-invoice"
     }
   ],
   "goals": [
     {
-      "id": "business-goal-two-signatures",
-      "milestoneId": "business-milestone-company-wallet",
-      "statement": "Open a company account and decide which employees can approve what",
+      "id": "flywheel-goal-sign-in",
+      "milestoneId": "flywheel-milestone-sign-in",
+      "statement": "Sign both sides in and read the record behind each name",
       "order": 1,
-      "slug": "open-a-company-account-and-decide-which-employees-can"
+      "slug": "sign-both-sides-in-and-read-the-record-behind-each-name"
     },
     {
-      "id": "business-goal-credit-tier-onchain",
-      "milestoneId": "business-milestone-issuer-identity",
-      "statement": "Get a public business profile with a credit rating buyers can check",
+      "id": "flywheel-goal-source",
+      "milestoneId": "flywheel-milestone-source",
+      "statement": "Submit an invoice, see what it costs, and have it tokenized",
       "order": 1,
-      "slug": "get-a-public-business-profile-with-a-credit-rating-buyers"
+      "slug": "submit-an-invoice-see-what-it-costs-and-have-it-tokenized"
     },
     {
-      "id": "business-goal-compliant-token",
-      "milestoneId": "business-milestone-approve-and-issue",
-      "statement": "Sell an unpaid invoice and get the cash today instead of in 60 days",
+      "id": "flywheel-goal-fund",
+      "milestoneId": "flywheel-milestone-fund",
+      "statement": "Fund the invoice: Privy approves the money, Hedera moves the asset",
       "order": 1,
-      "slug": "sell-an-unpaid-invoice-and-get-the-cash-today-instead-of-in"
+      "slug": "fund-the-invoice-privy-approves-the-money-hedera-moves-the"
     },
     {
-      "id": "business-goal-settles-itself",
-      "milestoneId": "business-milestone-schedule-settlement",
-      "statement": "Know the payout will happen on the due date without chasing anyone",
+      "id": "flywheel-goal-resell",
+      "milestoneId": "flywheel-milestone-resell",
+      "statement": "Sell half to a second investor on day 20",
       "order": 1,
-      "slug": "know-the-payout-will-happen-on-the-due-date-without-chasing"
+      "slug": "sell-half-to-a-second-investor-on-day-20"
     },
     {
-      "id": "business-goal-pay-and-record",
-      "milestoneId": "business-milestone-maturity",
-      "statement": "Build a track record that makes the next invoice cheaper to sell",
+      "id": "flywheel-goal-collect",
+      "milestoneId": "flywheel-milestone-collect",
+      "statement": "Repay on day 60 and pay every holder its share",
       "order": 1,
-      "slug": "build-a-track-record-that-makes-the-next-invoice-cheaper-to"
+      "slug": "repay-on-day-60-and-pay-every-holder-its-share"
     },
     {
-      "id": "investor-goal-clearance",
-      "milestoneId": "investor-milestone-become-eligible",
-      "statement": "Get approved to invest and set the fund's own limits on what it can buy",
+      "id": "flywheel-goal-reprice",
+      "milestoneId": "flywheel-milestone-reprice",
+      "statement": "Let that outcome price the business's next invoice",
       "order": 1,
-      "slug": "get-approved-to-invest-and-set-the-funds-own-limits-on-what"
-    },
-    {
-      "id": "investor-goal-buy",
-      "milestoneId": "investor-milestone-buy",
-      "statement": "Buy an unpaid invoice at a discount",
-      "order": 1,
-      "slug": "buy-an-unpaid-invoice-at-a-discount"
-    },
-    {
-      "id": "investor-goal-early-exit",
-      "milestoneId": "investor-milestone-sell-early",
-      "statement": "Sell part of it early instead of waiting for the due date",
-      "order": 1,
-      "slug": "sell-part-of-it-early-instead-of-waiting-for-the-due-date"
-    },
-    {
-      "id": "investor-goal-collect",
-      "milestoneId": "investor-milestone-collect",
-      "statement": "Get paid when the invoice is settled",
-      "order": 1,
-      "slug": "get-paid-when-the-invoice-is-settled"
+      "slug": "let-that-outcome-price-the-businesss-next-invoice"
     }
   ],
   "steps": [
     {
-      "id": "business-step-org-wallet",
-      "goalId": "business-goal-two-signatures",
-      "trigger": "Ironline Freight needs an account for the business, not for a person",
-      "action": "Opens the company account that holds Ironline Freight's money",
-      "outcome": "the money belongs to the company, not to whoever happened to set it up",
-      "status": "proposed",
+      "id": "flywheel-step-business-signs-in",
+      "goalId": "flywheel-goal-sign-in",
+      "trigger": "a freight company wants to finance an invoice and holds no key",
+      "action": "The judge signs in to the business portal with their own email and the six-digit code Privy sends it, and is seated as Ironline Freight's third director",
+      "outcome": "they can now approve what the company wallet does — one of the two signatures it takes — which is what makes this a demo anyone can run rather than watch",
+      "status": "built",
       "order": 1,
-      "sponsor": "privy",
-      "whyStack": "The company owns the money, not the employee who set it up.",
-      "requirement": "Create or use at least one Privy wallet",
-      "extraPoints": null,
-      "whyWins": "Signs as a company, not as one person's key."
+      "sponsor": "privy"
     },
     {
-      "id": "business-step-quorum-policy",
-      "goalId": "business-goal-two-signatures",
-      "trigger": "one employee acting alone could sell an invoice that does not exist",
-      "action": "Decides who can sell an invoice: the office manager up to $10,000, two directors above that",
-      "outcome": "small invoices move without fuss, big ones need a second person to agree",
-      "status": "proposed",
+      "id": "flywheel-step-business-record",
+      "goalId": "flywheel-goal-sign-in",
+      "trigger": "the portal names the company instead of showing a wallet address",
+      "action": "Clicking the name opens ironline.business.receivablesflow.eth/records — six invoices financed here and all six settled: 4 paid on time, 2 late, none defaulted",
+      "outcome": "the history everything after this is priced from is public, and nobody had to ask us for it",
+      "status": "built",
       "order": 2,
-      "sponsor": "privy",
-      "whyStack": "Different limits for different staff on one account.",
-      "requirement": "Use at least one Privy control, such as policies, signers, key quorums, or intents",
-      "extraPoints": "Privy names: policies and team permissions",
-      "whyWins": "An org chart, not a single multisig."
+      "sponsor": "ensv2"
     },
     {
-      "id": "business-step-register-subname",
-      "goalId": "business-goal-credit-tier-onchain",
-      "trigger": "investors will not fund a company they have never heard of",
-      "action": "Claims a public business profile at ironline.receivables.eth",
-      "outcome": "anyone can look Ironline Freight up before deciding to fund them",
-      "status": "proposed",
-      "order": 1,
-      "sponsor": "ensv2",
-      "whyStack": "Reputation the business carries anywhere, not locked in our database.",
-      "requirement": "Project must be built on ENSv2 (Sepolia)",
-      "extraPoints": "Your own subname registry, run under your own rules",
-      "whyWins": "The record outlives the relationship with us."
-    },
-    {
-      "id": "business-step-delegate-credit-tier",
-      "goalId": "business-goal-credit-tier-onchain",
-      "trigger": "a rating anyone can write by hand is worth nothing",
-      "action": "Publishes the raw counts and lets every reader compute the score from a published formula",
-      "outcome": "Ironline Freight can never raise its own score, and nor can we — there is no score record to write",
-      "status": "proposed",
-      "order": 2,
-      "sponsor": "ensv2",
-      "whyStack": "They own the profile; the score is arithmetic over what the chain already saw.",
-      "requirement": "ENSv2 features should be central to the product, not a cosmetic add-on",
-      "extraPoints": "Enhanced Access Control — a role scoped to one text record",
-      "whyWins": "On camera: the business tries to edit the counts behind its score and is refused."
-    },
-    {
-      "id": "business-step-quorum-approval",
-      "goalId": "business-goal-compliant-token",
-      "trigger": "a freight broker owes Ironline Freight $50,000 on 60-day terms",
-      "action": "Two directors approve the sale from their phones, hours apart",
-      "outcome": "the sale goes ahead on its own the moment the second approval lands",
-      "status": "proposed",
-      "order": 1,
-      "sponsor": "privy",
-      "whyStack": "Approvals collected from people who are never online together.",
-      "requirement": "Implement at least one functional B2B workflow, such as a payment, approval, treasury operation, or wallet administration flow",
-      "extraPoints": "Privy names: quorum approvals and intents",
-      "whyWins": "Timestamps hours apart — most teams demo both approvals ten seconds apart."
-    },
-    {
-      "id": "business-step-ats-issue",
-      "goalId": "business-goal-compliant-token",
-      "trigger": "the invoice is approved for sale",
-      "action": "The invoice becomes something an investor can buy: $50,000, payable in 60 days",
-      "outcome": "the claim on that invoice now exists on its own, separate from Ironline Freight",
-      "status": "proposed",
-      "order": 2,
-      "sponsor": "hedera-ats",
-      "whyStack": "An invoice with a due date and holder rules; a plain token has neither.",
-      "requirement": "Use the Asset Tokenization Studio (SDK, contracts, web application, or a combination) to issue or manage a tokenised asset",
-      "extraPoints": null,
-      "whyWins": "A real due date and a real obligor, not a token with a name on it."
-    },
-    {
-      "id": "business-step-ats-compliance",
-      "goalId": "business-goal-compliant-token",
-      "trigger": "at this point anyone at all could buy it",
-      "action": "Locks the invoice so only approved investors can ever own it",
-      "outcome": "an unapproved buyer is turned away even if they try to go around the app",
-      "status": "proposed",
+      "id": "flywheel-step-investor-signs-in",
+      "goalId": "flywheel-goal-sign-in",
+      "trigger": "a fund wants short, secured returns and holds no key either",
+      "action": "The same judge signs in to the investor portal in the next tab, as Woodgrove Capital",
+      "outcome": "no seat is needed on this side: the fund's wallet is governed by a mandate rather than by signatures, so it refuses what breaks the rules no matter who is signed in",
+      "status": "built",
       "order": 3,
-      "sponsor": "hedera-ats",
-      "whyStack": "The rule lives in the invoice, so it holds outside our app.",
-      "requirement": "Demo video of five minutes or less showing issuance, configuration, and at least one lifecycle operation such as a transfer, compliance check, or distribution",
-      "extraPoints": "Compliance controls in use: KYC grants, freezes, transfer restrictions, pauses",
-      "whyWins": "The refusal is visible on HashScan, not a greyed-out button."
+      "sponsor": "privy"
     },
     {
-      "id": "business-step-schedule-redemption",
-      "goalId": "business-goal-settles-itself",
-      "trigger": "payday is 60 days out and nobody should have to remember it",
-      "action": "Books the day-60 payout now, at the moment of sale",
-      "outcome": "the payout happens on its own, even if Ironline Freight and this app are both long gone",
-      "status": "proposed",
-      "order": 1,
-      "sponsor": "hedera",
-      "whyStack": "The payout fires even if we no longer exist.",
-      "requirement": "Deploy and demonstrate on Hedera testnet",
-      "extraPoints": "Scheduled Transactions for vesting, coupon payments, or maturity settlement",
-      "whyWins": "Settlement cannot be forgotten; it was booked at the sale."
-    },
-    {
-      "id": "business-step-redeem",
-      "goalId": "business-goal-pay-and-record",
-      "trigger": "day 60 arrives and the broker has paid",
-      "action": "Everyone who owns a piece of the invoice is paid their share",
-      "outcome": "the $50,000 reaches whoever owns it that day, split correctly",
-      "status": "proposed",
-      "order": 1,
-      "sponsor": "hedera-ats",
-      "whyStack": "Pays whoever owns it on the day, split correctly.",
-      "requirement": "Demo video of five minutes or less showing issuance, configuration, and at least one lifecycle operation such as a transfer, compliance check, or distribution",
-      "extraPoints": "Custom fee schedules, coupon or dividend distributions, royalty flows",
-      "whyWins": "A real corporate action at maturity, not a one-shot mint."
-    },
-    {
-      "id": "business-step-write-history",
-      "goalId": "business-goal-pay-and-record",
-      "trigger": "the invoice was paid on time",
-      "action": "Ironline Freight's public profile gains one more invoice paid on time",
-      "outcome": "the next invoice sells at a better rate because of it",
-      "status": "proposed",
-      "order": 2,
-      "sponsor": "ensv2",
-      "whyStack": "A funder who has never used us can check the record.",
-      "requirement": "Your demo must be functional and not just include hard-coded values",
-      "extraPoints": null,
-      "whyWins": "Written by the redemption, read back to price the next sale."
-    },
-    {
-      "id": "investor-step-wallet",
-      "goalId": "investor-goal-clearance",
-      "trigger": "a fund has cash sitting idle and wants short, secured returns",
-      "action": "Signs up and is ready to invest, with no crypto wallet to install",
-      "outcome": "the fund can buy and get paid without anyone handling a seed phrase",
-      "status": "proposed",
-      "order": 1,
-      "sponsor": "privy",
-      "whyStack": "A fund invests without anyone handling a seed phrase.",
-      "requirement": "Create or use at least one Privy wallet",
-      "extraPoints": null,
-      "whyWins": "One control plane serves a small carrier and an institutional fund."
-    },
-    {
-      "id": "investor-step-mandate-policy",
-      "goalId": "investor-goal-clearance",
-      "trigger": "the fund's investment rules live in a document nobody checks in time",
-      "action": "Writes the fund's rules in: never more than $100,000 on one invoice, never below a B rating",
-      "outcome": "an investment that breaks the fund's own rules simply will not go through",
-      "status": "proposed",
-      "order": 2,
-      "sponsor": "privy",
-      "whyStack": "The fund's own rules block the trade instead of catching it next week.",
-      "requirement": "Use at least one Privy control, such as policies, signers, key quorums, or intents",
-      "extraPoints": "Privy names: policies and automated transactions",
-      "whyWins": "On camera: an allocation over mandate is refused."
-    },
-    {
-      "id": "investor-step-eligibility-subname",
-      "goalId": "investor-goal-clearance",
-      "trigger": "only approved investors are allowed to own these invoices",
-      "action": "Woodgrove is issued an approval pass with an expiry date",
-      "outcome": "the pass lapses on its own, can be withdrawn, and is useless to anyone Woodgrove hands it to",
-      "status": "proposed",
-      "order": 3,
-      "sponsor": "ensv2",
-      "whyStack": "Approval that expires, can be withdrawn, and cannot be passed on.",
-      "requirement": "ENSv2 features should be central to the product, not a cosmetic add-on",
-      "extraPoints": "Expiring, revocable and non-transferable subnames",
-      "whyWins": "Three named ENSv2 features in one name, each true of real KYC."
-    },
-    {
-      "id": "investor-step-kyc-grant",
-      "goalId": "investor-goal-clearance",
-      "trigger": "the invoice itself has to recognise the pass",
-      "action": "The approval pass is copied across to where the invoices are held",
-      "outcome": "Woodgrove can now be handed an invoice",
-      "status": "proposed",
+      "id": "flywheel-step-investor-record",
+      "goalId": "flywheel-goal-sign-in",
+      "trigger": "the fund is named on its own screen the same way",
+      "action": "Clicking it opens woodgrove.investor.receivablesflow.eth/records — the standing that decides whether it may hold a receivable",
+      "outcome": "both sides are public names with public records before a single dollar moves",
+      "status": "built",
       "order": 4,
-      "sponsor": "hedera-ats",
-      "whyStack": "The invoice itself has to recognise the approval to enforce it.",
-      "requirement": "Use the Asset Tokenization Studio (SDK, contracts, web application, or a combination) to issue or manage a tokenised asset",
-      "extraPoints": "Compliance controls in use: KYC grants, freezes, transfer restrictions, pauses",
-      "whyWins": "The cross-chain hop is the integration, not a gap."
+      "sponsor": "ensv2"
     },
     {
-      "id": "investor-step-transfer-check",
-      "goalId": "investor-goal-buy",
-      "trigger": "Woodgrove goes to buy Ironline Freight's invoice",
-      "action": "Woodgrove is checked at the moment of purchase, not beforehand",
-      "outcome": "an approved buyer receives it; anyone else is refused, even going around the app",
-      "status": "proposed",
+      "id": "flywheel-step-submit",
+      "goalId": "flywheel-goal-source",
+      "trigger": "the invoice is sent and Northwind has 60 days to pay it",
+      "action": "Ironline submits INV-2026-0417.pdf for financing — $50,000 from Northwind Supplies, payable 4 November",
+      "outcome": "the request is the document itself, openable from the portal",
+      "status": "partially_built",
       "order": 1,
-      "sponsor": "hedera-ats",
-      "whyStack": "The rule applies on every route in, including apps we did not build.",
-      "requirement": "Demo video of five minutes or less showing issuance, configuration, and at least one lifecycle operation such as a transfer, compliance check, or distribution",
-      "extraPoints": "Compliance controls in use: KYC grants, freezes, transfer restrictions, pauses",
-      "whyWins": "Reverts on-chain — a front-end gate is worth nothing to a regulated buyer."
+      "sponsor": null
     },
     {
-      "id": "investor-step-settle",
-      "goalId": "investor-goal-buy",
-      "trigger": "the check passed",
-      "action": "Pays $47,500 and takes ownership of the invoice",
-      "outcome": "Ironline Freight has cash today; Woodgrove is owed $50,000 in 60 days",
-      "status": "proposed",
+      "id": "flywheel-step-quote",
+      "goalId": "flywheel-goal-source",
+      "trigger": "the platform has to answer what that invoice is worth today",
+      "action": "It is priced off Ironline’s ENS record on the spot: 83 of 100 pays 0.067% a day — 4.02% over 60 days, so 60 days costs $2,010 and Ironline would receive $47,990",
+      "outcome": "the business sees the cost of the money before it commits to anything",
+      "status": "built",
       "order": 2,
-      "sponsor": "hedera",
-      "whyStack": "Predictable settlement cost, when the whole margin is a small discount.",
-      "requirement": "Deploy and demonstrate on Hedera testnet",
-      "extraPoints": null,
-      "whyWins": "A testnet transaction a judge can open."
+      "sponsor": "ensv2"
     },
     {
-      "id": "investor-step-list-secondary",
-      "goalId": "investor-goal-early-exit",
-      "trigger": "Woodgrove wants its cash back before day 60",
-      "action": "Puts half the invoice up for sale to other approved investors",
-      "outcome": "the half is on offer without waiting for the broker to pay",
-      "status": "proposed",
+      "id": "flywheel-step-propose",
+      "goalId": "flywheel-goal-source",
+      "trigger": "the company wallet takes two signatures of the three seats on it",
+      "action": "Ironline's own finance system signs the financing — one signature of the two, and never enough on its own",
+      "outcome": "what the wallet is still waiting for is a person",
+      "status": "built",
+      "order": 3,
+      "sponsor": "privy"
+    },
+    {
+      "id": "flywheel-step-second-signature",
+      "goalId": "flywheel-goal-source",
+      "trigger": "the judge holds the third seat on that wallet",
+      "action": "They press Approve, their browser signs, and the two signatures go to Privy together — which counts them and sends the transaction",
+      "outcome": "nothing we wrote decided the sale was allowed; sending one signature is refused by the same button",
+      "status": "built",
+      "order": 4,
+      "sponsor": "privy"
+    },
+    {
+      "id": "flywheel-step-tokenize",
+      "goalId": "flywheel-goal-source",
+      "trigger": "the approval is in",
+      "action": "The invoice becomes RCV-0001 on Hedera — a token only investors the platform has KYC-approved can hold",
+      "outcome": "the claim now exists apart from Ironline, and whoever holds it on 4 November is owed the $50,000",
+      "status": "partially_built",
+      "order": 5,
+      "sponsor": "hedera-ats"
+    },
+    {
+      "id": "flywheel-step-mandate",
+      "goalId": "flywheel-goal-fund",
+      "trigger": "the fund is asked to put $47,990 into this invoice",
+      "action": "Privy checks it against the mandate written on the fund's wallet — under the $100,000 cap, above the 60 of 100 floor, on the rated list — and signs",
+      "outcome": "nothing in our code decides this; a breach is refused by the wallet itself, and the reason on screen is Privy’s own words",
+      "status": "built",
       "order": 1,
-      "sponsor": "hedera-ats",
-      "whyStack": "A half-share sells on without losing the rule about who may own it.",
-      "requirement": "Use the Asset Tokenization Studio (SDK, contracts, web application, or a combination) to issue or manage a tokenised asset",
-      "extraPoints": "A secondary market for ATS-issued assets, which the Studio does not have today",
-      "whyWins": "First item on the track's own extra-points list; ATS ships nothing like it."
+      "sponsor": "privy"
     },
     {
-      "id": "investor-step-secondary-fill",
-      "goalId": "investor-goal-early-exit",
-      "trigger": "another approved investor takes the offer",
-      "action": "That half changes hands, with the new buyer checked the same way",
-      "outcome": "Woodgrove has cash back on day 20, and the invoice now has two owners",
-      "status": "proposed",
+      "id": "flywheel-step-settle",
+      "goalId": "flywheel-goal-fund",
+      "trigger": "the payment is authorised and the invoice has to change hands",
+      "action": "On Hedera, the settlement contract moves both sides at once — $47,990 to Ironline, RCV-0001 to Woodgrove — or neither moves",
+      "outcome": "nobody is paid without delivering, and nobody delivers without being paid",
+      "status": "partially_built",
       "order": 2,
-      "sponsor": "hedera-ats",
-      "whyStack": "The rule survives a sale we had nothing to do with.",
-      "requirement": "Demo video of five minutes or less showing issuance, configuration, and at least one lifecycle operation such as a transfer, compliance check, or distribution",
-      "extraPoints": "A secondary market for ATS-issued assets, which the Studio does not have today",
-      "whyWins": "Resale is where restricted assets normally leak."
+      "sponsor": "hedera"
     },
     {
-      "id": "investor-step-collect",
-      "goalId": "investor-goal-collect",
-      "trigger": "day 60 arrives and the broker has paid",
-      "action": "Both owners are paid their share without either of them doing anything",
-      "outcome": "each is paid in proportion to the piece they hold",
-      "status": "proposed",
+      "id": "flywheel-step-schedule",
+      "goalId": "flywheel-goal-fund",
+      "trigger": "the sale is done and repayment is sixty days away",
+      "action": "The repayment is scheduled on Hedera at the moment of sale, timed for day 60",
+      "outcome": "maturity runs on its own, with nobody to remind and nothing to chase",
+      "status": "built",
+      "order": 3,
+      "sponsor": "hedera"
+    },
+    {
+      "id": "flywheel-step-resell",
+      "goalId": "flywheel-goal-resell",
+      "trigger": "on day 20 Woodgrove wants some of its money back without waiting for day 60",
+      "action": "Woodgrove sells half the invoice to Bridgeline Partners, another approved investor, and keeps the other half",
+      "outcome": "two investors now hold half each, and the invoice itself says so",
+      "status": "built",
       "order": 1,
-      "sponsor": "hedera-ats",
-      "whyStack": "Both owners paid correctly after the invoice was split.",
-      "requirement": "Demo video of five minutes or less showing issuance, configuration, and at least one lifecycle operation such as a transfer, compliance check, or distribution",
-      "extraPoints": "Custom fee schedules, coupon or dividend distributions, royalty flows",
-      "whyWins": "Two owners after the split, both paid correctly."
+      "sponsor": "hedera-ats"
+    },
+    {
+      "id": "flywheel-step-resale-price",
+      "goalId": "flywheel-goal-resell",
+      "trigger": "the half being sold has to have a price",
+      "action": "Same score, same rate — only 40 days are left instead of 60, so Bridgeline pays $24,025 for $25,000 due on day 60",
+      "outcome": "Woodgrove has $24,025 back on day 20 and still holds $25,000 of face value",
+      "status": "built",
+      "order": 2,
+      "sponsor": "ensv2"
+    },
+    {
+      "id": "flywheel-step-repay",
+      "goalId": "flywheel-goal-collect",
+      "trigger": "day 60 arrives and the customer has paid",
+      "action": "Northwind pays the invoice, Ironline repays the $50,000, and each holder is paid its half with its own transaction",
+      "outcome": "the split follows whoever the invoice says holds it, and nobody has to claim anything",
+      "status": "built",
+      "order": 1,
+      "sponsor": "hedera"
+    },
+    {
+      "id": "flywheel-step-reprice",
+      "goalId": "flywheel-goal-reprice",
+      "trigger": "the day-60 outcome is settled either way",
+      "action": "The outcome is written back to Ironline’s ENS records — paid on time goes from 4 to 5, and the score from 83 to 86 — so its next invoice is quoted at a smaller discount; not paying does the reverse",
+      "outcome": "this invoice set the price of the next one, and the cycle starts again",
+      "status": "built",
+      "order": 1,
+      "sponsor": "ensv2"
     }
   ],
   "concerns": [],

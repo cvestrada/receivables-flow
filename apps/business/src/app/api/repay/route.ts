@@ -1,7 +1,8 @@
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { NextResponse } from 'next/server';
 import { INVOICE } from '@rf/shared/invoice';
-import { priceFor } from '@rf/contracts-hedera-ats/pricing';
+import { dailyRatePct, feePct, priceFor } from '@rf/contracts-hedera-ats/pricing';
 import { publish } from '@/lib/ens/outcome';
 import type { Record as Standing } from '@/lib/ens/score';
 import { owedAtMaturity, repay, type Payment } from '@/lib/hedera-ats/repay';
@@ -17,7 +18,7 @@ export const dynamic = 'force-dynamic';
  * first. A file is enough: it holds nothing secret, and it outlives the dev server reloading
  * between the two presses in a way memory would not.
  */
-const STORE = '.repayment.json';
+const STORE = join(process.env.DEMO_STATE_DIR ?? '.', '.repayment.json');
 
 /** How day 60 ended: the obligation met, or not met. */
 export type Outcome = 'repaid' | 'defaulted';
@@ -29,7 +30,8 @@ const USDC_DECIMALS = 1_000_000;
 export interface Standpoint {
   record: Standing;
   /** The annual rate that record earns, as a percentage. */
-  annualRatePct: number;
+  dailyRatePct: number;
+  feePct: number;
   /** What the next invoice's buyer keeps at maturity, in dollars — the cost of selling it. */
   discountUsd: number;
 }
@@ -55,7 +57,8 @@ function pricedAgainst(record: Standing): Standpoint {
 
   return {
     record,
-    annualRatePct: quote.annualRateBps / 100,
+    dailyRatePct: dailyRatePct(quote),
+    feePct: feePct(quote),
     discountUsd: Number(quote.discount) / USDC_DECIMALS,
   };
 }

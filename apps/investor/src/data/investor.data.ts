@@ -22,11 +22,17 @@ export const HOLDING: Holding = {
   shareBps: 5000,
 };
 
+/*
+ * Three tabs, mirroring the business's three.
+ *
+ * Marketplace and Portfolio were one receivable at two moments of its life — offered, then held
+ * — exactly as Invoices and Receivables were on the other side, so they are one tab. What is
+ * left is the rule that governs them, which is the mandate, and it earns a tab of its own
+ * because it is the thing that refuses.
+ */
 export const NAV: NavItem[] = [
-  {id:'overview',   label:'Overview',    sub:'Where the fund’s capital sits today'},
-  {id:'market',     label:'Marketplace', sub:'Receivables offered to this fund'},
-  {id:'portfolio',  label:'Portfolio',   sub:'Positions the fund holds'},
-  {id:'compliance', label:'Compliance',  sub:'The fund’s pass, its mandate, and every transfer checked'}
+  {id:'portfolio',   label:'Portfolio',   href:'/portfolio'},
+  {id:'mandate',     label:'Mandate',     href:'/mandate'}
 ];
 
 /*
@@ -39,8 +45,7 @@ function passBlock(pass: PassView): Block {
     ['Holder',pass.name,'m'],
     ['Wallet',pass.wallet,'m'],
     ['Status',pass.cleared ? 'Valid' : 'Lapsed',pass.cleared ? 'ok' : 'bad'],
-    ['Expires',pass.expiresOn,'']],
-    note:'Read live from ENS on Sepolia. The pass lapses on its own and can be withdrawn at any time. It is <b>useless to anyone Woodgrove hands it to</b>.'};
+    ['Expires',pass.expiresOn,'']]};
 }
 
 const SCORE_FLOOR = 60;
@@ -57,8 +62,7 @@ const HALF_FACE_USD = 25_000;
 const MANDATE: Block = {t:'kv',h:'Fund mandate',rows:[
   ['Maximum per position','$100,000',''],
   ['Minimum credit score',`${SCORE_FLOOR} of 100`,''],
-  ['Maximum maturity','90 days','']],
-  note:'These are the fund’s own rules, enforced at signing. An allocation that breaks them <b>will not sign at all</b>.'};
+  ['Maximum maturity','90 days','']]};
 
 /** A wallet as a compliance officer reads it — enough to recognise, short enough to scan. */
 function short(wallet: string): string {
@@ -111,8 +115,7 @@ function log3(pass: PassView): Block {
     head:['Wallet','Party','Result','Reason'],
     rows:[
       woodgroveRow(pass),
-      [{v:'0xB0D3…14FF',cls:'id'},{v:'Unidentified wallet',cls:'dim'},{chip:'Refused',tone:'bad'},{v:'No eligibility pass',cls:'bad'}]],
-    note:'The check runs <b>inside the transfer</b>, against the pass as it stands at that instant — not against a list someone approved last week. An unapproved buyer is turned away even going around this portal.'};
+      [{v:'0xB0D3…14FF',cls:'id'},{v:'Unidentified wallet',cls:'dim'},{chip:'Refused',tone:'bad'},{v:'No eligibility pass',cls:'bad'}]]};
 }
 
 /*
@@ -135,8 +138,7 @@ function log4(pass: PassView, split: ResaleView): Block {
     rows:[
       ...(buyer ? [buyerRow(buyer)] : []),
       woodgroveRow(pass),
-      [{v:'0xB0D3…14FF',cls:'id'},{v:'Unidentified wallet',cls:'dim'},{chip:'Refused',tone:'bad'},{v:'No eligibility pass',cls:'bad'}]],
-    note:'The secondary buyer was checked exactly the same way as the first. Resale does not open a side door.'};
+      [{v:'0xB0D3…14FF',cls:'id'},{v:'Unidentified wallet',cls:'dim'},{chip:'Refused',tone:'bad'},{v:'No eligibility pass',cls:'bad'}]]};
 }
 
 export function buildStages(pass: PassView, score: ScoreView, split: ResaleView): Stage[] {
@@ -164,7 +166,7 @@ export function buildStages(pass: PassView, score: ScoreView, split: ResaleView)
   const dryPowderAtMaturity = money(DRY_POWDER_USD - FUNDED_USD + split.cashReturnedUsd + HALF_FACE_USD);
   const realised = money(split.cashReturnedUsd + HALF_FACE_USD - FUNDED_USD);
   return [
-{ day:'Day 0', label:'Invoice raised', counts:{market:0,portfolio:0}, sections:{
+{ day:'Sign In Both Sides', label:'', counts:{portfolio:0}, sections:{
   overview:[
     {t:'tiles',items:[
       ['Dry powder','$250,000','','available to deploy'],
@@ -172,68 +174,41 @@ export function buildStages(pass: PassView, score: ScoreView, split: ResaleView)
       ['Realised return','$0','dim','since inception']]},
     {t:'feed',h:'Activity',items:[
       ['Day 0',`Eligibility pass issued to <b>${pass.name}</b> — expires ${pass.expiresOn}`,'ok'],
-      ['Day 0',`Mandate written in — $100,000 cap, ${SCORE_FLOOR} of 100 score floor, 90-day maximum`,'']]}],
-  market:[{t:'empty',h:'Marketplace',title:'No offers match your mandate',
-    text:`Receivables appear here once a verified business scoring ${SCORE_FLOOR} of 100 or better issues one.`}],
-  portfolio:[{t:'empty',h:'Portfolio',title:'No positions held',
-    text:'Funded receivables appear here with their maturity date and expected payout.'}],
-  compliance:[PASS,MANDATE]}},
+      ['Day 0',`Mandate written in — $100,000 cap, ${SCORE_FLOOR} of 100 score floor, 90-day maximum`,'']]},],
+  portfolio:[{t:'empty',h:'Portfolio',title:'No offers match your mandate',
+    text:`Nothing offered yet.`}],
+  mandate:[PASS,MANDATE]}},
 
-{ day:'Day 0', label:'Approved', counts:{market:0,portfolio:0}, sections:{
+{ day:'Source Invoice', label:'', counts:{portfolio:1}, sections:{
   overview:[
     {t:'tiles',items:[
       ['Dry powder','$250,000','','available to deploy'],
       ['Deployed','$0','dim','no positions'],
       ['Realised return','$0','dim','since inception']]},
     {t:'feed',h:'Activity',items:[
-      ['Day 0',`Eligibility pass issued to <b>${pass.name}</b> — expires ${pass.expiresOn}`,'ok'],
-      ['Day 0',`Mandate written in — $100,000 cap, ${SCORE_FLOOR} of 100 score floor, 90-day maximum`,'']]},
-    {t:'kv',h:'Nothing changed here',rows:[
-      ['Offers visible to the fund','0',''],
-      ['Positions held','0','']],
-      note:'Ironline’s directors are approving the sale on their own side right now. The fund <b>cannot see any of it</b>, and should not — it only ever sees a receivable once it exists.'}],
-  market:[{t:'empty',h:'Marketplace',title:'No offers match your mandate',
-    text:`Receivables appear here once a verified business scoring ${SCORE_FLOOR} of 100 or better issues one.`}],
-  portfolio:[{t:'empty',h:'Portfolio',title:'No positions held',
-    text:'Funded receivables appear here with their maturity date and expected payout.'}],
-  compliance:[PASS,MANDATE]}},
-
-{ day:'Day 1', label:'Issued', counts:{market:1,portfolio:0}, sections:{
-  overview:[
-    {t:'tiles',items:[
-      ['Dry powder','$250,000','','available to deploy'],
-      ['Deployed','$0','dim','no positions'],
-      ['Realised return','$0','dim','since inception']]},
-    {t:'feed',h:'Activity',items:[
-      ['Day 1',`<b>RCV-0001</b> listed — Ironline Freight, credit score ${score.label}, $47,500 for $50,000`,'hot'],
-      ['Day 0',`Eligibility pass issued — expires ${pass.expiresOn}`,'ok']]}],
-  market:[
+      ['Day 1',`<b>RCV-0001</b> listed — Ironline Freight, credit score ${score.label}, $47,990 for $50,000`,'hot'],
+      ['Day 0',`Eligibility pass issued — expires ${pass.expiresOn}`,'ok']]},],
+  portfolio:[
     {t:'table',h:'Offered to this fund',head:['Receivable','Issuer','Credit score','Pay','Collect','Matures','Mandate'],
-      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight',score.label,{v:'$47,500',cls:'strong'},'$50,000','2026-11-04',{chip:'Within mandate',tone:'ok'}]],
-      note:`<b>5.3% on cost</b> over 58 days. Ironline’s <b>${score.label}</b> is not a grade anyone assigned — it is the share of its matured invoices that were repaid, ${score.live ? 'read from ENS on Sepolia' : 'computed from the counts on its public profile'} and recomputable by anyone. Inside the $100,000 cap and above the ${SCORE_FLOOR} of 100 floor.`}],
-  portfolio:[{t:'empty',h:'Portfolio',title:'No positions held',
-    text:'Fund RCV-0001 and it appears here.'}],
-  compliance:[PASS,MANDATE]}},
+      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight',score.label,{v:'$47,990',cls:'strong'},'$50,000','2026-11-04',{chip:'Within mandate',tone:'ok'}]]}],
+  mandate:[PASS,MANDATE]}},
 
-{ day:'Day 2', label:'Funded', counts:{market:0,portfolio:1}, sections:{
+{ day:'Fund Invoice', label:'', counts:{portfolio:1}, sections:{
   overview:[
     {t:'tiles',items:[
-      ['Dry powder','$202,500','','after this allocation'],
-      ['Deployed','$47,500','','1 position'],
+      ['Dry powder','$202,010','','after this allocation'],
+      ['Deployed','$47,990','','1 position'],
       ['Owed at maturity','$50,000','pos','on 2026-11-04']]},
     {t:'feed',h:'Activity',items:[
-      ['11:26','Funded RCV-0001 — <b>$47,500</b> paid to Ironline Freight','ok'],
+      ['11:26','Funded RCV-0001 — <b>$47,990</b> paid to Ironline Freight','ok'],
       ['11:26','Transfer accepted — eligibility pass checked at the moment of purchase','ok'],
-      ['Day 1',`RCV-0001 listed — Ironline Freight, credit score ${score.label}`,'hot']]}],
-  market:[{t:'empty',h:'Marketplace',title:'No open offers',
-    text:'RCV-0001 has been funded. New receivables appear here as businesses issue them.'}],
+      ['Day 1',`RCV-0001 listed — Ironline Freight, credit score ${score.label}`,'hot']]},],
   portfolio:[
     {t:'table',h:'Positions held',head:['Receivable','Issuer','Held','Cost','At maturity','Matures','Status'],
-      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight','100.00%',{v:'$47,500',cls:'strong'},'$50,000','2026-11-04',{chip:'Funded',tone:'ok'}]],
-      note:'The payout was booked at the moment of sale. Nothing needs to be claimed on day 60.'}],
-  compliance:[LOG3,PASS]}},
+      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight','100.00%',{v:'$47,990',cls:'strong'},'$50,000','2026-11-04',{chip:'Funded',tone:'ok'}]]}],
+  mandate:[LOG3,PASS]}},
 
-{ day:'Day 20', label:'Half resold', counts:{market:0,portfolio:1}, sections:{
+{ day:'Sell Part To Another Investor', label:'', counts:{portfolio:1}, sections:{
   overview:[
     {t:'tiles',items:[
       ['Dry powder',dryPowderAfterSale,'pos','cash back on day 20'],
@@ -242,41 +217,63 @@ export function buildStages(pass: PassView, score: ScoreView, split: ResaleView)
     {t:'feed',h:'Activity',items:[
       ['Day 20',`Sold <b>${soldAway}</b> to ${buyer?.name ?? 'a second approved investor'} for <b>${cashBack}</b>`,'ok'],
       ['Day 20','Buyer checked at the moment of transfer — accepted','ok'],
-      ['11:26','Funded RCV-0001 — $47,500 paid to Ironline Freight','ok']]},
+      ['11:26','Funded RCV-0001 — $47,990 paid to Ironline Freight','ok']]},
     {t:'kv',h:'Why sell half',rows:[
       ['Cash back',cashBack,''],
       ['Days early','40',''],
-      ['Still at risk',atRisk,'']],
-      note:`Exiting early is the thing ordinary factoring cannot do. Being able to means the discount demanded on day 2 can be <b>smaller in the first place</b>. ${source(split)}`}],
-  market:[{t:'empty',h:'Marketplace',title:'No open offers',
-    text:'New receivables appear here as businesses issue them.'}],
+      ['Still at risk',atRisk,'']]},],
   portfolio:[
     {t:'table',h:'Positions held',head:['Receivable','Issuer','Held','Cost','At maturity','Matures','Status'],
-      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight',share(held?.sharePct ?? 0),{v:atRisk,cls:'strong'},'$25,000','2026-11-04',{chip:'Funded',tone:'ok'}]],
-      note:source(split)}],
-  compliance:[LOG4,PASS]}},
+      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight',share(held?.sharePct ?? 0),{v:atRisk,cls:'strong'},'$25,000','2026-11-04',{chip:'Funded',tone:'ok'}]]}],
+  mandate:[LOG4,PASS]}},
 
-{ day:'Day 60', label:'Settled', counts:{market:0,portfolio:0}, sections:{
+{ day:'Collect Repayment', label:'', counts:{portfolio:0}, sections:{
   overview:[
     {t:'tiles',items:[
       ['Dry powder',dryPowderAtMaturity,'pos','position closed'],
       ['Deployed','$0','dim','nothing outstanding'],
-      ['Realised return',realised,'pos','on $47,500 deployed']]},
+      ['Realised return',realised,'pos','on $47,990 deployed']]},
     {t:'feed',h:'Activity',items:[
       ['Day 60','Position closed. Nothing was claimed, signed, or pressed.','ok'],
       ['Day 60','Distribution received — <b>$25,000</b> for 5000 bps held','ok'],
-      ['Day 60','Northwind Brokerage paid Ironline Freight’s invoice in full','ok']]},
+      ['Day 60','Northwind Supplies paid Ironline Freight’s invoice in full','ok']]},
     {t:'kv',h:'How the return was made',rows:[
-      ['Paid on day 2','−$47,500',''],
+      ['Paid on day 2','−$47,990',''],
       ['Recovered on day 20',cashBack,'ok'],
       ['Paid at maturity','$25,000','ok'],
-      ['Net',realised,'ok']]}],
-  market:[{t:'empty',h:'Marketplace',title:'No open offers',
-    text:'New receivables appear here as businesses issue them.'}],
+      ['Net',realised,'ok']]},],
   portfolio:[
     {t:'table',h:'Positions held',head:['Receivable','Issuer','Held','Cost','Received','Settled','Status'],
       rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight',share(held?.sharePct ?? 0),atRisk,{v:'$25,000',cls:'ok'},'2026-11-04',{chip:'Redeemed',tone:'ok'}]]}],
-  compliance:[LOG4,PASS]}}
+  mandate:[LOG4,PASS]}},
+
+/*
+ * The seventh phase seen from the buy side: the same record that priced this deal has moved,
+ * so the next one Woodgrove is offered is priced differently — and it can see why.
+ */
+{ day:'Reprice The Capital Cost', label:'', counts:{portfolio:1}, sections:{
+  overview:[
+    {t:'tiles',items:[
+      ['Dry powder',dryPowderAtMaturity,'pos','ready for the next one'],
+      ['Realised return',realised,'pos','on $47,990 deployed'],
+      ['Ironline scores','86 of 100','pos','was 83 before day 60']]},
+    {t:'feed',h:'Activity',items:[
+      ['Day 60','Ironline Freight paid on time — 7 financed = 5 on time + 2 late + 0 defaulted + 0 outstanding','ok'],
+      ['Day 60','The next invoice from Ironline would cost <b>3.84%</b>, not 4.02% — a better business borrows cheaper','']]},
+    {t:'kv',h:'What that costs this fund',rows:[
+      ['Fee on this deal','4.02%',''],
+      ['Fee on the next one','3.84%',''],
+      ['Return per $50,000 invoice','$2,010 → $1,920','']]},
+    LOG4,
+    PASS],
+  /*
+   * The next offer, on the tab that now holds both what is offered and what is held. It used to
+   * sit under a `market` key that no nav entry points at any more, which meant the one screen
+   * this phase exists to show rendered nowhere.
+   */
+  portfolio:[
+    {t:'table',h:'Offered to this fund',head:['Receivable','Issuer','Credit score','Price','Face','Matures','Mandate'],
+      rows:[[{v:'RCV-0002',cls:'id'},'Ironline Freight','86 of 100',{v:'$48,080',cls:'strong'},'$50,000','2027-01-06',{chip:'Within mandate',tone:'ok'}]]}]}}
   ];
 }
 
@@ -297,27 +294,23 @@ export function buildDefaulted(pass: PassView, split: ResaleView): Stage {
   const dryPowderAfterSale = money(DRY_POWDER_USD - FUNDED_USD + split.cashReturnedUsd);
   const dryPowderAtMaturity = money(DRY_POWDER_USD - FUNDED_USD + split.cashReturnedUsd + HALF_FACE_USD);
   const realised = money(split.cashReturnedUsd + HALF_FACE_USD - FUNDED_USD);
-  return { day:'Day 60', label:'Defaulted', counts:{market:0,portfolio:0}, sections:{
+  return { day:'Collect Repayment', label:'defaulted', counts:{portfolio:0}, sections:{
   overview:[
     {t:'tiles',items:[
       ['Dry powder',dryPowderAfterSale,'','nothing recovered at maturity'],
       ['Deployed','$0','dim','position written off'],
-      ['Realised return',`−${atRisk}`,'neg','on $47,500 deployed']]},
+      ['Realised return',`−${atRisk}`,'neg','on $47,990 deployed']]},
     {t:'feed',h:'Activity',items:[
       ['Day 60','RCV-0001 marked <b>defaulted</b> — the loss is the fund’s','bad'],
-      ['Day 60','Northwind Brokerage did not pay','bad'],
+      ['Day 60','Northwind Supplies did not pay','bad'],
       ['Day 20',`Sold ${buyer ? bps(buyer.sharePct) : bps(0)} to ${buyer?.name ?? 'a second approved investor'} for ${cashBack}`,'ok']]},
     {t:'kv',h:'How the loss landed',flag:true,rows:[
-      ['Paid on day 2','−$47,500',''],
+      ['Paid on day 2','−$47,990',''],
       ['Recovered on day 20',cashBack,'ok'],
       ['Paid at maturity','$0','bad'],
-      ['Net',`−${atRisk}`,'bad']],
-      note:`Selling half on day 20 is the only reason this is <b>−${atRisk}</b> and not −$47,500. ${buyer?.name ?? 'The second investor'}, who bought in later and held to maturity, is down ${cashBack}. Liquidity was worth something.`}],
-  market:[{t:'empty',h:'Marketplace',title:'No open offers',
-    text:'New receivables appear here as businesses issue them.'}],
+      ['Net',`−${atRisk}`,'bad']]},],
   portfolio:[
     {t:'table',h:'Positions held',head:['Receivable','Issuer','Held','Cost','Received','Settled','Status'],
-      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight',share(held?.sharePct ?? 0),atRisk,{v:'$0',cls:'bad'},{v:'—',cls:'dim'},{chip:'Defaulted',tone:'bad'}]],
-      note:'This is what buying a receivable actually means. A demo that only shows the happy ending is not showing it.'}],
-  compliance:[LOG4,PASS]}};
+      rows:[[{v:'RCV-0001',cls:'id'},'Ironline Freight',share(held?.sharePct ?? 0),atRisk,{v:'$0',cls:'bad'},{v:'—',cls:'dim'},{chip:'Defaulted',tone:'bad'}]]}],
+  mandate:[LOG4,PASS]}};
 }

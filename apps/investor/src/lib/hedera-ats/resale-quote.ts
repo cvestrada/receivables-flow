@@ -1,6 +1,6 @@
 import { INVOICE } from '@rf/shared/invoice';
-import { creditScore } from '@rf/contracts-ens';
-import { priceFor } from '@rf/contracts-hedera-ats/pricing';
+import { creditScore, type Counts } from '@rf/contracts-ens';
+import { dailyRatePct, feePct, priceFor } from '@rf/contracts-hedera-ats/pricing';
 import { issuerScore, type ScoreView } from '@/lib/ens/score';
 
 /** One price, and the whole of the working that produced it. */
@@ -8,7 +8,8 @@ export interface Leg {
   /** The score it was priced against, or null for a business with no record yet. */
   score: number | null;
   /** The annual rate that score earns, as a percentage. */
-  annualRatePct: number;
+  dailyRatePct: number;
+  feePct: number;
   /** Face value being priced, in whole US dollars. */
   faceUsd: number;
   /** Days from the sale until that face value is payable. */
@@ -39,20 +40,22 @@ const USDC_DECIMALS = 1_000_000;
  * actually happened at, and re-deriving it from today's record would quietly restate what
  * Woodgrove paid every time the profile moves. The resale beside it is the live number.
  */
-const SCORE_AT_ISSUANCE = 100;
 
 /** Day of the invoice's life the position is sold on. */
 const RESALE_DAY = 20;
 
 /**
- * A record with one late payment on it, used to show what the rating is worth.
+ * This business's own record with one more invoice on it, paid late.
  *
- * Six invoices paid on time and a seventh paid late is the smallest change that moves
- * Ironline off a spotless record, and it is the outcome the settlement lane will actually
- * write. Priced beside today's number so a fund can see the rating doing the work rather
- * than being told that it does.
+ * Worked out from the counts the page actually publishes rather than from a fixed set of
+ * numbers. The fixed version assumed Ironline was spotless, so once its real record carried a
+ * miss the "if late" row priced better than the live one and the screen told a fund that
+ * paying late made a receivable dearer. A hypothetical has to be this business's record plus
+ * the thing being supposed, or it is a different company's price.
  */
-const ONE_LATE = { financed: 7, ontime: 6, late: 1, defaulted: 0 };
+function withOneLate(counts: Counts): Counts {
+  return { ...counts, financed: counts.financed + 1, late: counts.late + 1 };
+}
 
 /** Half the position, which is what the fund sells on day 20. */
 const HALF_FACE_USD = INVOICE.faceValueUsd / 2;
@@ -63,7 +66,8 @@ function leg(faceUsd: number, days: number, score: number | null): Leg {
 
   return {
     score: priced.score,
-    annualRatePct: priced.annualRateBps / 100,
+    dailyRatePct: dailyRatePct(priced),
+    feePct: feePct(priced),
     faceUsd,
     days,
     priceUsd: Number(priced.price) / USDC_DECIMALS,
@@ -89,14 +93,14 @@ export async function resaleQuote(read?: ScoreView): Promise<ResaleQuote> {
    * a second time on the same request would put two answers about the same business on one
    * screen the moment the record changed between them.
    */
-  const { value, live } = read ?? (await issuerScore());
+  const { value, counts, live } = read ?? (await issuerScore());
   const score = value ?? null;
   const daysLeft = INVOICE.maturityDays - RESALE_DAY;
 
   return {
-    dayZero: leg(INVOICE.faceValueUsd, INVOICE.maturityDays, SCORE_AT_ISSUANCE),
+    dayZero: leg(INVOICE.faceValueUsd, INVOICE.maturityDays, score),
     today: leg(HALF_FACE_USD, daysLeft, score),
-    ifLate: leg(HALF_FACE_USD, daysLeft, creditScore(ONE_LATE) ?? null),
+    ifLate: leg(HALF_FACE_USD, daysLeft, creditScore(withOneLate(counts)) ?? null),
     live,
   };
 }

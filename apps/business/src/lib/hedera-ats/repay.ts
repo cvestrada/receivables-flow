@@ -1,4 +1,6 @@
 import { Contract, JsonRpcProvider, Wallet } from 'ethers';
+import deployed from '@rf/contracts-hedera-ats/deployed.json';
+import { openedAccounts } from '@rf/privy/accounts';
 import { INVOICE } from '@rf/shared/invoice';
 import { distribute, type Holding, type Share } from '@rf/contracts-hedera-ats/distribution';
 
@@ -6,7 +8,7 @@ import { distribute, type Holding, type Share } from '@rf/contracts-hedera-ats/d
  * What Ironline Freight owes on day 60, and who it is owed to.
  *
  * The sale was made with recourse, so the obligation is Ironline's and it stands at face value
- * whether or not Northwind Brokerage has paid Ironline. That is also why the price on day 0 and
+ * whether or not Northwind Supplies has paid Ironline. That is also why the price on day 0 and
  * day 20 was quoted against Ironline's own record: under recourse, the business being priced
  * and the business that repays are the same one.
  *
@@ -53,16 +55,65 @@ const FACE_VALUE_USD = INVOICE.faceValueUsd;
  */
 const DOLLAR_DECIMALS = 1_000_000;
 
+/** The receivable's own six decimals; the shares are worked out in whole units, one per dollar. */
+const UNIT = 1_000_000n;
+
 /** The fund that funded the whole receivable on day 2 and kept half of it. */
+/**
+ * Woodgrove Capital's account, read from provisioning rather than written down.
+ *
+ * A literal address here was the fund's wallet from an earlier provisioning run, and
+ * provisioning opens a new one every time it is run — so the holder tables, the repayment split
+ * and the ENS eligibility pass each named a different "Woodgrove", and the portal showed three
+ * addresses for a fund that has one.
+ */
+function fundWallet(): string {
+  /*
+   * The key that holds the units, which is the platform's operator key standing in for the
+   * fund on Hedera. The fund's Privy account signs the mandate and pays; this address is where
+   * the receivable is delivered and sold from, and it is the one a holders table has to name
+   * — a table naming the account that signs would show a holder with nothing in its hands.
+   */
+  const key = process.env.HEDERA_OPERATOR_WALLET_PRIVATE_KEY;
+  if (key) return new Wallet(key).address;
+
+  try {
+    return openedAccounts().fund.address;
+  } catch {
+    /*
+     * Nothing provisioned on this machine. The tables still have to render — a business reading
+     * a division it cannot refresh is reading the last true thing — so the zero address stands
+     * in, which no key can sign for and nobody will mistake for a real holder.
+     */
+    return '0x0000000000000000000000000000000000000000';
+  }
+}
+
 const WOODGROVE = {
   name: 'Woodgrove Capital',
-  wallet: '0xE1e76C63fb819B35cDC09dbb3D03B3d85eeaE2D8',
+  get wallet() {
+    return fundWallet();
+  },
 };
 
 /** The second approved investor, which bought the other half on day 20. */
+/**
+ * The second approved investor — the address its own key signs as.
+ *
+ * A literal here disagreed with the key: the screen said Bridgeline was 0x3F88…C102 and the
+ * chain saw a transfer to 0x2d28…31E2, and the resale refused with "the key configured for X
+ * signs as Y". One address, derived from the one key, so the two cannot drift.
+ */
+function bridgelineWallet(): string {
+  const key = process.env.HEDERA_BRIDGELINE_WALLET_PRIVATE_KEY;
+  return key ? new Wallet(key).address : '0x3F8890000000000000000000000000000000C102';
+}
+
 const BRIDGELINE = {
   name: 'Bridgeline Partners',
-  wallet: '0x3F8890000000000000000000000000000000C102',
+  get wallet() {
+    return bridgelineWallet();
+  },
 };
 
 /**
@@ -79,7 +130,22 @@ const KNOWN_BALANCES: Holding[] = [
 
 const RPC_URL = process.env.HEDERA_TESTNET_RPC_URL ?? 'https://testnet.hashio.io/api';
 
-const RECEIVABLE_TOKEN = '0x6871D6F903C3a2977f89c079B87DA9bBb8ed2960';
+/**
+ * The receivable, read from what issuance actually recorded.
+ *
+ * A literal here was the token from an earlier issuance — one that has since been orphaned,
+ * with no key able to mint it and nobody allowed to hold it. Every transfer against it failed on
+ * the first `approve`, and the screen reported a refusal that was real but for the wrong
+ * reason. `libs/privy` already reads this file for the same address; this is the same read.
+ */
+function recordedToken(): string {
+  const token = (deployed as { hederaTestnet?: { receivableToken?: string } }).hederaTestnet
+    ?.receivableToken;
+  if (!token) throw new Error('No receivable token recorded — run npm run issue -w @rf/contracts-hedera-ats');
+  return token;
+}
+
+const RECEIVABLE_TOKEN: string = recordedToken();
 
 /** Only the calls this file makes. The receivable is an ATS security; this is ERC-20's share of it. */
 const SECURITY_ABI = ['function balanceOf(address) view returns (uint256)'];
@@ -153,12 +219,12 @@ export async function owedAtMaturity(): Promise<RepaymentView> {
      * is not one, so it falls through to the balances on hand like any other read the endpoint
      * could not give.
      */
-    if (Number(woodgrove) + Number(bridgeline) > 0) {
+    if (Number(woodgrove / UNIT) + Number(bridgeline / UNIT) > 0) {
       return {
         owedUsd: FACE_VALUE_USD,
         holders: owedTo([
-          { ...WOODGROVE, units: Number(woodgrove) },
-          { ...BRIDGELINE, units: Number(bridgeline) },
+          { ...WOODGROVE, units: Number(woodgrove / UNIT) },
+          { ...BRIDGELINE, units: Number(bridgeline / UNIT) },
         ]),
         live: true,
       };
@@ -245,7 +311,7 @@ export async function repay(): Promise<RepaymentView & { settled: boolean; reaso
      */
     for (const holder of view.holders) {
       const amount = BigInt(Math.round(holder.owedUsd * DOLLAR_DECIMALS));
-      const sent = await money.transfer(holder.wallet, amount);
+      const sent = await money.transfer(holder.wallet, amount, { gasLimit: 2_000_000 });
       const landed = await sent.wait();
 
       /*

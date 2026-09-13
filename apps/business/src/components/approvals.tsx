@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import type { Approval } from '@rf/privy/accounts';
 
 interface View {
+  /** Nothing is offered for approval until the business has submitted an invoice. */
+  submitted?: boolean;
   invoice: string;
   customer: string;
   amount: string;
@@ -69,7 +71,45 @@ export function Approvals({
     };
   }, []);
 
-  if (!view) return null;
+  /*
+   * While the record is on its way, hold the space it will take.
+   *
+   * Returning nothing made the section rearrange itself a moment after it rendered, which reads
+   * as a page that changed its mind. A panel that is visibly loading is the honest state: the
+   * request exists, we have not heard back about it yet.
+   */
+  if (!view) {
+    return (
+      <section
+        aria-label="Issue this receivable"
+        aria-busy="true"
+        className="overflow-hidden rounded-xl border bg-[var(--surface)]"
+      >
+        <div className="flex items-center justify-between gap-3 border-b px-5 py-4">
+          <div className="h-[18px] w-56 rounded bg-[var(--surface-alt)]" />
+          <div className="h-[22px] w-28 rounded-full bg-[var(--surface-alt)]" />
+        </div>
+        <div className="px-5 py-4 text-[14px] text-[var(--muted)]">
+          Reading who has approved&hellip;
+        </div>
+      </section>
+    );
+  }
+
+  /*
+   * Nothing to approve until something was asked for. The signing policy beside this panel is
+   * still worth reading — it is the rule whether or not anything is pending.
+   */
+  if (!view.submitted) {
+    return (
+      <section
+        aria-label="Issue this receivable"
+        className="rounded-xl border bg-[var(--surface)] px-5 py-8 text-center text-[14px] text-[var(--muted)]"
+      >
+        Nothing to approve. Submit an invoice for financing and the request appears here.
+      </section>
+    );
+  }
 
   const opened = !view.unopened;
 
@@ -140,9 +180,6 @@ export function Approvals({
             <span className="st st-ok">Approved</span>
           </li>
         ))}
-        {view.approvals.length === 0 && (
-          <li className="px-5 py-3 text-[15px] text-[var(--muted)]">Nobody has approved yet.</li>
-        )}
       </ul>
 
       <div className="flex flex-wrap gap-2.5 border-t px-5 py-4">

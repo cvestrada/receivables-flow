@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { creditScore } from '@rf/contracts-ens';
+import { creditScore, type Counts } from '@rf/contracts-ens';
 import { priceFor } from '@rf/contracts-hedera-ats/pricing';
 
 const score = vi.hoisted(() => vi.fn());
@@ -7,7 +7,27 @@ vi.mock('@/lib/ens/score', () => ({ issuerScore: score }));
 
 const { resaleQuote } = await import('./resale-quote');
 
-const rated = (value: number | undefined) => ({ issuer: 'ironline', label: '', value, live: true });
+/*
+ * A profile with a real record behind it, because the panel now prices its "if late" row off
+ * the counts rather than off the score. A stub that carried a score with no record would let
+ * a hypothetical be priced against a business that does not exist.
+ */
+const rated = (counts: Counts) => ({
+  issuer: 'ironline',
+  label: '',
+  value: creditScore(counts),
+  counts,
+  live: true,
+});
+
+/** Seven invoices, all paid on time — the spotless record, which scores 100. */
+const SPOTLESS: Counts = { financed: 7, ontime: 7, late: 0, defaulted: 0 };
+
+/** One paid, one never paid, which scores 50. */
+const HALF: Counts = { financed: 2, ontime: 1, late: 0, defaulted: 1 };
+
+/** Nothing matured yet, which is unrated rather than nought. */
+const NEW: Counts = { financed: 1, ontime: 0, late: 0, defaulted: 0 };
 
 /*
  * These check the two claims the resale panel makes: that the price is the published formula
@@ -17,7 +37,7 @@ const rated = (value: number | undefined) => ({ issuer: 'ironline', label: '', v
  */
 describe('resaleQuote', () => {
   it('prices the resale off the score standing on the profile today', async () => {
-    score.mockResolvedValue(rated(100));
+    score.mockResolvedValue(rated(SPOTLESS));
 
     const { today } = await resaleQuote();
 
@@ -26,7 +46,7 @@ describe('resaleQuote', () => {
   });
 
   it('prices half the position over the days that are actually left, not the full tenor', async () => {
-    score.mockResolvedValue(rated(100));
+    score.mockResolvedValue(rated(SPOTLESS));
 
     const { dayZero, today } = await resaleQuote();
 
@@ -36,38 +56,38 @@ describe('resaleQuote', () => {
     expect(today.days).toBe(40);
   });
 
-  it('holds the day-0 rate at what the sale actually happened at, whatever the record says now', async () => {
-    // The rate Woodgrove paid is history. Re-deriving it from today's profile would restate
-    // what the fund paid every time Ironline's record moves.
-    score.mockResolvedValue(rated(50));
+  it('prices day 0 at the score the business actually had, not at a perfect one', async () => {
+    // The row used to hardcode 100 — "bought at 3.00%, $48,500" — while the business had just
+    // been quoted $47,990 at 83 on its own screen. The fund paid the price the record earned.
+    score.mockResolvedValue(rated(HALF));
 
     const { dayZero } = await resaleQuote();
 
-    expect(dayZero.score).toBe(100);
-    expect(dayZero.annualRatePct).toBe(30);
+    expect(dayZero.score).toBe(50);
+    expect(dayZero.dailyRatePct).toBe(0.1);
   });
 
   it('makes a late payment cost the business money on the resale', async () => {
-    score.mockResolvedValue(rated(100));
+    score.mockResolvedValue(rated(SPOTLESS));
 
     const { today, ifLate } = await resaleQuote();
 
-    expect(ifLate.score).toBe(creditScore({ financed: 7, ontime: 6, late: 1, defaulted: 0 }));
-    expect(ifLate.annualRatePct).toBeGreaterThan(today.annualRatePct);
+    expect(ifLate.score).toBe(creditScore({ financed: 8, ontime: 7, late: 1, defaulted: 0 }));
+    expect(ifLate.dailyRatePct).toBeGreaterThan(today.dailyRatePct);
     expect(ifLate.priceUsd).toBeLessThan(today.priceUsd);
   });
 
   it('quotes an unrated business at the bottom of the range rather than the top', async () => {
-    score.mockResolvedValue(rated(undefined));
+    score.mockResolvedValue(rated(NEW));
 
     const { today } = await resaleQuote();
 
     expect(today.score).toBeNull();
-    expect(today.annualRatePct).toBe(60);
+    expect(today.dailyRatePct).toBe(0.15);
   });
 
   it('carries through whether the score was read from the chain on this request', async () => {
-    score.mockResolvedValue({ ...rated(100), live: false });
+    score.mockResolvedValue({ ...rated(SPOTLESS), live: false });
 
     expect((await resaleQuote()).live).toBe(false);
   });

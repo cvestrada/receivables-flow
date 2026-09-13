@@ -1,5 +1,5 @@
-import { writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
 import { ethers as hre } from 'hardhat';
 import { ethers } from 'ethers';
@@ -81,21 +81,46 @@ async function attempt(
 /**
  * A stand-in address that is the same on every run.
  *
- * The business and the fund are real parties with their own keys in production. Until those
- * exist, deriving them from a fixed label keeps a re-run byte-identical — a random address
- * would make the script look like it had changed something when it had not.
+ * Used only when this machine has not provisioned accounts yet. Deriving it from a fixed label
+ * keeps a re-run byte-identical — a random address would make the script look like it had
+ * changed something when it had not.
  */
 function placeholder(role: string, platform: string): string {
   return ethers.getAddress(ethers.dataSlice(ethers.id(`${role}:${platform}`), 12));
 }
 
+/**
+ * The accounts the passes should actually name.
+ *
+ * An eligibility pass says which wallet may hold a receivable, so a pass issued to a derived
+ * placeholder says it about an address nobody has the key to — and the portals, which read the
+ * real wallet from provisioning, then showed a different address from the one on the record.
+ * Provisioning opens a new pair every time it runs, so this is read rather than written down.
+ */
+function provisioned(): { company?: string; fund?: string } {
+  for (let dir = __dirname; ; dir = dirname(dir)) {
+    const candidate = join(dir, 'libs', 'privy', 'accounts.json');
+    if (existsSync(candidate)) {
+      const accounts = JSON.parse(readFileSync(candidate, 'utf8')) as {
+        company?: { address?: string };
+        fund?: { address?: string };
+      };
+      return { company: accounts.company?.address, fund: accounts.fund?.address };
+    }
+    if (dirname(dir) === dir) return {};
+  }
+}
+
 async function main(): Promise<void> {
   const [platform] = await hre.getSigners();
   const platformAddress = await platform.getAddress();
-  const business = placeholder('business', platformAddress);
-  const investor = placeholder('investor', platformAddress);
+  const accounts = provisioned();
+  const business = accounts.company ?? placeholder('business', platformAddress);
+  const investor = accounts.fund ?? placeholder('investor', platformAddress);
 
   console.log(`platform ${platformAddress}`);
+  console.log(`business ${business}${accounts.company ? '' : ' (placeholder — run provisioning)'}`);
+  console.log(`investor ${investor}${accounts.fund ? '' : ' (placeholder — run provisioning)'}`);
 
   const registry = await openRegistry(platform as never, BASE_LABEL);
   console.log(`registry ${registry.registry} under ${registry.baseName}`);

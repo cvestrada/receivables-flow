@@ -1,4 +1,6 @@
 import { Contract, JsonRpcProvider, Wallet } from 'ethers';
+import deployed from '@rf/contracts-hedera-ats/deployed.json';
+import { openedAccounts } from '@rf/privy/accounts';
 import { INVOICE } from '@rf/shared/invoice';
 
 /** What a wallet holds, before any of it is turned into a share. */
@@ -35,21 +37,103 @@ export interface ResaleView {
 const WHOLE_UNITS = INVOICE.faceValueUsd;
 
 /**
+ * The receivable keeps six decimals, like the dollar it stands for.
+ *
+ * Everything on screen and in the split is in whole units — one per dollar of face — and the
+ * chain is asked and answered in millionths. Converting at the edge, in exactly two places, is
+ * what stopped a holder table reading "50,000,000,000 units · 100000000.00%".
+ */
+const UNIT = 1_000_000n;
+const toUnits = (raw: bigint): number => Number(raw / UNIT);
+const toRaw = (units: number): bigint => BigInt(units) * UNIT;
+
+/**
  * The fund holding the receivable, as onboarding recorded it on Sepolia.
  *
  * The wallet is the one thing here that has to match the chain, so it is overridable — a
  * different demo account must not need this file edited.
  */
+/**
+ * Woodgrove Capital's account, read from provisioning rather than written down.
+ *
+ * A literal address here was the fund's wallet from an earlier provisioning run, and
+ * provisioning opens a new one every time it is run — so the holder tables, the repayment split
+ * and the ENS eligibility pass each named a different "Woodgrove", and the portal showed three
+ * addresses for a fund that has one.
+ */
+function fundWallet(): string {
+  /*
+   * The key that holds the units, which is the platform's operator key standing in for the
+   * fund on Hedera. The fund's Privy account signs the mandate and pays; this address is where
+   * the receivable is delivered and sold from, and it is the one a holders table has to name
+   * — a table naming the account that signs would show a holder with nothing in its hands.
+   */
+  const key = process.env.HEDERA_OPERATOR_WALLET_PRIVATE_KEY;
+  if (key) return new Wallet(key).address;
+
+  try {
+    return openedAccounts().fund.address;
+  } catch {
+    /*
+     * Nothing provisioned on this machine. The tables still have to render — a business reading
+     * a division it cannot refresh is reading the last true thing — so the zero address stands
+     * in, which no key can sign for and nobody will mistake for a real holder.
+     */
+    return '0x0000000000000000000000000000000000000000';
+  }
+}
+
 const SELLER = {
   name: 'Woodgrove Capital',
-  wallet: '0xE1e76C63fb819B35cDC09dbb3D03B3d85eeaE2D8',
+  get wallet() {
+    return fundWallet();
+  },
 };
 
 /** The second approved investor, the one the fund sells half of its position to. */
+/**
+ * The second approved investor — the address its own key signs as.
+ *
+ * A literal here disagreed with the key: the screen said Bridgeline was 0x3F88…C102 and the
+ * chain saw a transfer to 0x2d28…31E2, and the resale refused with "the key configured for X
+ * signs as Y". One address, derived from the one key, so the two cannot drift.
+ */
+function bridgelineWallet(): string {
+  const key = process.env.HEDERA_BRIDGELINE_WALLET_PRIVATE_KEY;
+  return key ? new Wallet(key).address : '0x3F8890000000000000000000000000000000C102';
+}
+
 export const SECOND_INVESTOR = {
   name: 'Bridgeline Partners',
-  wallet: '0x3F8890000000000000000000000000000000C102',
+  get wallet() {
+    return bridgelineWallet();
+  },
 };
+
+/** What the portal asks for when it wants the buyer nobody approved, rather than an address. */
+export const UNAPPROVED_BUYER = 'unapproved';
+
+/**
+ * The address to show the receivable when nobody has a key for this buyer.
+ *
+ * Deliberately an address no key can sign for, so an unconfigured demo cannot quietly settle a
+ * sale to a wallet somebody does own.
+ */
+const NO_KEY_PLACEHOLDER = '0xB0D30000000000000000000000000000000014FF';
+
+/**
+ * The wallet behind the "no pass" button, derived from the key that will actually sign for it.
+ *
+ * It used to be a made-up address, which meant the purchase never reached the chain at all:
+ * `sellHalf` refused it here for signing as somebody else, and the screen printed our own guard
+ * where the receivable's refusal was supposed to be. The refusal has to come from the asset, so
+ * the buyer has to be an address that can genuinely try and genuinely be turned away.
+ */
+export function unapprovedBuyer(): string {
+  const key = process.env.HEDERA_UNAPPROVED_BUYER_WALLET_PRIVATE_KEY;
+
+  return key ? new Wallet(key).address : NO_KEY_PLACEHOLDER;
+}
 
 /**
  * What the fund gets back on day 20 when nothing can be priced.
@@ -75,11 +159,39 @@ const KNOWN_BALANCES = {
 
 const RPC_URL = process.env.HEDERA_TESTNET_RPC_URL ?? 'https://testnet.hashio.io/api';
 
-const RECEIVABLE_TOKEN =
-  '0x6871D6F903C3a2977f89c079B87DA9bBb8ed2960';
+/** What every write is given to run in — Hedera's relay cannot be trusted to estimate it. */
+const GAS = 2_000_000;
 
-const SETTLEMENT =
-  '0x46900157F8137F4545F8F1237549cafaBAaF7Cb9';
+/**
+ * The receivable, read from what issuance actually recorded.
+ *
+ * A literal here was the token from an earlier issuance — one that has since been orphaned,
+ * with no key able to mint it and nobody allowed to hold it. Every transfer against it failed on
+ * the first `approve`, and the screen reported a refusal that was real but for the wrong
+ * reason. `libs/privy` already reads this file for the same address; this is the same read.
+ */
+function recordedToken(): string {
+  const token = (deployed as { hederaTestnet?: { receivableToken?: string } }).hederaTestnet
+    ?.receivableToken;
+  if (!token) throw new Error('No receivable token recorded — run npm run issue -w @rf/contracts-hedera-ats');
+  return token;
+}
+
+const RECEIVABLE_TOKEN: string = recordedToken();
+
+/**
+ * The settlement contract, read from what was actually deployed.
+ *
+ * A literal here outlived the contract it named: the source gained a fifth parameter, the
+ * portal called it, and the address on chain still had the four-parameter version — so every
+ * sale reverted with no reason string. Same read `libs/privy` does for the token.
+ */
+const SETTLEMENT: string = (() => {
+  const address = (deployed as { hederaTestnet?: { receivableDvp?: string } }).hederaTestnet
+    ?.receivableDvp;
+  if (!address) throw new Error('No settlement contract recorded — run npm run deploy:dvp -w @rf/contracts-hedera-ats');
+  return address;
+})();
 
 /** Only the calls this file makes. The receivable is an ATS security; these are ERC-20's share of it. */
 const SECURITY_ABI = [
@@ -183,10 +295,10 @@ export async function resale(priceUsd: number = CASH_BACK_USD): Promise<ResaleVi
      * live fact and is not one, so it falls through to the balances on hand like any other
      * read the endpoint could not give.
      */
-    if (Number(sellerUnits) + Number(buyerUnits) > 0) {
+    if (toUnits(sellerUnits) + toUnits(buyerUnits) > 0) {
       return toResale(
-        { ...SELLER, units: Number(sellerUnits) },
-        [{ ...SECOND_INVESTOR, units: Number(buyerUnits) }],
+        { ...SELLER, units: toUnits(sellerUnits) },
+        [{ ...SECOND_INVESTOR, units: toUnits(buyerUnits) }],
         WHOLE_UNITS,
         priceUsd,
         true,
@@ -279,21 +391,29 @@ export async function sellHalf(buyer: string, units: number, priceUsd: number = 
      * Step one of the Core Logic diagram — the seller lets the settlement contract move the
      * units it is putting up, and offers them on the same marketplace the original sale used.
      */
-    await (await security.approve(SETTLEMENT, units)).wait();
+    /*
+     * Gas stated on every call, including the simulation. Hedera's relay estimates ~115,000 for
+     * anything, and a call it estimated short comes back as a bare revert with no reason — which
+     * is how a listing on the settlement contract read as `require(false)` in a contract that
+     * has no such line.
+     */
+    await (await security.approve(SETTLEMENT, toRaw(units), { gasLimit: GAS })).wait();
 
     const listing = new Contract(SETTLEMENT, DVP_ABI, seller);
-    const terms = [RECEIVABLE_TOKEN, units, dollar, price, daysLeft] as const;
-    const id = await listing.offer.staticCall(...terms);
-    await (await listing.offer(...terms)).wait();
+    const terms = [RECEIVABLE_TOKEN, toRaw(units), dollar, price, daysLeft] as const;
+    const id = await listing.offer.staticCall(...terms, { gasLimit: GAS });
+    await (await listing.offer(...terms, { gasLimit: GAS })).wait();
 
     /*
      * Step two — the buyer settles. The money moves first and the units move second, and the
      * receivable decides at that instant whether the buyer may hold it. A refusal there takes
      * the payment back with it.
      */
-    await (await new Contract(dollar, PAYMENT_ABI, purchaser).approve(SETTLEMENT, price)).wait();
+    await (
+      await new Contract(dollar, PAYMENT_ABI, purchaser).approve(SETTLEMENT, price, { gasLimit: GAS })
+    ).wait();
 
-    const settled = await new Contract(SETTLEMENT, DVP_ABI, purchaser).settle(id);
+    const settled = await new Contract(SETTLEMENT, DVP_ABI, purchaser).settle(id, { gasLimit: GAS });
     await settled.wait();
 
     return { hash: settled.hash as string, units, priceUsd };

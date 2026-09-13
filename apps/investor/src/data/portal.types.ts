@@ -53,7 +53,8 @@ export type Block = TilesBlock | TableBlock | KvBlock | FeedBlock | EmptyBlock;
 export interface NavItem {
   id: string;
   label: string;
-  sub: string;
+  /** The route this tab is, so it can be linked to, bookmarked and gone back from. */
+  href: string;
 }
 
 /**

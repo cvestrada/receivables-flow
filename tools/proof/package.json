@@ -4,17 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "tsx src/engine/seed/business.seed.ts && tsx src/engine/seed/investor.seed.ts",
+    "predev": "tsx src/engine/seed/capital-flywheel.seed.ts",
     "dev": "vite --port 6322",
-    "prebuild": "tsx src/engine/seed/business.seed.ts && tsx src/engine/seed/investor.seed.ts",
+    "prebuild": "tsx src/engine/seed/capital-flywheel.seed.ts",
     "build": "vite build",
     "preview": "vite preview --port 6322",
-    "seed:business": "tsx src/engine/seed/business.seed.ts",
-    "seed:investor": "tsx src/engine/seed/investor.seed.ts",
     "db:apply": "tsx -e \"import('./src/engine/db/connection.ts').then(m => { m.openProofDb(); console.log('applied'); })\"",
     "db:reset": "rm -f journey.db && npm run db:apply",
     "db:export": "tsx src/engine/db/export.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "seed": "tsx src/engine/seed/capital-flywheel.seed.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

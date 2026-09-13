@@ -1,3 +1,4 @@
+import { describeRecord } from '@rf/contracts-ens';
 import { quote } from '@/lib/hedera-ats/quote';
 
 const money = (usd: number) =>
@@ -25,7 +26,7 @@ function Step({ label, value, note }: { label: string; value: string; note?: str
  * run the same three steps themselves instead of taking the portal's word for it.
  */
 export async function Quote() {
-  const { record, faceValueUsd, maturityDays, annualRatePct, discountUsd, proceedsUsd } = await quote();
+  const { record, faceValueUsd, maturityDays, dailyRatePct, feePct, discountUsd, proceedsUsd } = await quote();
   const matured = record.ontime + record.late + record.defaulted;
 
   return (
@@ -40,7 +41,7 @@ export async function Quote() {
       <div className="divide-y">
         <Step
           label="Repayment record"
-          note={`${record.financed} financed · ${record.ontime} on time · ${record.late} late · ${record.defaulted} missed`}
+          note={describeRecord(record)}
           value={
             record.score === null
               ? 'unrated'
@@ -52,7 +53,7 @@ export async function Quote() {
           note="on time counts 100, late counts 50, over everything matured"
           value={record.score === null ? 'unrated — priced at the bottom' : `${record.score} / 100`}
         />
-        <Step label="Rate this record earns" note="a year, on a 360-day year" value={`${annualRatePct.toFixed(2)}%`} />
+        <Step label="Fee this record earns" note={`${dailyRatePct.toFixed(3)}% a day over ${maturityDays} days`} value={`${feePct.toFixed(2)}%`} />
         <Step label="Face value" note={`payable in ${maturityDays} days`} value={money(faceValueUsd)} />
         <Step label="Discount the investor keeps" value={`− ${money(discountUsd)}`} />
       </div>
@@ -88,23 +89,17 @@ export async function BookedRepayment() {
   const { maturityDays, faceValueUsd } = await quote();
   const due = new Date(Date.now() + maturityDays * 86_400_000).toISOString().slice(0, 10);
 
+  /* One line. The schedule is a fact with a date and an amount, not an essay. */
   return (
-    <section className="desk overflow-hidden" data-testid="booked-repayment">
-      <div className="flex items-center justify-between gap-3 border-b px-5 py-3.5">
-        <h3 className="text-[16px] font-semibold text-[var(--ink)]">The day-60 repayment</h3>
-        <span className="st st-hot">booked with the sale</span>
-      </div>
-
-      <div className="divide-y">
-        <Step label="Amount due to the holder" value={money(faceValueUsd)} />
-        <Step label="Runs on" note={`${maturityDays} days after the money moves`} value={due} />
-        <Step label="Booked by" note="in the same transaction as the sale" value="Hedera schedule service" />
-      </div>
-
-      <div className="panel-note border-t bg-[var(--surface-alt)] px-5 py-3.5 text-[14px] leading-relaxed text-[var(--muted)]">
-        Nobody at Receivables Flow has to remember day 60. The network is holding the instruction, and
-        if it will not accept the booking then the sale itself does not happen.
-      </div>
-    </section>
+    <p
+      data-testid="booked-repayment"
+      className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[14px] text-[var(--body)]"
+    >
+      <span className="st st-hot">booked with the sale</span>
+      <span>
+        <b className="text-[var(--ink)]">{money(faceValueUsd)}</b> due {due} · Hedera schedule
+        service
+      </span>
+    </p>
   );
 }
