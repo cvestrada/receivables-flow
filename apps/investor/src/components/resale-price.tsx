@@ -28,7 +28,7 @@ function Row({
       <td className="py-2 text-right tabular-nums text-[var(--ink)]">
         {leg.score === null ? 'unrated' : `${leg.score} / 100`}
       </td>
-      <td className="py-2 text-right tabular-nums text-[var(--ink)]">{rate(leg.annualRatePct)}</td>
+      <td className="py-2 text-right tabular-nums text-[var(--ink)]">{rate(leg.feePct)}</td>
       <td
         className={`py-2 text-right tabular-nums ${strong ? 'font-semibold text-[var(--ink)]' : 'text-[var(--body)]'}`}
       >
@@ -59,12 +59,7 @@ export function ResalePrice({ quote }: { quote: ResaleQuote }) {
     <section className="overflow-hidden rounded-xl border bg-[var(--surface)]" data-testid="resale-price">
       <header className="flex items-center justify-between gap-3 border-b px-5 py-4">
         <div>
-          <h2 className="text-[16px] font-semibold text-[var(--ink)]">
-            What half the position sells for on day 20
-          </h2>
-          <p className="mt-0.5 text-[14px] text-[var(--muted)]">
-            Priced off Ironline Freight&rsquo;s record, not off what the fund would like for it.
-          </p>
+          <h2 className="text-[16px] font-semibold text-[var(--ink)]">Sell price today</h2>
         </div>
         <span className={`st ${quote.live ? 'st-ok' : ''}`}>
           {quote.live ? 'read from the chain' : 'not live'}
@@ -77,27 +72,27 @@ export function ResalePrice({ quote }: { quote: ResaleQuote }) {
             <tr className="text-left text-[var(--muted)]">
               <th className="pb-1.5 font-medium">Priced</th>
               <th className="pb-1.5 text-right font-medium">Credit score</th>
-              <th className="pb-1.5 text-right font-medium">Rate a year</th>
+              <th className="pb-1.5 text-right font-medium">Fee</th>
               <th className="pb-1.5 text-right font-medium">Price</th>
             </tr>
           </thead>
           <tbody>
             <Row
-              label="Day 0 — the whole invoice"
-              note={`${money(dayZero.faceUsd)} payable in ${dayZero.days} days`}
+              label="Bought · day 0"
+              note={`${money(dayZero.faceUsd)} · ${dayZero.days} days`}
               leg={dayZero}
               testid="resale-price-day-zero"
             />
             <Row
-              label="Day 20 — half the position"
-              note={`${money(today.faceUsd)} payable in ${today.days} days`}
+              label="Sell half · day 20"
+              note={`${money(today.faceUsd)} · ${today.days} days left`}
               leg={today}
               testid="resale-price-today"
               strong
             />
             <Row
-              label="Day 20 — if Ironline had paid one invoice late"
-              note="six paid on time, one paid late"
+              label="If Ironline had paid late"
+              note="same day, one more late payment"
               leg={ifLate}
               testid="resale-price-if-late"
             />
@@ -105,13 +100,13 @@ export function ResalePrice({ quote }: { quote: ResaleQuote }) {
         </table>
       </div>
 
-      <div className="border-t bg-[var(--surface-alt)] px-5 py-3.5 text-[14px] leading-relaxed text-[var(--muted)]">
-        Two things move the day-20 price: forty days of carry instead of sixty, and Ironline&rsquo;s
-        record. The second is worth{' '}
-        <b data-testid="resale-price-cost-of-late">{money(costOfLate)}</b> on this position alone —
-        that is what one late payment costs a business, in a number, before anybody negotiates.
-        Nothing here is a grade we assigned: the counts are on{' '}
-        <b>ironline.business.receivablesflow.eth</b> and the formula is one line anyone can rerun.
+      {/* The one number the third row exists to show, and nothing around it. */}
+      <div className="border-t bg-[var(--surface-alt)] px-5 py-3 text-[13px] text-[var(--muted)]">
+        One late payment would cost{' '}
+        <b data-testid="resale-price-cost-of-late" className="text-[var(--ink)]">
+          {money(costOfLate)}
+        </b>{' '}
+        on this position · score from Ironline&rsquo;s ENS record
       </div>
     </section>
   );

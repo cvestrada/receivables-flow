@@ -1,5 +1,6 @@
 'use client';
 
+import { Loader2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 
@@ -14,7 +15,7 @@ function isRefusal(reason: string): boolean {
   return /Privy refused/.test(reason);
 }
 
-const WITHIN_MANDATE_USD = 47_500;
+const WITHIN_MANDATE_USD = 47_990;
 const OVER_MANDATE_USD = 150_000;
 
 /** An invoice nobody has rated, so it is on no list the fund may buy from. */
@@ -68,25 +69,23 @@ export function Allocate() {
   return (
     <section aria-label="Allocate into RCV-0001" className="overflow-hidden rounded-xl border bg-[var(--surface)]">
       <header className="border-b px-5 py-4">
-        <h2 className="text-[16px] font-semibold text-[var(--ink)]">Allocate into RCV-0001</h2>
-        <p className="mt-0.5 text-[14px] text-[var(--muted)]">
-          The fund&rsquo;s account signs what its mandate allows and nothing else.
-        </p>
+        <h2 className="text-[16px] font-semibold text-[var(--ink)]">Fund RCV-0001</h2>
       </header>
 
       <div className="flex flex-wrap gap-2.5 px-5 py-4">
         <Button onClick={() => ask(WITHIN_MANDATE_USD)} disabled={busy}>
-          Allocate {dollars(WITHIN_MANDATE_USD)}
+          {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+          {busy ? 'Asking the fund’s account…' : `Fund ${dollars(WITHIN_MANDATE_USD)}`}
         </Button>
         <Button variant="outline" onClick={() => ask(OVER_MANDATE_USD)} disabled={busy}>
-          Allocate {dollars(OVER_MANDATE_USD)} — over the cap
+          Try {dollars(OVER_MANDATE_USD)} — over the cap
         </Button>
         <Button
           variant="outline"
           onClick={() => ask(WITHIN_MANDATE_USD, UNRATED_INVOICE)}
           disabled={busy}
         >
-          Allocate into an unrated invoice
+          Try an unrated invoice
         </Button>
       </div>
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { HolderView, ResaleView } from '@/lib/hedera-ats/resale';
@@ -16,12 +17,13 @@ interface Answer {
 }
 
 /**
- * The unidentified wallet already on the fund's transfer log.
+ * The buyer nobody has ever approved, named rather than addressed.
  *
- * Nobody has ever approved it, which is the point: the receivable turns it away at the instant
- * of transfer, and the money it offered comes back with it.
+ * Which wallet that is depends on the key the server holds for it, so the name is what travels
+ * and the route resolves it. That is the point of the button: the receivable turns that wallet
+ * away at the instant of transfer, and the money it offered comes back with it — a refusal from
+ * the asset, not from us.
  */
-const NO_PASS_WALLET = '0xB0D30000000000000000000000000000000014FF';
 
 /** Ours to say when the setup is unfinished; everything else is a rule somebody enforced. */
 function notSetUp(reason: string): boolean {
@@ -90,36 +92,43 @@ export function Resell({ view }: { view: ResaleView }) {
 
   return (
     <section
-      aria-label="Sell half of RCV-0001"
+      aria-label="Sell half to another KYC-approved investor"
       className="overflow-hidden rounded-xl border bg-[var(--surface)]"
     >
-      <header className="border-b px-5 py-4">
-        <h2 className="text-[16px] font-semibold text-[var(--ink)]">Sell half of RCV-0001</h2>
-        <p className="mt-0.5 text-[14px] text-[var(--muted)]">
-          The fund gets its cash back on day 20 without waiting for the invoice to be paid. The
-          buyer is checked by the receivable itself, at the moment the units move.
-        </p>
+      <header className="flex flex-wrap items-baseline justify-between gap-2 border-b px-5 py-4">
+        <h2 className="text-[16px] font-semibold text-[var(--ink)]">Sell half to another KYC-approved investor</h2>
+        {held && (
+          <p className="text-[14px] text-[var(--body)]">
+            holding <b className="text-[var(--ink)]">{held.units.toLocaleString('en-US')}</b>{' '}
+            units · {share(held.sharePct)}
+          </p>
+        )}
       </header>
 
-      {held && (
-        <p className="border-b px-5 py-3 text-[14px] text-[var(--body)]">
-          <b>Position held:</b> {held.units.toLocaleString('en-US')} units of RCV-0001 —{' '}
-          {share(held.sharePct)} of the receivable.
-        </p>
-      )}
-
       <div className="flex flex-wrap gap-2.5 px-5 py-4">
-        <Button onClick={() => sell()} disabled={busy}>
-          Sell half
-        </Button>
-        <Button variant="outline" onClick={() => sell(NO_PASS_WALLET)} disabled={busy}>
-          Sell half to a wallet with no pass
-        </Button>
+        {/*
+          * One button. The "sell to a wallet with no pass" control proved the asset's refusal,
+          * and the refusal is still asserted — from the Mandate tab, where a rule being refused
+          * belongs — but on the tab where money moves it read as a second thing to do.
+          */}
+        {/*
+          * Once. The button stayed live after the sale and a second press sold the other half,
+          * leaving the fund with nothing and the screen with a button that could only refuse.
+          * A position that is already shared has been sold; what remains is held to maturity.
+          */}
+        {(held?.sharePct ?? 0) >= 100 && !answer?.hash ? (
+          <Button onClick={() => sell()} disabled={busy}>
+            {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+            {busy ? 'Settling on Hedera…' : 'Sell half to Bridgeline Partners (KYC-approved)'}
+          </Button>
+        ) : (
+          <span className="text-[14px] text-[var(--muted)]">Sold — half is held to maturity.</span>
+        )}
       </div>
 
       {answer && (
         <div className="border-t px-5 py-4">
-          <div className="eyebrow mb-2">Who holds RCV-0001 now</div>
+          <div className="eyebrow mb-2">Holders</div>
           <table data-testid="resale-split" className="w-full text-[14px]">
             <thead>
               <tr className="text-left text-[var(--muted)]">
@@ -146,26 +155,31 @@ export function Resell({ view }: { view: ResaleView }) {
           </table>
 
           <p data-testid="resale-cash-back" className="mt-3 text-[14px] text-[var(--body)]">
-            <b>Cash returned to the fund:</b> {money(answer.cashReturnedUsd)}
-          </p>
-
-          {/*
-            * Where these figures came from, said beside them. A split the portal could not
-            * refresh is still worth showing, but a fund has to be able to tell it apart from
-            * one that is current.
-            */}
-          <p className="mt-1 text-[13px] text-[var(--muted)]">
-            {answer.live
-              ? 'Read from the receivable on Hedera testnet.'
-              : 'Not live — the balances on hand, shown because the Hedera endpoint could not be reached.'}
+            Cash back <b className="text-[var(--ink)]">{money(answer.cashReturnedUsd)}</b>
+            <span className="ml-2 text-[13px] text-[var(--muted)]">
+              · {answer.live ? 'read from the chain' : 'not live'}
+            </span>
           </p>
         </div>
       )}
 
       {answer?.hash && (
         <div className="border-t bg-[var(--surface-alt)] px-5 py-3.5 text-[14px] leading-relaxed text-[var(--pos)]">
-          <b>Settled.</b> {answer.units.toLocaleString('en-US')} units sold — transaction{' '}
-          {answer.hash}
+          <b>Settled.</b>{' '}
+          {/*
+            * A link, not a printed hash. Sixty-six characters of hex are something a viewer has
+            * to copy somewhere else to believe; the whole claim of settling on a public chain is
+            * that they can look without asking us, so the screen takes them there.
+            */}
+          <a
+            data-testid="resale-transaction"
+            href={`https://hashscan.io/testnet/transaction/${answer.hash}`}
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium underline"
+          >
+            view on HashScan ↗
+          </a>
         </div>
       )}
 

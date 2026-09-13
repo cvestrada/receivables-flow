@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useExportWallet, usePrivy, useWallets } from '@privy-io/react-auth';
+import { usePrivy } from '@privy-io/react-auth';
+import { initialsFor, nameFromEmail } from '@rf/privy/policies';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -11,37 +11,27 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-/** First two letters of the address the fund signs in with. */
 function initials(email: string | undefined): string {
-  return (email?.slice(0, 2) ?? '··').toUpperCase();
+  return email ? initialsFor(nameFromEmail(email)) : '··';
 }
 
-function short(address: string | undefined): string {
-  return address ? `${address.slice(0, 6)}…${address.slice(-4)}` : 'creating…';
+/** How the fund refers to whoever is at the keyboard. */
+function who(email: string | undefined): string {
+  return email ? nameFromEmail(email) : 'portfolio manager';
 }
 
 /**
- * The fund's account, as an avatar in the header.
+ * Who is signed in, and how to leave.
  *
- * Export opens Privy's own screen rather than one we drew. The private key is
- * shown on an iframe served from Privy's domain, so this app never has access
- * to it.
+ * Nothing about an account here. The fund has exactly one — the wallet provisioning opened for
+ * it — and that is in the bar above, behind the ENS name that resolves to it. This used to print
+ * the signed-in person's own embedded wallet under the heading "Fund account", which is how a
+ * fund with one account came to show three addresses on one screen.
  */
 export function AccountMenu() {
   const { user, logout } = usePrivy();
-  const { wallets } = useWallets();
-  const { exportWallet } = useExportWallet();
-  const [copied, setCopied] = useState(false);
 
   const email = user?.email?.address;
-  const address = wallets[0]?.address;
-
-  const copy = async () => {
-    if (!address) return;
-    await navigator.clipboard.writeText(address);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1400);
-  };
 
   return (
     <DropdownMenu>
@@ -52,8 +42,13 @@ export function AccountMenu() {
           </AvatarFallback>
         </Avatar>
         <span className="min-w-0 leading-tight">
-          <span className="block text-[14px] text-[var(--muted)]">Woodgrove Capital</span>
-          <span className="block font-mono text-[10.5px] text-[var(--body)]">{short(address)}</span>
+          {/*
+            * The person, not an account. The address this hook returns is the signed-in user's
+            * own embedded wallet — it is not Woodgrove's, it holds nothing, and printing it
+            * beside the fund's name put a third address on screen for a fund that has one. The
+            * fund's account is in the bar above, behind its ENS name.
+            */}
+          <span className="block truncate text-[14px] text-[var(--body)]">{who(email)}</span>
         </span>
       </DropdownMenuTrigger>
 
@@ -65,24 +60,7 @@ export function AccountMenu() {
 
         <DropdownMenuSeparator />
 
-        <div className="px-2 py-1.5">
-          <span className="block text-[14px] text-[var(--muted)]">Fund account</span>
-          <span className="block text-[14px] break-all text-[var(--body)]">
-            {address ?? 'creating…'}
-          </span>
-        </div>
-
-        <DropdownMenuItem onSelect={copy} disabled={!address}>
-          {copied ? 'Copied' : 'Copy address'}
-        </DropdownMenuItem>
-
-        <DropdownMenuItem onSelect={() => exportWallet()} disabled={!address}>
-          Export wallet
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
-
-        <DropdownMenuItem onSelect={() => logout()}>Sign out</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => void logout()}>Sign out</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

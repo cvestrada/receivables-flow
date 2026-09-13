@@ -1,5 +1,5 @@
 import { JsonRpcProvider, Network } from 'ethers';
-import { creditScore, readScore } from '@rf/contracts-ens';
+import { ONBOARD_COUNTS, creditScore, readCounts, type Counts } from '@rf/contracts-ens';
 import deployed from '@rf/contracts-ens/deployed.json';
 
 /**
@@ -12,6 +12,15 @@ export interface ScoreView {
   issuer: string;
   label: string;
   value: number | undefined;
+  /**
+   * The record the number was worked out from.
+   *
+   * Carried alongside the score because some questions are about the record and not the
+   * number: what one more late payment would do to this business cannot be answered from a
+   * score alone, and answering it from a record somebody typed would be answering it about a
+   * different company.
+   */
+  counts: Counts;
   /** Whether the counts behind the number came off the chain on this request. */
   live: boolean;
 }
@@ -27,8 +36,13 @@ interface Deployment {
  * Used only when there is no deployment to read or the endpoint is unreachable. The counts are
  * the fallback, never the score: the number is computed from them by the same published
  * function either way, so an offline screen cannot show a grade the formula would not produce.
+ *
+ * It is the record onboarding writes, taken from the package rather than written here. A
+ * fallback of its own invention would put a business on screen that the chain has never held —
+ * this one was a spotless six-for-six while the chain said otherwise, which is how the price
+ * on an offline screen came to disagree with the price on a live one.
  */
-const KNOWN_COUNTS = { financed: 6, ontime: 6, late: 0, defaulted: 0 };
+const KNOWN_COUNTS: Counts = ONBOARD_COUNTS;
 
 const RPC_URL = process.env.SEPOLIA_RPC_URL ?? 'https://sepolia.gateway.tenderly.co';
 
@@ -84,8 +98,9 @@ export async function issuerScore(): Promise<ScoreView> {
   if (businesses) {
     const provider = new JsonRpcProvider(RPC_URL, SEPOLIA, { staticNetwork: true });
     try {
-      const value = await withinBudget(readScore(provider, businesses, issuer));
-      return { issuer, label: describe(value), value, live: true };
+      const counts = (await withinBudget(readCounts(provider, businesses, issuer))) ?? KNOWN_COUNTS;
+      const value = creditScore(counts);
+      return { issuer, label: describe(value), value, counts, live: true };
     } catch {
       // Fall through to the counts on hand. A screen that blanked out on a flaky endpoint
       // would be worse than one that shows the same number with its source named.
@@ -95,5 +110,5 @@ export async function issuerScore(): Promise<ScoreView> {
   }
 
   const value = creditScore(KNOWN_COUNTS);
-  return { issuer, label: describe(value), value, live: false };
+  return { issuer, label: describe(value), value, counts: KNOWN_COUNTS, live: false };
 }

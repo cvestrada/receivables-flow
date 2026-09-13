@@ -1,5 +1,12 @@
 import { NextResponse } from 'next/server';
-import { SECOND_INVESTOR, resale, sellHalf, type HolderView } from '@/lib/hedera-ats/resale';
+import {
+  SECOND_INVESTOR,
+  UNAPPROVED_BUYER,
+  resale,
+  sellHalf,
+  unapprovedBuyer,
+  type HolderView,
+} from '@/lib/hedera-ats/resale';
 import { resaleQuote } from '@/lib/hedera-ats/resale-quote';
 
 export const runtime = 'nodejs';
@@ -29,7 +36,14 @@ export interface ResaleAnswer {
  */
 export async function POST(request: Request) {
   const { buyer, units } = (await request.json()) as { buyer?: string; units?: number };
-  const wallet = buyer ?? SECOND_INVESTOR.wallet;
+
+  /*
+   * The unapproved buyer is named rather than addressed. Only the server knows which key signs
+   * for it, and a portal that sent an address it had written down would be sending one nobody
+   * could sign with — which is how this button spent a fortnight printing our own refusal.
+   */
+  const wallet =
+    buyer === UNAPPROVED_BUYER ? unapprovedBuyer() : (buyer ?? SECOND_INVESTOR.wallet);
 
   /*
    * The price is worked out before anything is offered, from Ironline's record as it stands
