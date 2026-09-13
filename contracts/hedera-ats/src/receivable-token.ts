@@ -8,7 +8,7 @@ import {
   IMint__factory,
   INominalValue__factory,
 } from '@hashgraph/asset-tokenization-contracts';
-import { ATS_ROLES, BOND_CONFIG_ID, deployBondFromFactory } from '@hashgraph/asset-tokenization-contracts/scripts';
+import { ATS_ROLES, BOND_CONFIG_ID } from '@hashgraph/asset-tokenization-contracts/scripts';
 
 /** Addresses of an ATS deployment this package issues tokens against. */
 export interface AtsDeployment {
@@ -53,6 +53,24 @@ const TOKEN_DECIMALS = 6;
 /** "USD" as the bytes3 ISO 4217 code ATS stores on the token. */
 const USD = '0x555344';
 
+/**
+ * What issuing a security costs, stated rather than estimated.
+ *
+ * Hedera's per-transaction ceiling. Unused gas is not charged, and the alternative — letting the
+ * relay estimate — is what made every issuance fail.
+ */
+const DEPLOY_GAS = 15_000_000;
+
+/**
+ * What every other write here is given, for the same reason.
+ *
+ * Adding an address to a control list, granting a role and minting are all small, and Hedera's
+ * relay estimates all three at roughly 115,000 — which is not enough for any of them once the
+ * call goes through ATS's resolver proxy into a facet. Stated, they land; estimated, they fail
+ * with a receipt that names nothing.
+ */
+const WRITE_GAS = 2_000_000;
+
 /** RegulationType.REG_S — the offering sits outside the US-person rules. */
 const REG_S = 1;
 const REGULATION_SUBTYPE_NONE = 0;
@@ -92,12 +110,17 @@ export async function issueReceivableToken(
    * expects. Supply is one unit per dollar of face value, so the units an
    * investor buys read directly as dollars of the invoice.
    */
-  const startingDate = Math.floor(Date.now() / 1000);
-  const token = await deployBondFromFactory(
-    {
-      adminAccount: admin,
-      factory,
-      securityData: {
+  /*
+   * A few minutes ahead, not this second.
+   *
+   * ATS refuses a bond whose starting date is not in the future when the transaction executes,
+   * and "now" stops being the future somewhere between building the call and Hedera running it.
+   * The demo's clock does not care about five minutes; the factory does.
+   */
+  const startingDate = Math.floor(Date.now() / 1000) + 5 * 60;
+
+  const bondData = {
+      security: {
         arePartitionsProtected: false,
         isMultiPartition: false,
         resolver: ats.resolver,
@@ -119,7 +142,17 @@ export async function issueReceivableToken(
         externalKycLists,
         compliance: ZeroAddress,
         identityRegistry: ZeroAddress,
+        /*
+         * The admin role first, and not because it is tidy.
+         *
+         * ATS refuses to create a security with no initial admin — `NoInitialAdmins` — and
+         * Hedera's relay reports that refusal as a receipt with status 0, no logs and no revert
+         * string, which reads as a flaky network rather than as a missing field. Without it the
+         * three roles below are granted on a token that is never created, and with it they are
+         * grantable afterwards: only an admin can hand issuing to the company account.
+         */
         rbacs: [
+          { role: ATS_ROLES.DEFAULT_ADMIN_ROLE, members: [admin] },
           { role: ATS_ROLES.ROLE_CONTROL_LIST, members: [admin] },
           { role: ATS_ROLES.ROLE_ISSUER, members: [admin] },
           { role: ATS_ROLES.ROLE_CAP, members: [admin] },
@@ -134,19 +167,41 @@ export async function issueReceivableToken(
       },
       proceedRecipients: [],
       proceedRecipientsData: [],
+  };
+
+  const regulationData = {
+    regulationType: REG_S,
+    regulationSubType: REGULATION_SUBTYPE_NONE,
+    additionalSecurityData: {
+      countriesControlListType: false,
+      listOfCountries: '',
+      info: '',
     },
-    {
-      regulationType: REG_S,
-      regulationSubType: REGULATION_SUBTYPE_NONE,
-      additionalSecurityData: {
-        countriesControlListType: false,
-        listOfCountries: '',
-        info: '',
-      },
-    },
+  };
+
+  /*
+   * Called directly rather than through ATS's own `deployBondFromFactory` helper, and with the
+   * gas stated.
+   *
+   * The helper lets ethers estimate, and Hedera's relay answers `eth_estimateGas` for this call
+   * with about 115,000 however much work it involves — so the transaction ran out of gas every
+   * time. Hedera reports running out of gas exactly as it reports a revert: `status: 0`, no
+   * logs, no reason string. That is the whole of the CONTRACT_REVERT_EXECUTED mystery.
+   *
+   * The address is taken from a static call first, which runs the same code without writing
+   * anything and returns the address the transaction then creates.
+   */
+  const address = await factory.deployBond.staticCall(
+    bondData as Parameters<typeof factory.deployBond>[0],
+    regulationData,
   );
 
-  const address = await token.getAddress();
+  const created = await factory.deployBond(
+    bondData as Parameters<typeof factory.deployBond>[0],
+    regulationData,
+    { gasLimit: DEPLOY_GAS },
+  );
+  await created.wait();
 
   /*
    * Whitelist mode is already live at this point, so nobody can hold the token
@@ -185,13 +240,17 @@ export async function readTerms(signer: Signer, token: string): Promise<Receivab
 
 /** Adds one address to the token's approved-holder list. Requires the compliance role. */
 export async function approveHolder(signer: Signer, token: string, holder: string): Promise<void> {
-  const tx = await IControlList__factory.connect(token, signer).addToControlList(holder);
+  const tx = await IControlList__factory.connect(token, signer).addToControlList(holder, {
+    gasLimit: WRITE_GAS,
+  });
   await tx.wait();
 }
 
 /** Removes one address from the token's approved-holder list. Requires the compliance role. */
 export async function revokeHolder(signer: Signer, token: string, holder: string): Promise<void> {
-  const tx = await IControlList__factory.connect(token, signer).removeFromControlList(holder);
+  const tx = await IControlList__factory.connect(token, signer).removeFromControlList(holder, {
+    gasLimit: WRITE_GAS,
+  });
   await tx.wait();
 }
 
@@ -202,7 +261,9 @@ export async function isApprovedHolder(signer: Signer, token: string, holder: st
 
 /** Mints token units to an address. Requires the issuer role, and the address must be approved. */
 export async function mintTo(signer: Signer, token: string, to: string, units: number): Promise<void> {
-  const tx = await IMint__factory.connect(token, signer).mint(to, units);
+  const tx = await IMint__factory.connect(token, signer).mint(to, units, {
+    gasLimit: WRITE_GAS,
+  });
   await tx.wait();
 }
 
@@ -216,6 +277,7 @@ export async function grantIssuerRole(signer: Signer, token: string, account: st
   const tx = await IAccessControl__factory.connect(token, signer).grantRole(
     ATS_ROLES.ROLE_ISSUER,
     account,
+    { gasLimit: WRITE_GAS },
   );
   await tx.wait();
 }
@@ -231,6 +293,7 @@ export async function revokeIssuerRole(signer: Signer, token: string, account: s
   const tx = await IAccessControl__factory.connect(token, signer).revokeRole(
     ATS_ROLES.ROLE_ISSUER,
     account,
+    { gasLimit: WRITE_GAS },
   );
   await tx.wait();
 }

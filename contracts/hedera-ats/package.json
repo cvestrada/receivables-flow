@@ -11,17 +11,20 @@
     "compile": "hardhat compile",
     "typecheck": "tsc --noEmit",
     "test": "hardhat test",
-    "mirror:kyc": "hardhat run scripts/mirror-kyc.ts --network hederaTestnet"
+    "mirror:kyc": "hardhat run scripts/mirror-kyc.ts --network hederaTestnet",
+    "seed:positions": "hardhat run scripts/seed-positions.ts --network hederaTestnet",
+    "fund:accounts": "hardhat run scripts/fund-accounts.ts --network hederaTestnet"
   },
   "main": "./src/pricing.ts",
   "types": "./src/pricing.ts",
   "exports": {
     ".": "./src/pricing.ts",
     "./pricing": "./src/pricing.ts",
-    "./distribution": "./src/distribution.ts"
+    "./distribution": "./src/distribution.ts",
+    "./deployed.json": "./deployed.json"
   },
   "dependencies": {
-    "@rf/shared": "*"
+    "@rf/contracts-ens": "*"
   },
   "devDependencies": {
     "@hashgraph/asset-tokenization-contracts": "^8.0.0",
@@ -29,8 +32,5 @@
     "dotenv": "^16.4.5",
     "hardhat": "^2.22.0",
     "typescript": "^5.6.0"
-  },
-  "dependencies": {
-    "@rf/contracts-ens": "*"
   }
 }

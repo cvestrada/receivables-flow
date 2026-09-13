@@ -13,41 +13,59 @@
 const USDC_DECIMALS = 1_000_000n;
 
 /**
- * Days in a year, for working out how much of the annual rate an invoice has earned.
+ * The fee is a daily rate, because that is how factoring is bought and sold.
  *
- * Money-market discount rates are quoted against a 360-day year, so pricing a 60-day invoice
- * against 365 would quote one rate and charge another.
+ * It used to be quoted as an annual percentage, which is the arithmetic of a loan and reads
+ * like one: "35.10% a year" on a two-month invoice frightened everyone who saw it, and the
+ * business it was quoted to has no year — it has sixty days. A daily rate multiplied by the
+ * days the money is actually out answers the only question being asked, which is what this
+ * invoice costs to sell.
+ *
+ * Held in hundredths of a basis point so that one point of score moves the price. At whole
+ * basis points a business would repay four invoices on time and see the same number.
  */
-const DAYS_PER_YEAR = 360n;
+const HUNDREDTHS_PER_BPS = 100;
 
-/** The best rate on offer, in basis points, earned by a business that has repaid everything. */
-const BEST_RATE_BPS = 3_000;
+/** The best daily rate, earned by a business that has repaid everything: 0.05% a day. */
+const BEST_DAILY_RATE = 5 * HUNDREDTHS_PER_BPS;
 
 /**
- * How much worse the rate gets across the whole range of the score, in basis points.
+ * How much worse the daily rate gets across the whole range of the score.
  *
- * A business that has defaulted on everything pays this on top of the best rate. Everything in
- * between is a straight line, so a business can see what one more repaid invoice is worth to
- * it without having to ask us.
+ * A business that has never repaid anything pays this on top of the best rate — 0.15% a day.
+ * Everything in between is a straight line, so a business can see what one more repaid invoice
+ * is worth to it without having to ask us.
  */
-const RISK_SPAN_BPS = 3_000;
+const RISK_SPAN_DAILY_RATE = 10 * HUNDREDTHS_PER_BPS;
 
 /** The lowest score, which a business with no matured invoice yet is priced at. */
 const WORST_SCORE = 0;
 
-/** The highest score, which a business that has never missed a payment earns. */
+/** The highest score, which a business that has paid every matured invoice on time earns. */
 const BEST_SCORE = 100;
 
 /** What an invoice sells for, and the rate that produced it. */
 export interface Quote {
   /** The score this was priced against, or null when the business has no record yet. */
   score: number | null;
-  /** The annual rate charged, in basis points. */
-  annualRateBps: number;
+  /** The daily rate charged, in hundredths of a basis point of face value. */
+  dailyRate: number;
+  /** The whole fee over this invoice's own term, in basis points of face value. */
+  feeBps: number;
   /** What the investor keeps at maturity, in USDC's six decimals. */
   discount: bigint;
   /** What the investor pays today, in USDC's six decimals. */
   price: bigint;
+}
+
+/** The daily rate as a percentage, the way the screen writes it: 0.062 means 0.062% a day. */
+export function dailyRatePct(quote: Quote): number {
+  return quote.dailyRate / (HUNDREDTHS_PER_BPS * 100);
+}
+
+/** The whole fee as a percentage of face, the way the screen writes it: 3.72 means 3.72%. */
+export function feePct(quote: Quote): number {
+  return quote.feeBps / 100;
 }
 
 /**
@@ -65,18 +83,22 @@ export interface Quote {
  */
 export function priceFor(faceValueUsd: number, maturityDays: number, score: number | null): Quote {
   const rated = score === null ? WORST_SCORE : Math.min(Math.max(Math.round(score), WORST_SCORE), BEST_SCORE);
-  const annualRateBps = BEST_RATE_BPS + Math.round((RISK_SPAN_BPS * (BEST_SCORE - rated)) / BEST_SCORE);
+  const dailyRate = BEST_DAILY_RATE + Math.round((RISK_SPAN_DAILY_RATE * (BEST_SCORE - rated)) / BEST_SCORE);
+
+  /* The whole fee is the daily rate times the days the money is out. Nothing else is in it. */
+  const feeBps = Math.round((dailyRate * maturityDays) / HUNDREDTHS_PER_BPS);
 
   /*
    * Worked in USDC's smallest unit throughout. Cents held as decimals would round a $50,000
    * invoice off by a fraction the two sides of the trade would then disagree about.
    */
   const face = BigInt(faceValueUsd) * USDC_DECIMALS;
-  const discount = (face * BigInt(annualRateBps) * BigInt(maturityDays)) / (10_000n * DAYS_PER_YEAR);
+  const discount = (face * BigInt(dailyRate) * BigInt(maturityDays)) / (10_000n * BigInt(HUNDREDTHS_PER_BPS));
 
   return {
     score: score === null ? null : rated,
-    annualRateBps,
+    dailyRate,
+    feeBps,
     discount,
     price: face - discount,
   };

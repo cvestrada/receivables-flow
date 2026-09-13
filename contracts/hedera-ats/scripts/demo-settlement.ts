@@ -6,7 +6,7 @@ import { creditScore, readRecord } from '@rf/contracts-ens';
 import ensDeployed from '@rf/contracts-ens/deployed.json';
 import { MockScheduleService__factory, MockUsdc__factory, ReceivableDvp__factory } from '../typechain-types';
 import { approveHolder, isApprovedHolder, issueReceivableToken, mintTo } from '../src/receivable-token';
-import { priceFor } from '../src/pricing';
+import { dailyRatePct, feePct, priceFor } from '../src/pricing';
 
 const FACE_VALUE_USD = 50_000;
 const MATURITY_DAYS = 60;
@@ -128,7 +128,7 @@ async function main(): Promise<void> {
   line('receivable', `${token}`);
   line('face value', `$${FACE_VALUE_USD.toLocaleString('en-US')}, payable in ${MATURITY_DAYS} days`);
   line('published score', score === null ? 'unrated — nothing matured yet, priced at the bottom' : `${score} out of 100`);
-  line('annual rate', `${(quote.annualRateBps / 100).toFixed(2)}% on a 360-day year`);
+  line('fee', `${dailyRatePct(quote).toFixed(3)}% a day · ${feePct(quote).toFixed(2)}% over the term`);
   line('discount', `${usd(quote.discount)} — the investor's return`);
   line('asking price', `${usd(price)} — worked out, not typed in`);
   line('offer id', id.toString());
