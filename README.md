@@ -28,6 +28,64 @@ Press **Reset demo** (bottom of either sidebar) before a run — it forgets the 
 - **Hedera / ATS** — the receivable is an Asset Tokenization Studio security with a control list; `ReceivableDvp` settles both legs of a sale in one transaction and books the day-60 repayment on the schedule service.
 - **ENSv2** — `ironline.business.receivablesflow.eth` carries the repayment record (`rf.invoices.*`) that prices every invoice; `woodgrove.investor.receivablesflow.eth` carries the fund's eligibility pass.
 
+## Architecture
+
+```mermaid
+flowchart TD
+    JUDGE(["Judge · signs in with email"])
+
+    subgraph PORTALS["Two Next.js portals · Railway"]
+        BIZ["Business portal<br/>Ironline Freight"]
+        INV["Investor portal<br/>Woodgrove Capital"]
+    end
+
+    subgraph LIBS["Shared libraries"]
+        PRIVYLIB["@rf/privy<br/>wallets · quorums · policies · signing"]
+        ATSLIB["@rf/contracts-hedera-ats<br/>pricing · issuance · settlement"]
+        ENSLIB["@rf/contracts-ens<br/>names · records · passes"]
+    end
+
+    subgraph PRIVY["Privy"]
+        COMPANY["Company wallet<br/>2-of-3 key quorum"]
+        FUND["Fund wallet<br/>mandate policy"]
+    end
+
+    subgraph HEDERA["Hedera testnet"]
+        TOKEN["Receivable token<br/>ATS security · control list"]
+        DVP["ReceivableDvp<br/>atomic settlement · day-60 schedule"]
+        USDC["mUSDC"]
+    end
+
+    subgraph ENS["ENSv2 · Sepolia"]
+        BIZNAME["ironline.business.receivablesflow.eth<br/>rf.invoices.* record"]
+        FUNDNAME["woodgrove.investor.receivablesflow.eth<br/>KYC pass"]
+    end
+
+    JUDGE --> BIZ
+    JUDGE --> INV
+    BIZ --> PRIVYLIB
+    INV --> PRIVYLIB
+    BIZ --> ATSLIB
+    INV --> ATSLIB
+    BIZ --> ENSLIB
+    INV --> ENSLIB
+
+    PRIVYLIB --> COMPANY
+    PRIVYLIB --> FUND
+    COMPANY -- "mint · 2 signatures" --> TOKEN
+    FUND -- "pay · within mandate" --> USDC
+
+    ATSLIB --> TOKEN
+    ATSLIB --> DVP
+    DVP -- "token ↔ mUSDC" --> TOKEN
+    DVP --> USDC
+
+    ENSLIB --> BIZNAME
+    ENSLIB --> FUNDNAME
+    BIZNAME -- "credit score prices the invoice" --> ATSLIB
+    FUNDNAME -- "mirrored to the control list" --> TOKEN
+```
+
 ## Run it locally
 
 ```
