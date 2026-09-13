@@ -83,6 +83,7 @@ export const PROFILE_RECORDS = [
   'rf.invoices.ontime',
   'rf.invoices.late',
   'rf.invoices.defaulted',
+  'rf.invoices.outstanding',
 ] as const;
 
 /**
@@ -591,21 +592,86 @@ export type Ending = 'repaid' | 'defaulted';
  * whoever is holding the record of it, not to a sum.
  */
 export function applyOutcome(counts: Counts, ending: Ending): Counts {
+  /*
+   * An ending needs an invoice to end. The page read "9 sold, 11 matured" after a few demo
+   * runs, because repaying was counted whether or not anything was outstanding — a record of a
+   * business that repaid invoices it never sold. Refusing here is what keeps the four counts a
+   * record rather than four independent tallies.
+   */
+  if (outstanding(counts) < 1) {
+    throw new Error(
+      `nothing outstanding to ${ending === 'repaid' ? 'repay' : 'default on'} — ${counts.financed} financed, ${matured(counts)} matured`,
+    );
+  }
+
   return ending === 'repaid'
     ? { ...counts, ontime: counts.ontime + 1 }
     : { ...counts, defaulted: counts.defaulted + 1 };
 }
 
+/** Invoices that have come due, whichever way they went. */
+export function matured(counts: Counts): number {
+  return counts.ontime + counts.late + counts.defaulted;
+}
+
+/** Invoices sold and not yet come due — the only ones an ending can happen to. */
+export function outstanding(counts: Counts): number {
+  return counts.financed - matured(counts);
+}
+
+/**
+ * The record as one line, always with every number in it.
+ *
+ * Four screens each wrote this sentence by hand, and each left out the invoices still due — so
+ * "7 financed · 4 on time · 2 late · 0 defaulted" read as a sum that failed, on four screens,
+ * fixed one at a time. This is the only way a record is turned into words now, and it cannot
+ * omit the number that makes the others add up.
+ */
+export function describeRecord(counts: Counts): string {
+  return `${counts.financed} financed = ${counts.ontime} on time + ${counts.late} late + ${counts.defaulted} defaulted + ${outstanding(counts)} outstanding`;
+}
+
+/** The same record as rows, for a screen that lays the counts out rather than reads them. */
+export function recordRows(counts: Counts): { label: string; value: number }[] {
+  return [
+    { label: 'Financed', value: counts.financed },
+    { label: 'Paid on time', value: counts.ontime },
+    { label: 'Paid late', value: counts.late },
+    { label: 'Defaulted', value: counts.defaulted },
+    { label: 'Outstanding', value: outstanding(counts) },
+  ];
+}
+
+/**
+ * Whether four counts describe a business that could exist.
+ *
+ * Every write to the page goes through this. A record that fails it is not a record of
+ * anything, and a page that publishes one is worth less than a page that publishes nothing.
+ */
+export function coherent(counts: Counts): boolean {
+  return (
+    [counts.financed, counts.ontime, counts.late, counts.defaulted].every(
+      (count) => Number.isInteger(count) && count >= 0,
+    ) && matured(counts) <= counts.financed
+  );
+}
+
 /**
  * The record a business is onboarded with.
  *
- * Six invoices matured — four paid on time, one paid late, one never paid — which scores 75.
+ * Six invoices financed and all six matured — four paid on time, two paid late, none defaulted
+ * — which scores 83. Financed equals matured on purpose: nothing is outstanding when the demo
+ * opens, because an invoice only becomes financed here when the business submits it, and the
+ * one it is about to submit is the seventh.
  * Deliberately not a clean sheet: a business onboarded at 100 has nowhere to go, so repaying
  * $50,000 on time would leave its next invoice priced exactly where it was and the platform's
  * central claim — that a public record earns a business cheaper money — would be true in the
- * arithmetic and invisible on the screen. Starting mid-range is what lets both endings show.
+ * arithmetic and invisible on the screen. Starting a little below the top is what lets both
+ * endings show. No default, though: a business that has actually walked away from an invoice
+ * is a different credit story from one that has been slow twice, and this one is meant to be
+ * fundable rather than a warning.
  */
-export const ONBOARD_COUNTS: Counts = { financed: 7, ontime: 4, late: 1, defaulted: 1 };
+export const ONBOARD_COUNTS: Counts = { financed: 6, ontime: 4, late: 2, defaulted: 0 };
 
 /**
  * A tally written the way a page publishes it.
@@ -614,11 +680,23 @@ export const ONBOARD_COUNTS: Counts = { financed: 7, ontime: 4, late: 1, default
  * drift into publishing different keys for the same fact.
  */
 export function countRecords({ financed, ontime, late, defaulted }: Counts): Record<string, string> {
+  if (!coherent({ financed, ontime, late, defaulted })) {
+    throw new Error(
+      `refusing to publish an impossible record: ${financed} financed, ${ontime + late + defaulted} matured`,
+    );
+  }
+
+  /*
+   * `outstanding` is written as well, though it is derived. Read raw off the page, "9 financed,
+   * 6 on time, 2 late" looks like a sum that fails; with "1 outstanding" beside it, it is a sum
+   * that holds — and the invoice that has not come due is the one the whole cycle is about.
+   */
   return {
     'rf.invoices.financed': String(financed),
     'rf.invoices.ontime': String(ontime),
     'rf.invoices.late': String(late),
     'rf.invoices.defaulted': String(defaulted),
+    'rf.invoices.outstanding': String(outstanding({ financed, ontime, late, defaulted })),
   };
 }
 
@@ -662,22 +740,24 @@ export function splitPaid({ financed, ontime, late, defaulted, paid }: RawCounts
 }
 
 /**
- * Work out a business's score from its public page, the way a stranger would.
+ * Read a business's counts off its public page.
+ *
+ * Separate from the score because a reader often needs the record itself and not only the
+ * number it produces — pricing what one more late payment would do to a business, for
+ * instance, is a question about its counts that no single score can answer.
  *
  * Takes a provider and the platform's registry and nothing else — no signer, and no call to
- * Receivables Flow. The counts are read off the page and the sum is done here, so there is no
- * point in this path where the answer is something we handed out.
+ * Receivables Flow. A company with no page comes back undefined rather than as zeroes: having
+ * no record is a different answer from having a bad one.
  */
-export async function readScore(
+export async function readCounts(
   provider: ethers.Provider,
   { registry: registryAddress, baseName }: RegistryRef,
   label: string,
-): Promise<number | undefined> {
+): Promise<Counts | undefined> {
   const registry = new ethers.Contract(registryAddress, ABI.registry, provider);
   const name = `${label}.${baseName}`;
 
-  // A company with no page is in the same position as one with no matured invoices: there is
-  // nothing to score, which is a different answer from scoring it badly.
   const resolver = await registry.getResolver(label).catch(() => ethers.ZeroAddress);
   if (resolver === ethers.ZeroAddress) return undefined;
 
@@ -689,7 +769,23 @@ export async function readScore(
     readRecord(provider, resolver, name, LEGACY_PAID).catch(() => ''),
   ]);
 
-  return creditScore(splitPaid({ financed, ontime, late, defaulted, paid }));
+  return splitPaid({ financed, ontime, late, defaulted, paid });
+}
+
+/**
+ * Work out a business's score from its public page, the way a stranger would.
+ *
+ * The counts are read off the page and the sum is done here, so there is no point in this
+ * path where the answer is something we handed out.
+ */
+export async function readScore(
+  provider: ethers.Provider,
+  ref: RegistryRef,
+  label: string,
+): Promise<number | undefined> {
+  const counts = await readCounts(provider, ref, label);
+
+  return counts && creditScore(counts);
 }
 
 /** A record that was never written reads as none, so a blank page comes back unrated. */
@@ -870,13 +966,25 @@ export async function clearRetiredRecord(
   resolverAddress: string,
   name: string,
 ): Promise<string | undefined> {
-  const standing = await readRecord(signer.provider, resolverAddress, name, RETIRED_WALLET_RECORD);
-  if (standing === '') return undefined;
-
   const store = new ethers.Contract(resolverAddress, ABI.resolver, signer);
-  const receipt = await (
-    await store.setText(encodeName(name), RETIRED_WALLET_RECORD, '')
-  ).wait();
+  let last: string | undefined;
 
-  return receipt.hash as string;
+  /*
+   * Both of the keys this platform has retired, not just the first one.
+   *
+   * `rf.invoices.repaid` was the count a page published before paying late was distinguishable
+   * from paying, and it stayed on the page beside its replacements — so a reader of the public
+   * record saw 6 repaid next to 4 on time and 2 late and had to guess which was true. Nothing
+   * reads it any more once the split exists, and a record nobody reads but everybody can see
+   * is a record that misleads.
+   */
+  for (const key of [RETIRED_WALLET_RECORD, LEGACY_PAID]) {
+    const held = await readRecord(signer.provider, resolverAddress, name, key);
+    if (held === '') continue;
+
+    const receipt = await (await store.setText(encodeName(name), key, '')).wait();
+    last = receipt.hash as string;
+  }
+
+  return last;
 }
