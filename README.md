@@ -55,7 +55,6 @@ Press **Reset demo** (bottom of either sidebar) before a run — it forgets the 
 ## Architecture
 
 ```mermaid
-%%{init: {'flowchart': {'curve': 'linear', 'nodeSpacing': 40, 'rankSpacing': 60}}}%%
 flowchart TD
     USER(["Demo user · signs in with email"])
 
