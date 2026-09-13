@@ -19,7 +19,7 @@ Press **Reset demo** (bottom of either sidebar) before a run — it forgets the 
 
 ![Source · Fund · Secondary market · Collect · Reprice](assets/solution-illustration.png)
 
-### In six clicks
+### In six steps
 
 **1. Sign in with email.** Privy sends a code; no wallet, no seed phrase. On the business portal, whoever signs in is seated as one of Ironline's three directors.
 
@@ -55,7 +55,6 @@ Press **Reset demo** (bottom of either sidebar) before a run — it forgets the 
 ## Architecture
 
 ```mermaid
-%%{init: {'flowchart': {'curve': 'linear', 'nodeSpacing': 40, 'rankSpacing': 60}}}%%
 flowchart TD
     USER(["Demo user · signs in with email"])
 
