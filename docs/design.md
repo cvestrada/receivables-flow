@@ -3,6 +3,7 @@ version: 2
 name: Receivables Flow
 description: "The Receivables Flow design system. Indigo #635BFF on white and #F8FAFD, navy ink, one variable typeface (Inter Tight) covering both the sans and mono role with tabular figures, 8/12px radii, pill badges, and a fixed sidebar under a 56px breadcrumb topbar."
 implementation: apps/{business,investor}/src/app/globals.css
+per-side: [docs/design-business.md, docs/design-investor.md]
 colors:
   accent: "#635BFF"
   accent-strong: "#533AFD"
@@ -56,7 +57,12 @@ components:
 
 A receivables desk for two audiences who are on opposite sides of the same trade: a business selling an unpaid invoice, and a funder buying it. The visual job is credibility under density — a screen of money that a credit officer trusts — without the terminal-green severity that would make an SME bounce off it.
 
-Indigo is the only saturated hue in the chrome. Everything else is navy ink, slate, and hairline grey, with three state colours doing the rest: green settled, red failed, amber pending. Structure comes from a 1px hairline plus a nearly invisible contact shadow — never from a heavy drop shadow.
+Indigo is the base accent this system was drawn in, and neither portal ships it any more: the
+business side substitutes orange and the investor side blue, so a viewer cutting between tabs
+knows which side of the trade they are on. See `docs/design-business.md` and
+`docs/design-investor.md` — they change the accent and nothing else.
+
+One saturated hue in the chrome, whichever it is. Everything else is navy ink, slate, and hairline grey, with three state colours doing the rest: green settled, red failed, amber pending. Structure comes from a 1px hairline plus a nearly invisible contact shadow — never from a heavy drop shadow.
 
 **Key characteristics:**
 - One variable typeface, Inter Tight, doing both the sans and the mono job — `tabular-nums` handles the column alignment a second monospaced family would otherwise be carried for.
