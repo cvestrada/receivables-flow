@@ -2,9 +2,14 @@
   "name": "receivables-flow",
   "version": "0.0.1",
   "private": true,
-  "workspaces": ["apps/*", "libs/*", "contracts/*"],
+  "workspaces": [
+    "apps/*",
+    "libs/*",
+    "contracts/*"
+  ],
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present"
+    "build": "npm run build --workspaces --if-present",
+    "demo:reset": "bash scripts/demo-reset.sh"
   }
 }
