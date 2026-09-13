@@ -50,7 +50,9 @@ Docker build, so changing one means redeploying.
 
 ## Privy
 
-Privy → App settings → Allowed origins: add both Railway domains, or sign-in will be refused.
+Sign-in worked on the Railway domains without adding them to Privy's allowed origins — the
+app has none configured, which means every origin is allowed. Add the two domains there if you
+ever restrict it.
 
 ## After the first deploy
 
