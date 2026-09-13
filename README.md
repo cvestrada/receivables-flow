@@ -32,7 +32,7 @@ Press **Reset demo** (bottom of either sidebar) before a run — it forgets the 
 
 ```mermaid
 flowchart TD
-    JUDGE(["Judge · signs in with email"])
+    USER(["Demo user · signs in with email"])
 
     subgraph PORTALS["Two Next.js portals · Railway"]
         BIZ["Business portal<br/>Ironline Freight"]
@@ -61,8 +61,8 @@ flowchart TD
         FUNDNAME["woodgrove.investor.receivablesflow.eth<br/>KYC pass"]
     end
 
-    JUDGE --> BIZ
-    JUDGE --> INV
+    USER --> BIZ
+    USER --> INV
     BIZ --> PRIVYLIB
     INV --> PRIVYLIB
     BIZ --> ATSLIB
